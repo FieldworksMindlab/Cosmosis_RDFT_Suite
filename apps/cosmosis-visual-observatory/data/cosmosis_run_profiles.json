@@ -1,0 +1,27 @@
+[
+  {
+    "anisotropy": 0.08613768091984327,
+    "band_gap_ev": 4.2152,
+    "bulk_gpa": 82.44411938874839,
+    "confidence": "run-imprint",
+    "crystal_order": 0.26048042580645164,
+    "density": 4.493954652903226,
+    "dielectric": 66.67836845161291,
+    "family": "Cosmosis run imprint",
+    "formula": "",
+    "heat_capacity_j_kgk": 1406.1016838709677,
+    "magnetic": 0.05989690347846567,
+    "missing_fields": "physical_properties_are_effective_run_proxies",
+    "name": "osc_state_2026-06-15_08-20-12",
+    "notes": "Generated from Cosmosis/RDFT CSV dynamics. Values are effective topology-imprint properties, not direct physical material measurements.",
+    "poisson": 0.31243047433068855,
+    "porosity": 0.7062532860215053,
+    "provider": "cosmosis_csv",
+    "shear_gpa": 22.48112922418315,
+    "source": "cosmosis_csv",
+    "source_id": "osc_state_2026-06-15_08-20-12.csv",
+    "source_mode": "cosmosis_csv",
+    "thermal_w_mk": 388.5369473885161,
+    "youngs_gpa": 305.4220624835105
+  }
+]

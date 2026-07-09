@@ -1,0 +1,58 @@
+{
+  "project_name": "surface_foundry_relief",
+  "input": {
+    "source_stl": "source/surface_foundry_source.stl",
+    "call_sheet_svg": "",
+    "use_svg_for_metadata_only": true
+  },
+  "output": {
+    "directory": "output",
+    "basename": "surface_foundry_relief",
+    "write_defined_variant": true,
+    "write_dramatic_variant": true,
+    "write_preview_png": true,
+    "write_heightfield_png": true,
+    "write_metadata_json": true
+  },
+  "view": {
+    "azimuth_deg": 45.0,
+    "elevation_deg": 35.26438968,
+    "rotation_order": "Rx(-elevation) @ Rz(azimuth)",
+    "auto_parse_svg_view_label": false
+  },
+  "projection": {
+    "model_voxel_pitch": 1.0,
+    "fill_voxel_volume": true,
+    "front_depth_weight": 0.72,
+    "thickness_weight": 0.28,
+    "smoothing_sigma": 0.7,
+    "unsharp_sigma": 1.4,
+    "unsharp_amount": 0.55
+  },
+  "relief": {
+    "xy_span_mm": 118.0,
+    "flat_back": true,
+    "silhouette_cutout": true,
+    "z_voxel_step_mm": 1.0,
+    "variants": [
+      {
+        "name": "defined",
+        "base_thickness_mm": 2.0,
+        "relief_height_mm": 9.0,
+        "gamma": 0.58
+      },
+      {
+        "name": "dramatic",
+        "base_thickness_mm": 2.0,
+        "relief_height_mm": 12.0,
+        "gamma": 0.46
+      }
+    ]
+  },
+  "mesh": {
+    "make_watertight": true,
+    "center_xy": true,
+    "set_bottom_to_z_zero": true,
+    "export_units": "millimeters"
+  }
+}

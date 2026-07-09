@@ -1,0 +1,8 @@
+numpy>=1.24
+pandas>=2.0
+pygfx>=0.7
+wgpu>=0.16
+rendercanvas[glfw]>=2.0
+glfw>=2.6
+pylinalg>=0.4
+matplotlib>=3.8

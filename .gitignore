@@ -1,0 +1,58 @@
+.DS_Store
+__MACOSX/
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+.pycache/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+
+# Local runtime/config
+.env
+.env.*
+!.env.example
+.config/
+.cache/
+.matplotlib/
+.holo_pids/
+.shaper_pids/
+*.pid
+
+# Generated output
+logs/
+recordings/
+exports/
+dashboards/
+call_sheet/output/
+call_sheet/configs/
+**/maps/surface_cache/
+**/osc_state_*.csv
+DATA_COMP/
+*_recording_*/
+surface_foundry_*.stl
+surface_foundry_*.json
+surface_foundry_call_sheet_*
+cosmosis_visual_*.png
+
+# Large/local media and archives
+*.zip
+*.tar
+*.tgz
+*.gz
+*.7z
+*.mov
+*.mp4
+*.wav
+*.aif
+*.aiff
+*.mp3
+
+# Keep curated examples despite extension rules above
+!examples/sample-data/**
+!examples/sample-call-sheets/**
+!examples/sample-stls/**
+!apps/rdft-hopf-visualization-kit/data/osc_state_*.csv

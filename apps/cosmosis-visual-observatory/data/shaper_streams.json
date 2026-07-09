@@ -1,0 +1,30 @@
+{
+  "galactic_torsion": 0.5936959780013769,
+  "mix": 0.62,
+  "ocean_current": 0.444938820912125,
+  "raw": {
+    "bz_nt": -1.61,
+    "kp": 1.33,
+    "ocean_accel": 0.7786429365962187,
+    "ocean_energy": 0.42157953281423843,
+    "ocean_memory": 0.4706033233724301,
+    "ocean_velocity": 0.17797552836484998,
+    "tide_m": 1.395,
+    "tide_range_m": 0.899,
+    "torsion_proxy_note": "derived from Bz, Kp, and sidereal phase; not a direct torsion measurement",
+    "water_temp_c": 12.0,
+    "wind_km_s": 453.16,
+    "xray_w_m2": 7.439378464368929e-07
+  },
+  "schema": "cosmosis_visual_observatory.shaper.v1",
+  "solar_wind": 0.33860000000000007,
+  "source": "live_noaa_swpc_coops",
+  "station": "9414290",
+  "status": {
+    "ocean_live": true,
+    "solar_live": true
+  },
+  "tide": 1.0,
+  "updated_utc": "2026-07-07T22:29:53.401492Z",
+  "xray_flux": 0.4678841632960655
+}

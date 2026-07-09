@@ -1,0 +1,27 @@
+[
+  {
+    "anisotropy": 1.0,
+    "band_gap_ev": 0.0,
+    "bulk_gpa": 180.0,
+    "confidence": "structure-only+inferred",
+    "crystal_order": 0.82,
+    "density": 2.1066666666666665,
+    "dielectric": 1.0,
+    "family": "OPTIMADE structure profile",
+    "formula": "Si",
+    "heat_capacity_j_kgk": 800.0,
+    "magnetic": 0.0,
+    "missing_fields": "band_gap_ev,bulk_gpa,density,dielectric,heat_capacity_j_kgk,magnetic,poisson,shear_gpa,thermal_w_mk,youngs_gpa",
+    "name": "Si (dft_2d_JVASP-77684)",
+    "notes": "Fetched from OPTIMADE structure endpoint; most physical properties are inferred from structure descriptors for visualization only. Base URL: https://jarvis.nist.gov/optimade/jarvisdft",
+    "poisson": 0.3,
+    "porosity": 0.0,
+    "provider": "optimade",
+    "shear_gpa": 120.0,
+    "source": "optimade",
+    "source_id": "dft_2d_JVASP-77684",
+    "source_mode": "database",
+    "thermal_w_mk": 1.0,
+    "youngs_gpa": 260.0
+  }
+]

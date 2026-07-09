@@ -1,0 +1,9 @@
+measure,value
+pca_var_pc1,0.3795076253622409
+pca_var_pc2,0.17612891027124655
+pca_var_pc3,0.07189116924468733
+hopf_base_x_range,0.527258
+hopf_base_y_range,0.332306
+hopf_base_z_range,0.3909790000000001
+fiber_winding_final,-0.295832
+thread_winding_final,0.01644
