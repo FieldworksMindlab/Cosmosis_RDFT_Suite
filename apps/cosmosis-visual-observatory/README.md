@@ -128,8 +128,10 @@ want profiles written back to `data/cosmosis_run_profiles.json`.
 
 Surface Foundry turns the live Topology Lab field into fabrication geometry.
 The first pass samples `topologyScalar(...)` into a 3D volume, extracts a
-printable voxel-band shell, and optionally adds raised transport-vein tubes
-following the same phase paths used in the topology preview.
+printable voxel-band shell, and optionally unions raised transport veins into
+that same volume following the phase paths used in the topology preview.
+Diagonal voxel contacts are bridged before triangle extraction so the resulting
+cubical surface does not contain edges shared by more than two faces.
 
 The Foundry can also wrap the RDFT field over a selected geometry carrier:
 
@@ -178,6 +180,13 @@ outputs:
 - `call_sheet/output/*_relief_dramatic.stl`
 - `call_sheet/configs/*.json`
 
+`relief_defined` keeps the established detailed heightfield unchanged. Its
+2.0 mm base plus 9.0 mm relief range produces an 11.0 mm maximum height.
+`relief_dramatic` now uses a separate volumetric contour field: 18% source
+detail, 47% broad contour, and 35% silhouette interior depth. Its 2.6 mm base
+plus 18.0 mm relief range produces a 20.6 mm maximum height, making the two
+physical outputs measurably and visibly different.
+
 SVGs can become extremely large at high resolution. They are now generated only
 when requested. After `CALL SHEET`, click `PULL SVG` or press `X` to write:
 
@@ -220,9 +229,11 @@ surface.
 
 The JSON records the material target, topology blend, RDFT controls, resolution,
 iso band, model scale, raised-vein settings, stochastic CAD settings, and
-triangle count. The current mesh extractor is intentionally dependency-free and
-draft-friendly; a later pass can replace it with marching cubes or surface nets
-for smoother production STL surfaces.
+triangle count. It also records source-mesh boundary, non-manifold, degenerate,
+and bridge-voxel counts. STL and call-sheet export are blocked unless the source
+mesh passes this manifold audit. The current extractor remains dependency-free
+and draft-friendly; marching cubes or surface nets can still be added later for
+smoother production surfaces.
 
 ## Floquet Shaper Influence
 

@@ -96,6 +96,10 @@ float foundryVeinRadiusMM = 1.8;
 float foundryVeinLiftMM = 1.2;
 boolean foundryRaisedVeins = true;
 boolean foundryMeshStale = false;
+int foundryBridgeVoxels = 0;
+int foundryBoundaryEdges = 0;
+int foundryNonManifoldEdges = 0;
+int foundryDegenerateFaces = 0;
 boolean cadPreviewEnabled = true;
 boolean cadInternalLattice = true;
 boolean cadGraphicDrafting = false;
@@ -1573,6 +1577,8 @@ void generateSurfaceFoundryMesh() {
       }
     }
   }
+  if (foundryRaisedVeins) addRaisedVeinsToSolid(solid, scores);
+  foundryBridgeVoxels = regularizeFoundrySolid(solid, 6);
   foundryCallSheetSolid = solid;
 
   for (int ix = 0; ix < foundryResolution; ix++) {
@@ -1584,8 +1590,15 @@ void generateSurfaceFoundryMesh() {
     }
   }
 
-  if (foundryRaisedVeins) addRaisedVeinTubes(foundryMesh, scores);
-  foundryStatus = "generated " + foundryMesh.tris.size() + " tris";
+  int[] audit = foundryMesh.manifoldAudit();
+  foundryBoundaryEdges = audit[0];
+  foundryNonManifoldEdges = audit[1];
+  foundryDegenerateFaces = audit[2];
+  if (foundryBoundaryEdges == 0 && foundryNonManifoldEdges == 0 && foundryDegenerateFaces == 0) {
+    foundryStatus = "watertight " + foundryMesh.tris.size() + " tris";
+  } else {
+    foundryStatus = "mesh blocked: open " + foundryBoundaryEdges + " nonman " + foundryNonManifoldEdges;
+  }
   foundryMeshStale = false;
   foundryLastExport = "";
 }
@@ -1596,6 +1609,13 @@ void markFoundryStale() {
     foundryMeshStale = true;
     foundryStatus = "settings changed; regenerate";
   }
+}
+
+boolean foundryMeshIsPrintable() {
+  return foundryMesh != null && foundryMesh.tris.size() > 0
+      && foundryBoundaryEdges == 0
+      && foundryNonManifoldEdges == 0
+      && foundryDegenerateFaces == 0;
 }
 
 void addVoxelBoundaryFaces(SurfaceMesh mesh, boolean[][][] solid, int ix, int iy, int iz, int n) {
@@ -1622,27 +1642,140 @@ float foundryCoord(int idx, int n) {
   return map(idx, 0, n, -foundryScaleMM * 0.5, foundryScaleMM * 0.5);
 }
 
-void addRaisedVeinTubes(SurfaceMesh mesh, float[] scores) {
+void addRaisedVeinsToSolid(boolean[][][] solid, float[] scores) {
   PVector[] nodes = topologyNodes(1.0);
   int[][] pairs = {
     {0, 2}, {2, 1}, {1, 3}, {3, 0},
     {4, 0}, {4, 2}, {5, 1}, {5, 3}
   };
+  int n = solid.length;
+  float cell = foundryScaleMM / max(1.0f, n);
+  float radius = foundryVeinRadiusMM + cell * 0.62f;
   for (int i = 0; i < pairs.length; i++) {
-    ArrayList<PVector> path = new ArrayList<PVector>();
+    PVector previousRaised = null;
     for (int s = 0; s <= 42; s++) {
       float t = s / 42.0;
-      PVector p = topologyFiberPoint(nodes[pairs[i][0]], nodes[pairs[i][1]], scores, 1.0, i, t, 0);
-      p.mult(foundryScaleMM * 0.5 * 0.92);
-      PVector lift = p.copy();
+      PVector base = topologyFiberPoint(nodes[pairs[i][0]], nodes[pairs[i][1]], scores, 1.0, i, t, 0);
+      base.mult(foundryScaleMM * 0.5 * 0.92);
+      PVector lift = base.copy();
       if (lift.mag() < 0.0001) lift = new PVector(0, 0, 1);
       lift.normalize();
       lift.mult(foundryVeinLiftMM + foundryVeinRadiusMM * 0.55);
-      p.add(lift);
-      path.add(p);
+      PVector raised = PVector.add(base, lift);
+      rasterizeFoundrySegment(solid, base, raised, radius, cell);
+      if (previousRaised != null) rasterizeFoundrySegment(solid, previousRaised, raised, radius, cell);
+      previousRaised = raised;
     }
-    mesh.addTube(path, foundryVeinRadiusMM, 10);
   }
+}
+
+void rasterizeFoundrySegment(boolean[][][] solid, PVector a, PVector b, float radius, float cell) {
+  float distance = PVector.dist(a, b);
+  int steps = max(1, ceil(distance / max(0.15f, cell * 0.42f)));
+  for (int i = 0; i <= steps; i++) {
+    float t = i / (float)steps;
+    PVector sample = new PVector(lerp(a.x, b.x, t), lerp(a.y, b.y, t), lerp(a.z, b.z, t));
+    rasterizeFoundrySphere(solid, sample, radius);
+  }
+}
+
+void rasterizeFoundrySphere(boolean[][][] solid, PVector center, float radius) {
+  int n = solid.length;
+  float cell = foundryScaleMM / max(1.0f, n);
+  int cx = floor(map(center.x, -foundryScaleMM * 0.5f, foundryScaleMM * 0.5f, 0, n));
+  int cy = floor(map(center.y, -foundryScaleMM * 0.5f, foundryScaleMM * 0.5f, 0, n));
+  int cz = floor(map(center.z, -foundryScaleMM * 0.5f, foundryScaleMM * 0.5f, 0, n));
+  int reach = ceil(radius / cell) + 1;
+  float radiusSq = radius * radius;
+  for (int ix = max(0, cx - reach); ix <= min(n - 1, cx + reach); ix++) {
+    for (int iy = max(0, cy - reach); iy <= min(n - 1, cy + reach); iy++) {
+      for (int iz = max(0, cz - reach); iz <= min(n - 1, cz + reach); iz++) {
+        float vx = map(ix + 0.5f, 0, n, -foundryScaleMM * 0.5f, foundryScaleMM * 0.5f);
+        float vy = map(iy + 0.5f, 0, n, -foundryScaleMM * 0.5f, foundryScaleMM * 0.5f);
+        float vz = map(iz + 0.5f, 0, n, -foundryScaleMM * 0.5f, foundryScaleMM * 0.5f);
+        float dx = vx - center.x;
+        float dy = vy - center.y;
+        float dz = vz - center.z;
+        if (dx*dx + dy*dy + dz*dz <= radiusSq) solid[ix][iy][iz] = true;
+      }
+    }
+  }
+}
+
+int regularizeFoundrySolid(boolean[][][] solid, int maxPasses) {
+  int n = solid.length;
+  int totalAdded = 0;
+  for (int pass = 0; pass < maxPasses; pass++) {
+    int added = 0;
+    for (int ix = 0; ix < n; ix++) {
+      for (int iy = 1; iy < n; iy++) {
+        for (int iz = 1; iz < n; iz++) {
+          added += resolveFoundryDiagonal(solid,
+            ix, iy - 1, iz - 1, ix, iy, iz - 1,
+            ix, iy, iz, ix, iy - 1, iz);
+        }
+      }
+    }
+    for (int iy = 0; iy < n; iy++) {
+      for (int ix = 1; ix < n; ix++) {
+        for (int iz = 1; iz < n; iz++) {
+          added += resolveFoundryDiagonal(solid,
+            ix - 1, iy, iz - 1, ix, iy, iz - 1,
+            ix, iy, iz, ix - 1, iy, iz);
+        }
+      }
+    }
+    for (int iz = 0; iz < n; iz++) {
+      for (int ix = 1; ix < n; ix++) {
+        for (int iy = 1; iy < n; iy++) {
+          added += resolveFoundryDiagonal(solid,
+            ix - 1, iy - 1, iz, ix, iy - 1, iz,
+            ix, iy, iz, ix - 1, iy, iz);
+        }
+      }
+    }
+    totalAdded += added;
+    if (added == 0) break;
+  }
+  return totalAdded;
+}
+
+int resolveFoundryDiagonal(boolean[][][] solid,
+  int ax, int ay, int az, int bx, int by, int bz,
+  int cx, int cy, int cz, int dx, int dy, int dz) {
+  boolean a = solid[ax][ay][az];
+  boolean b = solid[bx][by][bz];
+  boolean c = solid[cx][cy][cz];
+  boolean d = solid[dx][dy][dz];
+  if (a && c && !b && !d) {
+    fillFoundryBridge(solid, bx, by, bz, dx, dy, dz);
+    return 1;
+  }
+  if (b && d && !a && !c) {
+    fillFoundryBridge(solid, ax, ay, az, cx, cy, cz);
+    return 1;
+  }
+  return 0;
+}
+
+void fillFoundryBridge(boolean[][][] solid, int ax, int ay, int az, int bx, int by, int bz) {
+  int scoreA = foundryFaceNeighborCount(solid, ax, ay, az);
+  int scoreB = foundryFaceNeighborCount(solid, bx, by, bz);
+  boolean chooseA = scoreA > scoreB || (scoreA == scoreB && ((ax + ay + az) & 1) == 0);
+  if (chooseA) solid[ax][ay][az] = true;
+  else solid[bx][by][bz] = true;
+}
+
+int foundryFaceNeighborCount(boolean[][][] solid, int x, int y, int z) {
+  int n = solid.length;
+  int count = 0;
+  if (isSolid(solid, x + 1, y, z, n)) count++;
+  if (isSolid(solid, x - 1, y, z, n)) count++;
+  if (isSolid(solid, x, y + 1, z, n)) count++;
+  if (isSolid(solid, x, y - 1, z, n)) count++;
+  if (isSolid(solid, x, y, z + 1, n)) count++;
+  if (isSolid(solid, x, y, z - 1, n)) count++;
+  return count;
 }
 
 void exportSurfaceFoundryMesh() {
@@ -1652,6 +1785,10 @@ void exportSurfaceFoundryMesh() {
   }
   if (foundryMeshStale) {
     foundryStatus = "regenerate before export";
+    return;
+  }
+  if (!foundryMeshIsPrintable()) {
+    foundryStatus = "export blocked: mesh is not manifold";
     return;
   }
   String stamp = nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "_" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2);
@@ -1680,6 +1817,11 @@ void writeFoundryMetadata(String filename) {
   meta.setFloat("material_topological_response", activeMetaMaterial == null ? 0 : activeMetaMaterial.topologicalResponse);
   meta.setFloat("material_superconducting_coherence", activeMetaMaterial == null ? 0 : activeMetaMaterial.superconductingCoherence);
   meta.setFloat("material_transition_temperature_k", activeMetaMaterial == null ? 0 : activeMetaMaterial.transitionTemperatureK);
+  meta.setBoolean("mesh_watertight", foundryMeshIsPrintable());
+  meta.setInt("mesh_boundary_edges", foundryBoundaryEdges);
+  meta.setInt("mesh_non_manifold_edges", foundryNonManifoldEdges);
+  meta.setInt("mesh_degenerate_faces", foundryDegenerateFaces);
+  meta.setInt("mesh_bridge_voxels", foundryBridgeVoxels);
   meta.setInt("resolution", foundryResolution);
   meta.setFloat("iso_band", foundryIsoBand);
   meta.setFloat("scale_mm", foundryScaleMM);
@@ -1719,6 +1861,11 @@ void generateFoundryCallSheets() {
     foundryStatus = "call sheet failed";
     return;
   }
+  if (!foundryMeshIsPrintable()) {
+    foundryCallSheetStatus = "source mesh is not manifold";
+    foundryStatus = "call sheet blocked: mesh audit failed";
+    return;
+  }
 
   ensureDir(sketchPath("call_sheet"));
   ensureDir(sketchPath("call_sheet/output"));
@@ -1741,7 +1888,10 @@ void generateFoundryCallSheets() {
   writeFoundryCallSheetPng(surfacePng, "surface_silhouette");
   writeFoundryCallSheetPng(latticePng, "voxel_lattice");
   foundryMesh.writeSTL(sourceStl);
-  writeFoundryReliefSuite(reliefDefinedStl, reliefDramaticStl, reliefPreviewPng, reliefHeightPng);
+  if (!writeFoundryReliefSuite(reliefDefinedStl, reliefDramaticStl, reliefPreviewPng, reliefHeightPng)) {
+    foundryCallSheetStatus = "relief mesh audit failed";
+    return;
+  }
   writeFoundryCallSheetManifest(manifestJson, "", surfacePng, "", latticePng, sourceStl, reliefDefinedStl, reliefDramaticStl, reliefPreviewPng, reliefHeightPng);
 
   foundryLastCallSheetBase = base;
@@ -1756,8 +1906,8 @@ void generateFoundryCallSheets() {
   foundryLastReliefHeightPng = reliefHeightPng;
   foundryLastManifestJson = manifestJson;
   foundryLastCallSheet = surfacePng + " / " + latticePng;
-  foundryCallSheetStatus = "PNGs + STLs generated; SVG optional";
-  foundryStatus = "call sheet PNG/STL generated";
+  foundryCallSheetStatus = "PNGs + audited STLs; SVG optional";
+  foundryStatus = "watertight call sheet STLs generated";
 }
 
 void pullFoundryCallSheetSvgs() {
@@ -1785,15 +1935,23 @@ void pullFoundryCallSheetSvgs() {
   foundryStatus = "SVG call sheets generated";
 }
 
-void writeFoundryReliefSuite(String definedStl, String dramaticStl, String previewPng, String heightPng) {
+boolean writeFoundryReliefSuite(String definedStl, String dramaticStl, String previewPng, String heightPng) {
   ReliefField field = buildFoundryReliefField();
-  if (field == null) return;
+  if (field == null) return false;
   writeFoundryReliefImage(field, heightPng, false);
   writeFoundryReliefImage(field, previewPng, true);
   SurfaceMesh defined = buildFoundryReliefMesh(field, "defined", 2.0f, 9.0f, 0.58f);
-  SurfaceMesh dramatic = buildFoundryReliefMesh(field, "dramatic", 2.0f, 12.0f, 0.46f);
+  SurfaceMesh dramatic = buildFoundryReliefMesh(field, "dramatic", 2.6f, 18.0f, 0.72f);
+  int[] definedAudit = defined.manifoldAudit();
+  int[] dramaticAudit = dramatic.manifoldAudit();
+  if (definedAudit[0] != 0 || definedAudit[1] != 0 || definedAudit[2] != 0
+      || dramaticAudit[0] != 0 || dramaticAudit[1] != 0 || dramaticAudit[2] != 0) {
+    foundryStatus = "relief export blocked: mesh audit failed";
+    return false;
+  }
   defined.writeSTL(definedStl);
   dramatic.writeSTL(dramaticStl);
+  return true;
 }
 
 ReliefField buildFoundryReliefField() {
@@ -2206,9 +2364,10 @@ SurfaceMesh buildFoundryReliefMesh(ReliefField field, String variant, float base
   int rows = field.rows;
   int cols = field.cols;
   float cell = field.xySpanMM / max(rows, cols);
+  float[][] variantField = reliefVariantField(field, variant);
   float[][] height = new float[rows][cols];
   for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < cols; c++) height[r][c] = field.mask[r][c] ? baseMM + reliefMM * pow(constrain(field.height[r][c], 0, 1), gamma) : 0;
+    for (int c = 0; c < cols; c++) height[r][c] = field.mask[r][c] ? baseMM + reliefMM * pow(constrain(variantField[r][c], 0, 1), gamma) : 0;
   }
   float[][] vh = reliefVertexHeights(height, field.mask);
   for (int r = 0; r < rows; r++) {
@@ -2233,6 +2392,52 @@ SurfaceMesh buildFoundryReliefMesh(ReliefField field, String variant, float base
     }
   }
   return mesh;
+}
+
+float[][] reliefVariantField(ReliefField field, String variant) {
+  if (!variant.equals("dramatic")) return field.height;
+  int rows = field.rows;
+  int cols = field.cols;
+  float[][] broad = maskedReliefBlur(field.height, field.mask, 4, 3);
+  float[][] dome = reliefInteriorDepth(field.mask, 40);
+  float[][] volume = new float[rows][cols];
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (!field.mask[r][c]) continue;
+      volume[r][c] = 0.18f * field.height[r][c] + 0.47f * broad[r][c] + 0.35f * dome[r][c];
+    }
+  }
+  return normalizeReliefArray(volume, field.mask);
+}
+
+float[][] reliefInteriorDepth(boolean[][] mask, int maxLayers) {
+  int rows = mask.length;
+  int cols = mask[0].length;
+  boolean[][] layer = new boolean[rows][cols];
+  float[][] depthField = new float[rows][cols];
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) layer[r][c] = mask[r][c];
+  }
+  float deepest = 0;
+  for (int level = 1; level <= maxLayers; level++) {
+    boolean any = false;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        if (!layer[r][c]) continue;
+        depthField[r][c] = level;
+        deepest = max(deepest, level);
+        any = true;
+      }
+    }
+    if (!any) break;
+    layer = reliefErodeMask(layer, 1);
+  }
+  if (deepest > 0) {
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) depthField[r][c] = mask[r][c] ? depthField[r][c] / deepest : 0;
+    }
+  }
+  return depthField;
 }
 
 float[][] reliefVertexHeights(float[][] height, boolean[][] mask) {
@@ -3780,6 +3985,11 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   meta.setFloat("material_topological_response", manifestMaterial == null ? 0 : manifestMaterial.topologicalResponse);
   meta.setFloat("material_superconducting_coherence", manifestMaterial == null ? 0 : manifestMaterial.superconductingCoherence);
   meta.setFloat("material_transition_temperature_k", manifestMaterial == null ? 0 : manifestMaterial.transitionTemperatureK);
+  meta.setBoolean("source_mesh_watertight", foundryMeshIsPrintable());
+  meta.setInt("source_mesh_boundary_edges", foundryBoundaryEdges);
+  meta.setInt("source_mesh_non_manifold_edges", foundryNonManifoldEdges);
+  meta.setInt("source_mesh_degenerate_faces", foundryDegenerateFaces);
+  meta.setInt("source_mesh_bridge_voxels", foundryBridgeVoxels);
   meta.setInt("resolution", foundryResolution);
   meta.setFloat("iso_band", foundryIsoBand);
   meta.setFloat("scale_mm", foundryScaleMM);
@@ -3817,6 +4027,9 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   c.setString("preview_png", reliefPreviewPng);
   c.setString("heightfield_png", reliefHeightPng);
   c.setString("source", "generated from filled Surface Foundry voxel volume, not SVG brightness");
+  c.setString("defined_profile", "detail-preserving source field; base 2.0 mm; relief 9.0 mm; gamma 0.58; max 11.0 mm");
+  c.setString("dramatic_profile", "volumetric contour field; base 2.6 mm; relief 18.0 mm; gamma 0.72; max 20.6 mm");
+  c.setString("dramatic_field_blend", "18% source detail + 47% broad contour + 35% interior-distance dome");
   outputs.setJSONObject(2, c);
   meta.setJSONArray("outputs", outputs);
   JSONArray blend = new JSONArray();
@@ -5931,6 +6144,46 @@ class SurfaceMesh {
   void addQuad(PVector a, PVector b, PVector c, PVector d) {
     addTri(a, b, c);
     addTri(a, c, d);
+  }
+
+  int[] manifoldAudit() {
+    HashMap<String, Integer> edgeCounts = new HashMap<String, Integer>();
+    HashMap<String, Integer> edgeBalance = new HashMap<String, Integer>();
+    int degenerate = 0;
+    for (MeshTri tri : tris) {
+      PVector ab = PVector.sub(tri.b, tri.a);
+      PVector ac = PVector.sub(tri.c, tri.a);
+      if (ab.cross(ac).magSq() < 0.00000001f) {
+        degenerate++;
+        continue;
+      }
+      auditEdge(edgeCounts, edgeBalance, tri.a, tri.b);
+      auditEdge(edgeCounts, edgeBalance, tri.b, tri.c);
+      auditEdge(edgeCounts, edgeBalance, tri.c, tri.a);
+    }
+    int boundary = 0;
+    int nonManifold = 0;
+    for (String key : edgeCounts.keySet()) {
+      int count = edgeCounts.get(key);
+      int balance = edgeBalance.get(key);
+      if (count == 1) boundary++;
+      else if (count > 2 || (count == 2 && abs(balance) == 2)) nonManifold++;
+    }
+    return new int[] { boundary, nonManifold, degenerate };
+  }
+
+  void auditEdge(HashMap<String, Integer> counts, HashMap<String, Integer> balance, PVector a, PVector b) {
+    String ka = auditVertexKey(a);
+    String kb = auditVertexKey(b);
+    boolean forward = ka.compareTo(kb) <= 0;
+    String key = forward ? ka + "|" + kb : kb + "|" + ka;
+    counts.put(key, counts.containsKey(key) ? counts.get(key) + 1 : 1);
+    int direction = forward ? 1 : -1;
+    balance.put(key, balance.containsKey(key) ? balance.get(key) + direction : direction);
+  }
+
+  String auditVertexKey(PVector p) {
+    return round(p.x * 100000.0f) + "," + round(p.y * 100000.0f) + "," + round(p.z * 100000.0f);
   }
 
   void addTube(ArrayList<PVector> path, float radius, int sides) {

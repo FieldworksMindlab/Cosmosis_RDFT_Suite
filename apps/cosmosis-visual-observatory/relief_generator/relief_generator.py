@@ -9,6 +9,7 @@ SVG input is used only for companion STL discovery and view metadata.
 from __future__ import annotations
 
 import argparse
+import collections
 import copy
 import json
 import math
@@ -66,9 +67,13 @@ DEFAULT_CONFIG = {
             },
             {
                 "name": "dramatic",
-                "base_thickness_mm": 2.0,
-                "relief_height_mm": 12.0,
-                "gamma": 0.46,
+                "base_thickness_mm": 2.6,
+                "relief_height_mm": 18.0,
+                "gamma": 0.72,
+                "broad_smoothing_sigma": 3.2,
+                "volume_blend": 0.35,
+                "broad_blend": 0.47,
+                "detail_blend": 0.18,
             },
         ],
     },
@@ -363,6 +368,37 @@ def normal(a, b, c):
     return (nx / length, ny / length, nz / length)
 
 
+def mesh_audit(tris):
+    edge_counts = collections.Counter()
+    edge_balance = collections.Counter()
+    degenerate = 0
+
+    def key(point):
+        return tuple(round(float(value), 6) for value in point)
+
+    for a, b, c in tris:
+        if normal(a, b, c) == (0.0, 0.0, 0.0):
+            degenerate += 1
+            continue
+        vertices = (key(a), key(b), key(c))
+        for first, second in zip(vertices, vertices[1:] + vertices[:1]):
+            edge = tuple(sorted((first, second)))
+            edge_counts[edge] += 1
+            edge_balance[edge] += 1 if first <= second else -1
+
+    boundary = sum(count == 1 for count in edge_counts.values())
+    non_manifold = sum(
+        count > 2 or (count == 2 and abs(edge_balance[edge]) == 2)
+        for edge, count in edge_counts.items()
+    )
+    return {
+        "watertight": boundary == 0 and non_manifold == 0 and degenerate == 0,
+        "boundary_edges": int(boundary),
+        "non_manifold_edges": int(non_manifold),
+        "degenerate_faces": int(degenerate),
+    }
+
+
 def write_ascii_stl(path: Path, name: str, tris):
     with path.open("w", encoding="utf-8") as f:
         f.write(f"solid {name}\n")
@@ -422,12 +458,55 @@ def erode_mask(np, mask):
     return out
 
 
+def interior_depth_field(np, mask, max_layers=64):
+    layer = mask.copy()
+    depth = np.zeros(mask.shape, dtype=float)
+    deepest = 0.0
+    for level in range(1, max_layers + 1):
+        if not layer.any():
+            break
+        depth[layer] = float(level)
+        deepest = float(level)
+        layer = erode_mask(np, layer)
+    if deepest > 0:
+        depth[mask] /= deepest
+    return depth
+
+
+def masked_gaussian(np, field, mask, sigma):
+    weights = mask.astype(float)
+    numerator = gaussian_filter(np, field * weights, sigma)
+    denominator = gaussian_filter(np, weights, sigma)
+    out = np.divide(numerator, denominator, out=np.zeros_like(numerator), where=denominator > 1.0e-6)
+    out[~mask] = 0.0
+    return out
+
+
+def variant_field(np, field, mask, variant):
+    if variant.get("name") != "dramatic":
+        return field
+    broad = masked_gaussian(np, field, mask, float(variant.get("broad_smoothing_sigma", 3.2)))
+    dome = interior_depth_field(np, mask)
+    detail_blend = float(variant.get("detail_blend", 0.18))
+    broad_blend = float(variant.get("broad_blend", 0.47))
+    volume_blend = float(variant.get("volume_blend", 0.35))
+    total = max(1.0e-6, detail_blend + broad_blend + volume_blend)
+    shaped = (detail_blend * field + broad_blend * broad + volume_blend * dome) / total
+    shaped[~mask] = 0.0
+    max_value = float(shaped[mask].max()) if mask.any() else 0.0
+    min_value = float(shaped[mask].min()) if mask.any() else 0.0
+    if max_value > min_value:
+        shaped[mask] = (shaped[mask] - min_value) / (max_value - min_value)
+    return shaped
+
+
 def variant_height(np, field, mask, variant):
     base = float(variant["base_thickness_mm"])
     relief = float(variant["relief_height_mm"])
     gamma = float(variant["gamma"])
+    shaped = variant_field(np, field, mask, variant)
     height = np.zeros(field.shape, dtype=float)
-    height[mask] = base + relief * np.power(np.clip(field[mask], 0, 1), gamma)
+    height[mask] = base + relief * np.power(np.clip(shaped[mask], 0, 1), gamma)
     return height
 
 
@@ -500,6 +579,13 @@ def main():
             continue
         height = variant_height(np, field, mask, variant)
         tris, xy_scale = build_heightfield_triangles(np, height, mask, float(cfg["relief"]["xy_span_mm"]))
+        audit = mesh_audit(tris)
+        if cfg["mesh"].get("make_watertight", True) and not audit["watertight"]:
+            raise SystemExit(
+                f"Refusing to write non-watertight {name} relief: "
+                f"boundary={audit['boundary_edges']} non_manifold={audit['non_manifold_edges']} "
+                f"degenerate={audit['degenerate_faces']}"
+            )
         stl_out = out_dir / f"{basename}_cutout_{name}.stl"
         write_ascii_stl(stl_out, f"{basename}_{name}", tris)
         written.append(str(stl_out))
@@ -509,7 +595,11 @@ def main():
                 "path": str(stl_out),
                 "triangles": len(tris),
                 "xy_cell_mm": xy_scale,
+                "profile": "detail-preserving" if name == "defined" else "volumetric-contour",
+                "min_height_mm": float(height[mask].min()) if mask.any() else 0.0,
+                "mean_height_mm": float(height[mask].mean()) if mask.any() else 0.0,
                 "max_height_mm": float(height.max()) if height.size else 0.0,
+                "mesh_audit": audit,
             }
         )
 
@@ -530,6 +620,8 @@ def main():
         "source_voxel_shape": list(map(int, mat.shape)),
         "relief_field_shape": list(map(int, field.shape)),
         "occupied_pixels": int(mask.sum()),
+        "source_mesh_watertight": bool(mesh.is_watertight),
+        "source_mesh_winding_consistent": bool(mesh.is_winding_consistent),
         "variants": variant_summaries,
     }
     if cfg["output"].get("write_metadata_json", True):

@@ -43,9 +43,13 @@
       },
       {
         "name": "dramatic",
-        "base_thickness_mm": 2.0,
-        "relief_height_mm": 12.0,
-        "gamma": 0.46
+        "base_thickness_mm": 2.6,
+        "relief_height_mm": 18.0,
+        "gamma": 0.72,
+        "broad_smoothing_sigma": 3.2,
+        "volume_blend": 0.35,
+        "broad_blend": 0.47,
+        "detail_blend": 0.18
       }
     ]
   },
