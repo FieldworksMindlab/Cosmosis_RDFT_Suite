@@ -112,7 +112,16 @@ String[] foundryGeometryNames = {
   "PETAMINX LATTICE",
   "MANDELBROT",
   "JULIA",
-  "FRACTAL RIDGE"
+  "FRACTAL RIDGE",
+  "SCHWARZ D",
+  "NEOVIUS",
+  "I-WP",
+  "LIDINOID",
+  "FISCHER-KOCH S",
+  "SCHOEN FRD",
+  "SPLIT P",
+  "MENGER SPONGE",
+  "MANDELBULB"
 };
 int foundryGeometryIndex = 0;
 float foundryWrapBlend = 0.72;
@@ -919,7 +928,9 @@ void drawMaterialTargetPanel(int x, int y, int w, int h) {
 
   drawMiniGauge(x + 10, y + 72, w - 20, "stiff", m.stiffnessN, color(110, 210, 245));
   drawMiniGauge(x + 10, y + 88, w - 20, "order", m.orderN, color(112, 232, 170));
-  drawMiniGauge(x + 10, y + 104, w - 20, "porous/anis", constrain((m.porosity + m.anisotropy) * 0.5, 0, 1), color(255, 174, 84));
+  float functional = max(m.phaseTransform, max(m.topologicalResponse, m.superconductingCoherence));
+  if (functional > 0.05) drawMiniGauge(x + 10, y + 104, w - 20, "functional", functional, color(255, 174, 84));
+  else drawMiniGauge(x + 10, y + 104, w - 20, "porous/anis", constrain((m.porosity + m.anisotropy) * 0.5, 0, 1), color(255, 174, 84));
 
   int by = y + h - 24;
   drawButton(x + 10, by, 28, 18, "<", color(42, 57, 68));
@@ -1664,6 +1675,11 @@ void writeFoundryMetadata(String filename) {
   meta.setString("material_source", activeMetaMaterial == null ? "" : safeString(activeMetaMaterial.source, ""));
   meta.setString("material_source_id", activeMetaMaterial == null ? "" : safeString(activeMetaMaterial.sourceId, ""));
   meta.setString("material_confidence", activeMetaMaterial == null ? "" : safeString(activeMetaMaterial.confidence, ""));
+  meta.setString("material_functional_tags", activeMetaMaterial == null ? "" : safeString(activeMetaMaterial.functionalTags, ""));
+  meta.setFloat("material_phase_transform", activeMetaMaterial == null ? 0 : activeMetaMaterial.phaseTransform);
+  meta.setFloat("material_topological_response", activeMetaMaterial == null ? 0 : activeMetaMaterial.topologicalResponse);
+  meta.setFloat("material_superconducting_coherence", activeMetaMaterial == null ? 0 : activeMetaMaterial.superconductingCoherence);
+  meta.setFloat("material_transition_temperature_k", activeMetaMaterial == null ? 0 : activeMetaMaterial.transitionTemperatureK);
   meta.setInt("resolution", foundryResolution);
   meta.setFloat("iso_band", foundryIsoBand);
   meta.setFloat("scale_mm", foundryScaleMM);
@@ -3755,6 +3771,15 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   meta.setString("wrap_geometry", foundryGeometryName());
   meta.setString("topology", topologyName(activeTopologyIndex(scores)));
   meta.setString("material_target", callSheetMaterialLabel());
+  MaterialProfile manifestMaterial = activeMaterial();
+  meta.setString("material_source", manifestMaterial == null ? "" : safeString(manifestMaterial.source, ""));
+  meta.setString("material_source_id", manifestMaterial == null ? "" : safeString(manifestMaterial.sourceId, ""));
+  meta.setString("material_confidence", manifestMaterial == null ? "" : safeString(manifestMaterial.confidence, ""));
+  meta.setString("material_functional_tags", manifestMaterial == null ? "" : safeString(manifestMaterial.functionalTags, ""));
+  meta.setFloat("material_phase_transform", manifestMaterial == null ? 0 : manifestMaterial.phaseTransform);
+  meta.setFloat("material_topological_response", manifestMaterial == null ? 0 : manifestMaterial.topologicalResponse);
+  meta.setFloat("material_superconducting_coherence", manifestMaterial == null ? 0 : manifestMaterial.superconductingCoherence);
+  meta.setFloat("material_transition_temperature_k", manifestMaterial == null ? 0 : manifestMaterial.transitionTemperatureK);
   meta.setInt("resolution", foundryResolution);
   meta.setFloat("iso_band", foundryIsoBand);
   meta.setFloat("scale_mm", foundryScaleMM);
@@ -4161,7 +4186,113 @@ float geometryCarrierScalar(int mode, float x, float y, float z) {
     float escape = juliaCarrier(x, y);
     return (escape - 0.5) * 1.35 + z * 0.42 + cos(Z - escape * TWO_PI) * 0.16;
   }
-  return fractalRidgeCarrier(x, y, z) - 0.56;
+  if (mode == 8) return fractalRidgeCarrier(x, y, z) - 0.56;
+  if (mode == 9) {
+    float d = sin(X) * sin(Y) * sin(Z)
+            + sin(X) * cos(Y) * cos(Z)
+            + cos(X) * sin(Y) * cos(Z)
+            + cos(X) * cos(Y) * sin(Z);
+    return d / 2.25;
+  }
+  if (mode == 10) {
+    return (3.0 * (cos(X) + cos(Y) + cos(Z)) + 4.0 * cos(X) * cos(Y) * cos(Z)) / 7.0;
+  }
+  if (mode == 11) {
+    float pair = 2.0 * (cos(X) * cos(Y) + cos(Y) * cos(Z) + cos(Z) * cos(X));
+    float harmonic = cos(2.0 * X) + cos(2.0 * Y) + cos(2.0 * Z);
+    return (pair - harmonic) / 5.0;
+  }
+  if (mode == 12) {
+    float weave = sin(2.0 * X) * cos(Y) * sin(Z)
+                + sin(2.0 * Y) * cos(Z) * sin(X)
+                + sin(2.0 * Z) * cos(X) * sin(Y);
+    float shell = cos(2.0 * X) * cos(2.0 * Y)
+                + cos(2.0 * Y) * cos(2.0 * Z)
+                + cos(2.0 * Z) * cos(2.0 * X);
+    return (weave - shell + 0.30) / 3.4;
+  }
+  if (mode == 13) {
+    float s = cos(2.0 * X) * sin(Y) * cos(Z)
+            + cos(X) * cos(2.0 * Y) * sin(Z)
+            + sin(X) * cos(Y) * cos(2.0 * Z);
+    return s / 2.15;
+  }
+  if (mode == 14) {
+    float cxyz = cos(X) * cos(Y) * cos(Z);
+    float c2xyz = cos(2.0 * X) * cos(2.0 * Y) * cos(2.0 * Z);
+    float faces = cos(2.0 * X) * cos(2.0 * Y)
+                + cos(2.0 * Y) * cos(2.0 * Z)
+                + cos(2.0 * Z) * cos(2.0 * X);
+    return (8.0 * cxyz + c2xyz - faces) / 9.0;
+  }
+  if (mode == 15) {
+    float primary = cos(X) + cos(Y) + cos(Z);
+    float split = sin(2.0 * X) * sin(Y) * sin(Z)
+                + sin(2.0 * Y) * sin(Z) * sin(X)
+                + sin(2.0 * Z) * sin(X) * sin(Y);
+    return (primary + 0.82 * split) / 3.25;
+  }
+  if (mode == 16) return mengerDistance(x, y, z);
+  return mandelbulbDistance(x, y, z);
+}
+
+float repeatMod(float value, float period) {
+  return value - period * floor(value / period);
+}
+
+float mengerDistance(float x, float y, float z) {
+  float px = x / 0.92;
+  float py = y / 0.92;
+  float pz = z / 0.92;
+  float d = max(abs(px), max(abs(py), abs(pz))) - 1.0;
+  float scale = 1.0;
+  for (int i = 0; i < 4; i++) {
+    float ax = repeatMod(px * scale, 2.0) - 1.0;
+    float ay = repeatMod(py * scale, 2.0) - 1.0;
+    float az = repeatMod(pz * scale, 2.0) - 1.0;
+    scale *= 3.0;
+    float rx = abs(1.0 - 3.0 * abs(ax));
+    float ry = abs(1.0 - 3.0 * abs(ay));
+    float rz = abs(1.0 - 3.0 * abs(az));
+    float da = max(rx, ry);
+    float db = max(ry, rz);
+    float dc = max(rz, rx);
+    float carved = (min(da, min(db, dc)) - 1.0) / scale;
+    d = max(d, carved);
+  }
+  return d * 4.0;
+}
+
+float mandelbulbDistance(float x, float y, float z) {
+  float px = x * 1.08;
+  float py = y * 1.08;
+  float pz = z * 1.08;
+  float zx = px;
+  float zy = py;
+  float zz = pz;
+  float dr = 1.0;
+  float radius = 0.0;
+  boolean escaped = false;
+  float power = 8.0;
+  for (int i = 0; i < 7; i++) {
+    radius = sqrt(zx*zx + zy*zy + zz*zz);
+    if (radius > 2.2) {
+      escaped = true;
+      break;
+    }
+    float safeRadius = max(radius, 0.00001);
+    float theta = acos(constrain(zz / safeRadius, -1.0, 1.0));
+    float phi = atan2(zy, zx);
+    dr = pow(safeRadius, power - 1.0) * power * dr + 1.0;
+    float zr = pow(safeRadius, power);
+    theta *= power;
+    phi *= power;
+    zx = zr * sin(theta) * cos(phi) + px;
+    zy = zr * sin(theta) * sin(phi) + py;
+    zz = zr * cos(theta) + pz;
+  }
+  if (!escaped) return -0.18;
+  return 1.25 * log(max(radius, 0.00001)) * radius / max(dr, 0.00001);
 }
 
 float mandelbrotCarrier(float x, float y) {
@@ -5559,7 +5690,7 @@ void drawHelpOverlay() {
   text("Cosmosis Visual Observatory", x + 24, y + 22);
   fill(145, 178, 186);
   textSize(10);
-  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select workspaces. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nSurface Foundry exports fabrication geometry from the same topology field, with optional geometry wrapping over gyroid, Schwarz P, Beltrami saddle, Hopf torus, Petaminx, Mandelbrot, Julia, and fractal ridge carriers. The CTC and Wigner views are analogical diagnostics, intended for visual exploration rather than physical claims.", x + 24, y + 58, w - 48, h - 80);
+  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select workspaces. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nSurface Foundry exports fabrication geometry from the same topology field, with geometry wrapping over TPMS, manifold, lattice, and recursive fractal carriers. Database material targets may add explicitly labeled phase-transform, topological-response, or superconducting-coherence traits to the RDFT mapping. The CTC and Wigner views are analogical diagnostics, intended for visual exploration rather than physical claims.", x + 24, y + 58, w - 48, h - 80);
 }
 
 void resetState() {
@@ -5902,6 +6033,7 @@ class MaterialProfile {
   String confidence = "approximate";
   String missingFields = "";
   String notes = "";
+  String functionalTags = "";
   float density = 1;
   float youngs = 1;
   float bulk = 1;
@@ -5915,6 +6047,10 @@ class MaterialProfile {
   float porosity = 0;
   float crystalOrder = 0.5;
   float magnetic = 0;
+  float phaseTransform = 0;
+  float topologicalResponse = 0;
+  float superconductingCoherence = 0;
+  float transitionTemperatureK = 0;
 
   float densityN;
   float stiffnessN;
@@ -5948,6 +6084,7 @@ class MaterialProfile {
     confidence = jsonString(obj, "confidence", confidence);
     missingFields = jsonString(obj, "missing_fields", missingFields);
     notes = jsonString(obj, "notes", notes);
+    functionalTags = jsonString(obj, "functional_tags", functionalTags);
     density = jsonFloat(obj, "density", density);
     youngs = jsonFloat(obj, "youngs_gpa", youngs);
     bulk = jsonFloat(obj, "bulk_gpa", bulk);
@@ -5961,6 +6098,10 @@ class MaterialProfile {
     porosity = jsonFloat(obj, "porosity", porosity);
     crystalOrder = jsonFloat(obj, "crystal_order", crystalOrder);
     magnetic = jsonFloat(obj, "magnetic", magnetic);
+    phaseTransform = jsonFloat(obj, "phase_transform", phaseTransform);
+    topologicalResponse = jsonFloat(obj, "topological_response", topologicalResponse);
+    superconductingCoherence = jsonFloat(obj, "superconducting_coherence", superconductingCoherence);
+    transitionTemperatureK = jsonFloat(obj, "transition_temperature_k", transitionTemperatureK);
     normalizeStrings();
     computeMappings();
   }
@@ -5985,6 +6126,7 @@ class MaterialProfile {
     confidence = safeString(confidence, "");
     missingFields = safeString(missingFields, "");
     notes = safeString(notes, "");
+    functionalTags = safeString(functionalTags, "");
   }
 
   void computeMappings() {
@@ -5993,6 +6135,10 @@ class MaterialProfile {
     porosity = constrain(porosity, 0, 1);
     crystalOrder = constrain(crystalOrder, 0, 1);
     magnetic = constrain(magnetic, 0, 1);
+    phaseTransform = constrain(phaseTransform, 0, 1);
+    topologicalResponse = constrain(topologicalResponse, 0, 1);
+    superconductingCoherence = constrain(superconductingCoherence, 0, 1);
+    transitionTemperatureK = max(0.0, transitionTemperatureK);
 
     densityN = logNorm(density, 0.05, 20.0);
     float youngN = logNorm(youngs, 0.003, 1200.0);
@@ -6017,6 +6163,18 @@ class MaterialProfile {
     braneMap = constrain(anisotropy * 0.44 + porosity * 0.22 + auxeticN * 0.14 + magnetic * 0.10 + electronicN * 0.10, 0, 1);
     detailMap = constrain(0.18 + porosity * 0.24 + anisotropy * 0.22 + electronicN * 0.18 + orderN * 0.18, 0, 1);
     timeMap = constrain(0.18 + 1.25 * (thermalN * 0.34 + heatN * 0.20 + electronicN * 0.18 + magnetic * 0.14 + (1.0 - densityN) * 0.14), 0.05, 1.5);
+
+    // Functional traits are provenance-labeled RDFT response modifiers. Zero-valued
+    // heuristic profiles preserve the original material mapping exactly.
+    alphaMap = constrain(alphaMap + topologicalResponse * 0.18 + superconductingCoherence * 0.12, 1.0, ALPHA_MAX);
+    depthMap = constrain(depthMap + phaseTransform * 1.4 + topologicalResponse * 0.8, 0, DEPTH_MAX);
+    floquetMap = constrain(floquetMap + phaseTransform * 0.14 + superconductingCoherence * 0.12, 0, 1);
+    quasiMap = constrain(quasiMap + topologicalResponse * 0.16 + phaseTransform * 0.08, 0, 1);
+    coherenceMap = constrain(coherenceMap + superconductingCoherence * 0.22 + topologicalResponse * 0.06, 0, 1);
+    ctcMap = constrain(ctcMap + topologicalResponse * 0.16 + phaseTransform * 0.05, 0, 1);
+    braneMap = constrain(braneMap + phaseTransform * 0.16 + topologicalResponse * 0.10, 0, 1);
+    detailMap = constrain(detailMap + phaseTransform * 0.10 + topologicalResponse * 0.12 + superconductingCoherence * 0.08, 0, 1);
+    timeMap = constrain(timeMap + phaseTransform * 0.12 + superconductingCoherence * 0.08, 0.05, 1.5);
   }
 }
 

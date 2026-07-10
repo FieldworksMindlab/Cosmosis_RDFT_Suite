@@ -70,7 +70,17 @@ All modes emit the same profile schema: density, stiffness, porosity,
 anisotropy, dielectric response, band gap, thermal transport, crystalline order,
 and magnetic character are mapped into the shared RDFT control surface.
 Profiles also carry provenance fields: `source_mode`, `provider`, `source_id`,
-`confidence`, and `missing_fields`.
+`confidence`, and `missing_fields`. Functional targets may additionally carry
+`functional_tags`, `phase_transform`, `topological_response`,
+`superconducting_coherence`, and `transition_temperature_k`. These are clearly
+labeled RDFT response modifiers layered on top of sourced material properties;
+they are not constitutive or multiphysics simulations.
+
+The curated database cache includes phase-distinct NiTi austenite and
+martensite proxies, trigonal bismuth (`mp-23152` / `JVASP-837`), A15 Nb3Sn,
+Bi2Se3, Bi2Te3, and rutile VO2. Their structure, density, electronic, dielectric,
+and available elastic fields are anchored to Materials Project or NIST JARVIS
+records. Missing transport fields remain listed as visualization inferences.
 
 The heuristic mode is intentionally unchanged: fast, expressive, and approximate.
 Database mode can use Materials Project, OPTIMADE providers, or JARVIS/NIST.
@@ -87,6 +97,13 @@ Generate or refresh cache files with:
 
 # Materials Project, requires mp-api and MP_API_KEY
 MP_API_KEY=your_key ./adapters/material_source_adapter.py materials-project Si
+
+# Exact Materials Project record
+MP_API_KEY=your_key ./adapters/material_source_adapter.py materials-project --material-id mp-23152
+
+# Exact JARVIS OPTIMADE record, no API key required
+./adapters/material_source_adapter.py optimade --source-id dft_3d_JVASP-19668 \
+  --base-url https://jarvis.nist.gov/optimade/jarvisdft
 
 # JARVIS through jarvis-tools, requires jarvis-tools installed
 ./adapters/material_source_adapter.py jarvis Si
@@ -125,6 +142,20 @@ The Foundry can also wrap the RDFT field over a selected geometry carrier:
 - `MANDELBROT`
 - `JULIA`
 - `FRACTAL RIDGE`
+- `SCHWARZ D`
+- `NEOVIUS`
+- `I-WP`
+- `LIDINOID`
+- `FISCHER-KOCH S`
+- `SCHOEN FRD`
+- `SPLIT P`
+- `MENGER SPONGE`
+- `MANDELBULB`
+
+The seven added TPMS carriers are harmonic implicit surfaces evaluated by the
+same RDFT field-wrapping path as the original Gyroid and Schwarz P carriers.
+Menger Sponge and Mandelbulb add recursive solid/fractal alternatives. They all
+feed the existing voxel sampling, preview, call-sheet, relief, and STL pipeline.
 
 This is the visual-only counterpart to the synth's surface/topology wrapping:
 the exported STL records both the active topology blend and the chosen geometry

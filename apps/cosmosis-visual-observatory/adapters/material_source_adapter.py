@@ -45,6 +45,14 @@ def as_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
+def physical_float(value: Any, default: float = 0.0) -> float:
+    """Parse database values while rejecting JARVIS missing-value sentinels."""
+    parsed = as_float(value, default)
+    if not math.isfinite(parsed) or parsed <= -90000:
+        return default
+    return parsed
+
+
 def mean(values: list[float], default: float = 0.0) -> float:
     return statistics.fmean(values) if values else default
 
@@ -118,7 +126,38 @@ def profile_template(name: str, family: str, source_mode: str, provider: str, so
         "porosity": 0.0,
         "crystal_order": 0.5,
         "magnetic": 0.0,
+        "functional_tags": "",
+        "phase_transform": 0.0,
+        "topological_response": 0.0,
+        "superconducting_coherence": 0.0,
+        "transition_temperature_k": 0.0,
         "notes": "",
+    }
+
+
+def functional_traits(formula: str, spillage: float = 0.0, tc: float = 0.0) -> dict[str, Any]:
+    normalized = formula.replace(" ", "").lower()
+    tags: list[str] = []
+    phase_transform = 0.0
+    topological = clamp(spillage / 2.5) if spillage > 0 else 0.0
+    superconducting = clamp(tc / 8.0) if tc > 0 else 0.0
+    if normalized in {"niti", "tini"}:
+        tags.extend(["shape-memory", "phase-transform"])
+        phase_transform = 0.92
+    if normalized == "vo2":
+        tags.extend(["phase-change", "correlated-oxide"])
+        phase_transform = 0.88
+    if normalized in {"bi", "bi2se3", "bi2te3"} or topological > 0.4:
+        tags.extend(["topological", "strong-spin-orbit"])
+    if normalized == "nb3sn" or superconducting > 0.1:
+        tags.extend(["superconductor", "strong-coherence"])
+        superconducting = max(superconducting, 0.80)
+    return {
+        "functional_tags": ",".join(dict.fromkeys(tags)),
+        "phase_transform": phase_transform,
+        "topological_response": topological,
+        "superconducting_coherence": superconducting,
+        "transition_temperature_k": max(0.0, tc),
     }
 
 
@@ -131,7 +170,7 @@ def missing_fields(profile: dict[str, Any], inferred: set[str]) -> str:
     return ",".join([k for k in physical if k in inferred])
 
 
-def fetch_materials_project(formula: str, out: Path) -> None:
+def fetch_materials_project(formula: str, out: Path, material_id: str = "") -> None:
     try:
         from mp_api.client import MPRester  # type: ignore
     except Exception as exc:
@@ -146,9 +185,15 @@ def fetch_materials_project(formula: str, out: Path) -> None:
         "is_metal", "energy_above_hull", "symmetry", "volume", "nsites",
     ]
     with MPRester(api_key) as mpr:
-        docs = mpr.materials.summary.search(formula=formula, fields=fields, num_chunks=1, chunk_size=1)
+        if material_id:
+            docs = mpr.materials.summary.search(material_ids=[material_id], fields=fields, num_chunks=1, chunk_size=1)
+        else:
+            docs = mpr.materials.summary.search(formula=formula, fields=fields, num_chunks=1, chunk_size=25)
     if not docs:
-        raise SystemExit("No Materials Project summary result for " + formula)
+        raise SystemExit("No Materials Project summary result for " + (material_id or formula))
+
+    if not material_id:
+        docs = sorted(docs, key=lambda item: as_float(getattr(item, "energy_above_hull", 1e9), 1e9))
 
     doc = docs[0]
     mat_id = str(getattr(doc, "material_id", formula))
@@ -175,42 +220,86 @@ def fetch_materials_project(formula: str, out: Path) -> None:
         "missing_fields": ",".join(sorted(inferred)),
         "notes": "Fetched from Materials Project summary endpoint; unavailable mechanical/transport fields are inferred for visualization only.",
     })
+    profile.update(functional_traits(pretty))
     upsert_profile(out, profile)
     print("Wrote", profile["name"], "to", out)
 
 
-def fetch_optimade(formula: str, base_url: str, out: Path) -> None:
+def fetch_optimade(formula: str, base_url: str, out: Path, source_id: str = "") -> None:
     base_url = resolve_optimade_base(base_url)
-    query = urllib.parse.urlencode({
-        "filter": 'chemical_formula_reduced="' + formula + '"',
-        "page_limit": "1",
-    })
-    url = base_url.rstrip("/") + "/v1/structures?" + query
+    if source_id:
+        query = urllib.parse.urlencode({
+            "filter": 'id="' + source_id + '"',
+            "page_limit": "1",
+        })
+        url = base_url.rstrip("/") + "/v1/structures?" + query
+    else:
+        query = urllib.parse.urlencode({
+            "filter": 'chemical_formula_reduced="' + formula + '"',
+            "page_limit": "100",
+        })
+        url = base_url.rstrip("/") + "/v1/structures?" + query
     payload = fetch_json_url(url, timeout=20)
-    data = payload.get("data", [])
+    raw_data = payload.get("data", [])
+    data = raw_data if isinstance(raw_data, list) else [raw_data]
     if not data:
-        raise SystemExit("No OPTIMADE structure result for " + formula)
-    item = data[0]
+        raise SystemExit("No OPTIMADE structure result for " + (source_id or formula))
+
+    def candidate_score(item: dict[str, Any]) -> tuple[float, float, float, str]:
+        attrs = item.get("attributes", {})
+        source_penalty = 0.0 if attrs.get("_jarvis_source") == "dft_3d" else 1.0
+        elastic_penalty = 0.0 if physical_float(attrs.get("_jarvis_bulk_modulus_kv"), 0.0) > 0 and physical_float(attrs.get("_jarvis_shear_modulus_gv"), 0.0) > 0 else 1.0
+        hull = physical_float(attrs.get("_jarvis_ehull"), 1e6)
+        return (source_penalty, elastic_penalty, hull, str(item.get("id", "")))
+
+    item = sorted(data, key=candidate_score)[0]
     attrs = item.get("attributes", {})
     source_id = str(item.get("id", formula))
     reduced = str(attrs.get("chemical_formula_reduced") or formula)
     elements = attrs.get("elements") or []
-    nelements = as_float(attrs.get("nelements"), len(elements) or 1)
+    element_count = float(len(set(str(element) for element in elements))) if elements else as_float(attrs.get("nelements"), 1.0)
     nsites = as_float(attrs.get("nsites"), 1.0)
-    inferred = {"density", "youngs_gpa", "bulk_gpa", "shear_gpa", "poisson", "thermal_w_mk", "heat_capacity_j_kgk", "band_gap_ev", "dielectric", "magnetic"}
-    profile = profile_template(reduced + " (" + source_id + ")", "OPTIMADE structure profile", "database", "optimade", source_id)
+    density_raw = physical_float(attrs.get("_jarvis_density"), 0.0)
+    gap_raw = physical_float(attrs.get("_jarvis_optb88vdw_bandgap"), 0.0)
+    bulk_raw = physical_float(attrs.get("_jarvis_bulk_modulus_kv"), 0.0)
+    shear_raw = physical_float(attrs.get("_jarvis_shear_modulus_gv"), 0.0)
+    poisson_raw = physical_float(attrs.get("_jarvis_poisson"), 0.0)
+    eps = [physical_float(attrs.get(key), 0.0) for key in ("_jarvis_epsx", "_jarvis_epsy", "_jarvis_epsz")]
+    eps = [value for value in eps if value > 0]
+    spillage = physical_float(attrs.get("_jarvis_spillage"), 0.0)
+    tc = physical_float(attrs.get("_jarvis_Tc_supercon"), 0.0)
+    has_elastic = bulk_raw > 0 and shear_raw > 0
+    inferred = {"thermal_w_mk", "heat_capacity_j_kgk", "porosity", "magnetic"}
+    if density_raw <= 0: inferred.add("density")
+    if not has_elastic: inferred.update({"youngs_gpa", "bulk_gpa", "shear_gpa"})
+    if poisson_raw <= 0: inferred.add("poisson")
+    if not eps: inferred.add("dielectric")
+    provider = "jarvis" if attrs.get("_jarvis_jid") else "optimade"
+    family = "JARVIS computed material" if provider == "jarvis" else "OPTIMADE structure profile"
+    profile = profile_template(reduced + " (" + source_id + ")", family, "database", provider, source_id)
+    if provider == "jarvis": profile["source"] = "NIST JARVIS OPTIMADE"
+    density = density_raw if density_raw > 0 else lerp(1.2, 8.0, clamp(nsites / 60.0))
+    bulk = bulk_raw if bulk_raw > 0 else lerp(25.0, 180.0, clamp(element_count / 5.0))
+    shear = shear_raw if shear_raw > 0 else lerp(15.0, 120.0, clamp(element_count / 5.0))
+    youngs = 9.0 * bulk * shear / max(0.001, 3.0 * bulk + shear)
+    dielectric = mean(eps, 1.0 if gap_raw <= 0 else lerp(3.0, 16.0, clamp(gap_raw / 6.0)))
+    eps_anisotropy = (max(eps) - min(eps)) / max(eps) if len(eps) > 1 else 0.0
     profile.update({
         "formula": reduced,
-        "density": lerp(1.2, 8.0, clamp(nsites / 60.0)),
-        "youngs_gpa": lerp(35.0, 260.0, clamp(nelements / 5.0)),
-        "bulk_gpa": lerp(25.0, 180.0, clamp(nelements / 5.0)),
-        "shear_gpa": lerp(15.0, 120.0, clamp(nelements / 5.0)),
-        "anisotropy": clamp((nelements - 1.0) / 5.0),
-        "crystal_order": 0.82,
-        "confidence": "structure-only+inferred",
+        "density": density,
+        "youngs_gpa": youngs,
+        "bulk_gpa": bulk,
+        "shear_gpa": shear,
+        "poisson": poisson_raw if poisson_raw > 0 else 0.30,
+        "band_gap_ev": gap_raw,
+        "dielectric": dielectric,
+        "anisotropy": clamp(max(eps_anisotropy, (element_count - 1.0) / 8.0)),
+        "crystal_order": 0.94 if attrs.get("_jarvis_spg_symbol") else 0.82,
+        "confidence": "computed-structure+elastic" if has_elastic else "structure-only+inferred",
         "missing_fields": ",".join(sorted(inferred)),
-        "notes": "Fetched from OPTIMADE structure endpoint; most physical properties are inferred from structure descriptors for visualization only. Base URL: " + base_url,
+        "notes": "Fetched from OPTIMADE structure endpoint. JARVIS vendor fields are used when present; listed missing fields are inferred for visualization only. Base URL: " + base_url,
     })
+    profile.update(functional_traits(reduced, spillage, tc))
     upsert_profile(out, profile)
     print("Wrote", profile["name"], "to", out)
 
@@ -244,20 +333,26 @@ def fetch_jarvis(formula: str, out: Path) -> None:
         raise SystemExit("JARVIS mode requires `pip install jarvis-tools`: " + str(exc))
 
     rows = data("dft_3d")
-    match = None
-    for row in rows:
-        if str(row.get("formula", "")).lower() == formula.lower() or str(row.get("jid", "")).lower() == formula.lower():
-            match = row
-            break
+    exact_id = [row for row in rows if str(row.get("jid", "")).lower() == formula.lower()]
+    formula_matches = [row for row in rows if str(row.get("formula", "")).lower() == formula.lower()]
+    candidates = exact_id or formula_matches
+    candidates.sort(key=lambda row: (
+        0 if physical_float(row.get("bulk_modulus_kv"), 0.0) > 0 and physical_float(row.get("shear_modulus_gv"), 0.0) > 0 else 1,
+        physical_float(row.get("ehull"), 1e6),
+        str(row.get("jid", "")),
+    ))
+    match = candidates[0] if candidates else None
     if not match:
         raise SystemExit("No JARVIS dft_3d match for " + formula)
 
     jid = str(match.get("jid", formula))
     pretty = str(match.get("formula", formula))
-    density = as_float(match.get("density"), 1.0)
-    band_gap = as_float(match.get("optb88vdw_bandgap", match.get("mbj_bandgap", 0.0)), 0.0)
-    bulk = as_float(match.get("bulk_modulus_kv"), 80.0)
-    shear = as_float(match.get("shear_modulus_gv"), 40.0)
+    density = physical_float(match.get("density"), 1.0)
+    band_gap = physical_float(match.get("optb88vdw_bandgap", match.get("mbj_bandgap", 0.0)), 0.0)
+    bulk = physical_float(match.get("bulk_modulus_kv"), 80.0)
+    shear = physical_float(match.get("shear_modulus_gv"), 40.0)
+    spillage = physical_float(match.get("spillage"), 0.0)
+    tc = physical_float(match.get("Tc_supercon"), 0.0)
     inferred = {"youngs_gpa", "poisson", "thermal_w_mk", "heat_capacity_j_kgk", "dielectric", "porosity"}
     profile = profile_template(pretty + " (" + jid + ")", "JARVIS computed material", "database", "jarvis", jid)
     profile.update({
@@ -273,6 +368,7 @@ def fetch_jarvis(formula: str, out: Path) -> None:
         "missing_fields": ",".join(sorted(inferred)),
         "notes": "Fetched from JARVIS dft_3d through jarvis-tools; absent fields are inferred for visualization only.",
     })
+    profile.update(functional_traits(pretty, spillage, tc))
     upsert_profile(out, profile)
     print("Wrote", profile["name"], "to", out)
 
@@ -344,12 +440,14 @@ def main() -> None:
     sub = parser.add_subparsers(dest="cmd", required=True)
 
     mp = sub.add_parser("materials-project")
-    mp.add_argument("formula")
+    mp.add_argument("formula", nargs="?", default="")
+    mp.add_argument("--material-id", default="", help="Exact Materials Project id, for example mp-23152")
     mp.add_argument("--out", type=Path, default=DATABASE_OUT)
 
     opt = sub.add_parser("optimade")
-    opt.add_argument("formula")
+    opt.add_argument("formula", nargs="?", default="")
     opt.add_argument("--base-url", required=True)
+    opt.add_argument("--source-id", default="", help="Exact OPTIMADE structure id")
     opt.add_argument("--out", type=Path, default=DATABASE_OUT)
 
     jarvis = sub.add_parser("jarvis")
@@ -363,9 +461,13 @@ def main() -> None:
 
     args = parser.parse_args()
     if args.cmd == "materials-project":
-        fetch_materials_project(args.formula, args.out)
+        if not args.formula and not args.material_id:
+            parser.error("materials-project requires a formula or --material-id")
+        fetch_materials_project(args.formula, args.out, args.material_id)
     elif args.cmd == "optimade":
-        fetch_optimade(args.formula, args.base_url, args.out)
+        if not args.formula and not args.source_id:
+            parser.error("optimade requires a formula or --source-id")
+        fetch_optimade(args.formula, args.base_url, args.out, args.source_id)
     elif args.cmd == "jarvis":
         fetch_jarvis(args.formula_or_jid, args.out)
     elif args.cmd == "cosmosis-csv":
