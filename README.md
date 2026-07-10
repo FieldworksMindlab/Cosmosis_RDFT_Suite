@@ -1,6 +1,6 @@
 # Cosmosis RDFT Suite
 
-Cosmosis RDFT Suite is an experimental creative-code research environment for exploring Recursive Dimensional Field Theory through interactive audio, visual, geometric, and data-driven instruments. It brings together Processing sketches, SuperCollider synthesis systems, environmental data bridges, Hopf/topology visualization tools, material-profile adapters, and Surface Foundry workflows for printable topology and drafting artifacts.
+Cosmosis RDFT Suite is an experimental creative-code research environment for exploring Recursive Differential Field Theory through interactive audio, visual, geometric, and data-driven instruments. It brings together Processing sketches, SuperCollider synthesis systems, environmental data bridges, Hopf/topology visualization tools, material-profile adapters, and Surface Foundry workflows for printable topology and drafting artifacts.
 
 The goal of this repository is preservation and invitation: a durable public archive that others can run, study, fork, and extend.
 
