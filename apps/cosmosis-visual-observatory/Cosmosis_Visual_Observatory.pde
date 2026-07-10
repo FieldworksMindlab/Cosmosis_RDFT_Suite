@@ -2562,7 +2562,7 @@ void renderFoundryCallSheet(PGraphics pg, String style) {
   pg.strokeWeight(1.25);
   pg.rect(rightX, rightY, rightW, rightH);
   drawCallSheetRasterHeader(pg, rightX + 18, rightY + 18, rightW - 36, style);
-  drawCallSheetRasterPanel(pg, rightX + 30, rightY + 150, rightW - 60, rightH - 170, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
+  drawCallSheetRasterPanel(pg, rightX + 30, rightY + 270, rightW - 60, rightH - 290, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
   drawCallSheetRasterTitleBlock(pg, smallX, titleBlockY, rightX + rightW - smallX, 72, style);
 }
 
@@ -3257,16 +3257,18 @@ void drawCallSheetRasterHeader(PGraphics pg, int x, int y, int w, String style) 
   pg.textAlign(LEFT, TOP);
   pg.textSize(22);
   pg.text("SURFACE FOUNDRY - ISOMETRIC DRAWING CALL SHEET", x, y);
-  pg.textSize(8.4);
-  String[] lines = {
-    callSheetDraftLabel(style),
-    "Source mesh: " + callSheetSourceName() + " | Voxel resolution: " + nf(foundryScaleMM / max(1.0, foundryResolution), 1, 2) + " mm",
-    "Rendering intent: plotter-friendly black linework with solid hatch masses - no gradient shading.",
-    "Mesh density: " + (foundryMesh.tris.size() * 3) + " vertices / " + foundryMesh.tris.size() + " faces",
-    "Exploratory Version 2"
-  };
+  pg.textSize(10.4);
+  pg.text(shortText(callSheetDraftLabel(style), 102), x, y + 32);
+  pg.textSize(11.0);
+  pg.text("CONFIGURATION SNAPSHOT", x, y + 50);
+  pg.textSize(10.0);
+  String[] lines = callSheetConfigurationLines(style);
+  int split = (lines.length + 1) / 2;
+  int columnW = w / 2;
   for (int i = 0; i < lines.length; i++) {
-    pg.text(lines[i], x, y + 34 + i * 12);
+    int col = i / split;
+    int row = i % split;
+    pg.text(lines[i], x + col * columnW, y + 67 + row * 13);
   }
 }
 
@@ -3309,12 +3311,12 @@ void callSheetRasterDrawingCell(PGraphics pg, int x, int y) {
 void callSheetRasterNotesCell(PGraphics pg, int x, int y, String style) {
   pg.fill(0);
   pg.textAlign(LEFT, TOP);
-  pg.textSize(8.2);
+  pg.textSize(10.2);
   pg.text("NOTES", x, y);
-  pg.textSize(6.9);
+  pg.textSize(9.0);
   String[] lines = callSheetSettingsLines(style);
   for (int i = 0; i < lines.length; i++) {
-    pg.text(lines[i], x, y + 16 + i * 12);
+    pg.text(lines[i], x, y + 15 + i * 12);
   }
 }
 
@@ -3381,7 +3383,7 @@ void writeFoundryCallSheetSvg(String filename, String style) {
   }
   svgRect(out, rightX, rightY, rightW, rightH, "none", "#000000", 1.0, 1.25);
   writeCallSheetSvgHeader(out, rightX + 18, rightY + 18, rightW - 36, style);
-  writeCallSheetSvgPanel(out, rightX + 30, rightY + 150, rightW - 60, rightH - 170, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
+  writeCallSheetSvgPanel(out, rightX + 30, rightY + 270, rightW - 60, rightH - 290, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
   writeCallSheetSvgTitleBlock(out, smallX, titleBlockY, rightX + rightW - smallX, 72, style);
   out.println("</svg>");
   out.flush();
@@ -3912,15 +3914,15 @@ void writeCallSheetSvgNodes(PrintWriter out, PVector center, CallSheetBasis basi
 
 void writeCallSheetSvgHeader(PrintWriter out, int x, int y, int w, String style) {
   svgTextStyled(out, x, y + 20, 22, "SURFACE FOUNDRY - ISOMETRIC DRAWING CALL SHEET", "700", "start", "auto");
-  String[] lines = {
-    callSheetDraftLabel(style),
-    "Source mesh: " + callSheetSourceName() + " | Voxel resolution: " + nf(foundryScaleMM / max(1.0, foundryResolution), 1, 2) + " mm",
-    "Rendering intent: plotter-friendly black linework with solid hatch masses - no gradient shading.",
-    "Mesh density: " + (foundryMesh.tris.size() * 3) + " vertices / " + foundryMesh.tris.size() + " faces",
-    "Exploratory Version 2"
-  };
+  svgTextStyled(out, x, y + 43, 10.4, shortText(callSheetDraftLabel(style), 102), "400", "start", "auto");
+  svgTextStyled(out, x, y + 61, 11.0, "CONFIGURATION SNAPSHOT", "700", "start", "auto");
+  String[] lines = callSheetConfigurationLines(style);
+  int split = (lines.length + 1) / 2;
+  int columnW = w / 2;
   for (int i = 0; i < lines.length; i++) {
-    svgTextStyled(out, x, y + 44 + i * 12, 8.4, lines[i], "400", "start", "auto");
+    int col = i / split;
+    int row = i % split;
+    svgTextStyled(out, x + col * columnW, y + 78 + row * 13, 10.0, lines[i], "400", "start", "auto");
   }
 }
 
@@ -3949,10 +3951,10 @@ void writeCallSheetSvgDrawingCell(PrintWriter out, int x, int y) {
 }
 
 void writeCallSheetSvgNotesCell(PrintWriter out, int x, int y, String style) {
-  svgTextStyled(out, x, y, 8.2, "NOTES", "700", "start", "auto");
+  svgTextStyled(out, x, y, 10.2, "NOTES", "700", "start", "auto");
   String[] lines = callSheetSettingsLines(style);
   for (int i = 0; i < lines.length; i++) {
-    svgTextStyled(out, x, y + 17 + i * 12, 6.9, lines[i], "400", "start", "auto");
+    svgTextStyled(out, x, y + 14 + i * 11, 9.0, lines[i], "400", "start", "auto");
   }
 }
 
@@ -3976,13 +3978,24 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   meta.setString("source_mesh", sourceStl);
   meta.setInt("triangles", foundryMesh == null ? 0 : foundryMesh.tris.size());
   meta.setString("wrap_geometry", foundryGeometryName());
+  meta.setFloat("wrap_blend", foundryGeometryIndex == 0 ? 0.0 : foundryWrapBlend);
   meta.setString("topology", topologyName(activeTopologyIndex(scores)));
   meta.setString("material_target", callSheetMaterialLabel());
   MaterialProfile manifestMaterial = activeMaterial();
+  meta.setInt("material_source_mode_index", materialSourceMode);
+  meta.setString("material_source_mode", materialSourceLabel());
+  meta.setInt("material_catalog_index", selectedMaterial);
+  meta.setInt("material_catalog_size", materials.size());
   meta.setString("material_source", manifestMaterial == null ? "" : safeString(manifestMaterial.source, ""));
   meta.setString("material_source_id", manifestMaterial == null ? "" : safeString(manifestMaterial.sourceId, ""));
+  meta.setString("material_provider", manifestMaterial == null ? "" : safeString(manifestMaterial.provider, ""));
+  meta.setString("material_formula", manifestMaterial == null ? "" : safeString(manifestMaterial.formula, ""));
   meta.setString("material_confidence", manifestMaterial == null ? "" : safeString(manifestMaterial.confidence, ""));
   meta.setString("material_functional_tags", manifestMaterial == null ? "" : safeString(manifestMaterial.functionalTags, ""));
+  meta.setFloat("material_stiffness_normalized", manifestMaterial == null ? 0 : manifestMaterial.stiffnessN);
+  meta.setFloat("material_order_normalized", manifestMaterial == null ? 0 : manifestMaterial.orderN);
+  meta.setFloat("material_porosity", manifestMaterial == null ? 0 : manifestMaterial.porosity);
+  meta.setFloat("material_anisotropy", manifestMaterial == null ? 0 : manifestMaterial.anisotropy);
   meta.setFloat("material_phase_transform", manifestMaterial == null ? 0 : manifestMaterial.phaseTransform);
   meta.setFloat("material_topological_response", manifestMaterial == null ? 0 : manifestMaterial.topologicalResponse);
   meta.setFloat("material_superconducting_coherence", manifestMaterial == null ? 0 : manifestMaterial.superconductingCoherence);
@@ -4005,6 +4018,35 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   meta.setFloat("cad_edge_cull", cadEdgeCull);
   meta.setFloat("cad_stochastic", cadStochastic);
   meta.setString("cad_render_strategy", cadGraphicDrafting ? "graphic_drafting_bw" : "tonal_line_accumulation");
+  meta.setInt("seed", seed);
+  meta.setFloat("simulation_time", simT);
+  meta.setBoolean("paused", paused);
+  meta.setBoolean("reverse_holonomy", reverseHolonomy);
+  meta.setFloat("alpha", alpha);
+  meta.setInt("depth", depth);
+  meta.setFloat("source", sourcePressure);
+  meta.setFloat("floquet", floquetCoupling);
+  meta.setFloat("quasi_energy", quasiEnergy);
+  meta.setFloat("coherence", coherenceBias);
+  meta.setFloat("ctc_bias", ctcBias);
+  meta.setFloat("brane_twist", braneTwist);
+  meta.setFloat("deep_detail", deepDetail);
+  meta.setFloat("time_scale", timeScale);
+  meta.setFloat("recursion_falloff", recursionFalloff());
+  meta.setBoolean("shaper_enabled", shaperEnabled);
+  meta.setBoolean("shaper_use_sender", shaperUseSender);
+  meta.setBoolean("shaper_sender_online", shaperSenderOnline);
+  meta.setString("shaper_source", shaperSourceStatus);
+  meta.setFloat("shaper_mix", shaperMix);
+  meta.setFloat("solar_wind", solarWindStream);
+  meta.setFloat("xray_flux", xrayFluxStream);
+  meta.setFloat("ocean_current", oceanCurrentStream);
+  meta.setFloat("tide", tideStream);
+  meta.setFloat("galactic_torsion", galacticTorsionStream);
+  meta.setFloat("shaper_plasma", shaperPlasma);
+  meta.setFloat("shaper_water", shaperWater);
+  meta.setFloat("shaper_cosmic", shaperCosmic);
+  meta.setFloat("shaper_drive", shaperDrive);
   meta.setString("camera", "orthographic isometric");
   meta.setFloat("elevation_degrees", 35.26438968);
   meta.setString("small_view_azimuths", "0,30,60,90,120,150,180,210,240");
@@ -4053,11 +4095,62 @@ String callSheetGeneratedLabel() {
 String[] callSheetSettingsLines(String style) {
   float[] scores = currentTopologyScores();
   return new String[] {
-    styleLabel(style) + " | render " + (cadGraphicDrafting ? "graphic BW" : "tonal") + " | stride " + cadInternalStride,
-    "res " + foundryResolution + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 0) + " mm | voxel " + nf(foundryScaleMM / max(1.0, foundryResolution), 1, 2) + " mm",
-    "geom " + foundryGeometryName() + " | topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18),
-    "a " + nf(alpha, 1, 2) + " | depth " + depth + " | flq " + nf(floquetCoupling, 1, 2) + " | coh " + nf(coherenceBias, 1, 2) + " | veins " + (foundryRaisedVeins ? "on r=" + nf(foundryVeinRadiusMM, 1, 1) + "mm" : "off")
+    styleLabel(style) + " | " + (cadGraphicDrafting ? "GRAPHIC BW" : "TONAL") + " | stride " + cadInternalStride + " | cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
+    "res " + foundryResolution + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 0) + "mm | geom " + foundryGeometryName() + " | wrap " + nf(foundryGeometryIndex == 0 ? 0 : foundryWrapBlend, 1, 2),
+    "alpha " + nf(alpha, 1, 2) + " | depth " + depth + " | source " + nf(sourcePressure, 1, 2) + " | floquet " + nf(floquetCoupling, 1, 2) + " | quasi " + nf(quasiEnergy, 1, 2) + " | coherence " + nf(coherenceBias, 1, 2),
+    "topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18) + " | veins " + (foundryRaisedVeins ? "on" : "off") + " | shaper " + (shaperEnabled ? shaperSourceStatus : "off")
   };
+}
+
+String[] callSheetConfigurationLines(String style) {
+  float[] scores = currentTopologyScores();
+  MaterialProfile m = activeMaterial();
+  String materialName = m == null ? "none" : shortText(safeString(m.name, "Unknown"), 38);
+  String materialProvider = m == null ? "none" : shortText(safeString(m.provider, ""), 38);
+  String materialSourceId = m == null ? "none" : shortText(safeString(m.sourceId, ""), 38);
+  String materialSource = m == null ? "none" : shortText(safeString(m.source, ""), 38);
+  float effectiveWrap = foundryGeometryIndex == 0 ? 0 : foundryWrapBlend;
+  String meshAudit = foundryBoundaryEdges + "/" + foundryNonManifoldEdges + "/" + foundryDegenerateFaces;
+  return new String[] {
+    "OUTPUT " + styleLabel(style) + " | " + (cadGraphicDrafting ? "graphic BW" : "tonal lines"),
+    "CAD preview " + onOff(cadPreviewEnabled) + " | lattice " + onOff(cadInternalLattice) + " | stride " + cadInternalStride,
+    "CAD cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
+    "FIELD alpha " + nf(alpha, 1, 3) + " | depth " + depth + " | deep " + nf(deepDetail, 1, 3),
+    "FIELD source " + nf(sourcePressure, 1, 3) + " | floquet " + nf(floquetCoupling, 1, 3) + " | quasi " + nf(quasiEnergy, 1, 3),
+    "FIELD coherence " + nf(coherenceBias, 1, 3) + " | CTC " + nf(ctcBias, 1, 3) + " | brane " + nf(braneTwist, 1, 3),
+    "FIELD time " + nf(timeScale, 1, 3) + " | falloff " + nf(recursionFalloff(), 1, 3) + " | seed " + seed,
+    "FOUNDRY res " + foundryResolution + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 1) + "mm",
+    "CARRIER " + foundryGeometryName() + " | w " + nf(effectiveWrap, 1, 2) + " | vox " + nf(foundryScaleMM / max(1.0, foundryResolution), 1, 2) + "mm",
+    "VEINS " + onOff(foundryRaisedVeins) + " | radius " + nf(foundryVeinRadiusMM, 1, 2) + "mm | lift " + nf(foundryVeinLiftMM, 1, 2) + "mm",
+    "MATERIAL " + materialSourceLabel() + " | index " + (selectedMaterial + 1) + "/" + materials.size(),
+    "TARGET " + materialName,
+    "PROVIDER " + materialProvider,
+    "SOURCE ID " + materialSourceId,
+    "SOURCE " + materialSource,
+    "MAT stiff " + nf(m == null ? 0 : m.stiffnessN, 1, 3) + " | order " + nf(m == null ? 0 : m.orderN, 1, 3) + " | porous " + nf(m == null ? 0 : m.porosity, 1, 3),
+    "MAT anis " + nf(m == null ? 0 : m.anisotropy, 1, 3) + " | phase " + nf(m == null ? 0 : m.phaseTransform, 1, 3) + " | topo " + nf(m == null ? 0 : m.topologicalResponse, 1, 3),
+    "MAT SC " + nf(m == null ? 0 : m.superconductingCoherence, 1, 3) + " | Tc " + nf(m == null ? 0 : m.transitionTemperatureK, 1, 2) + "K",
+    "SHAPER " + onOff(shaperEnabled) + " | input " + (shaperUseSender ? "sender" : "sim") + " | mix " + nf(shaperMix, 1, 3),
+    "STREAM solar " + nf(solarWindStream, 1, 3) + " | Xray " + nf(xrayFluxStream, 1, 3) + " | ocean " + nf(oceanCurrentStream, 1, 3),
+    "STREAM tide " + nf(tideStream, 1, 3) + " | galactic " + nf(galacticTorsionStream, 1, 3) + " | drive " + nf(shaperDrive, 1, 3),
+    "DRIVE plasma " + nf(shaperPlasma, 1, 3) + " | water " + nf(shaperWater, 1, 3) + " | cosmic " + nf(shaperCosmic, 1, 3),
+    "TOPO " + topologyName(activeTopologyIndex(scores)) + " | blend " + topologyBlendLabel(scores),
+    "MESH tris " + (foundryMesh == null ? 0 : foundryMesh.tris.size()) + " | bridge " + foundryBridgeVoxels + " | audit " + meshAudit,
+    "STATE simT " + nf(simT, 1, 3) + " | paused " + onOff(paused) + " | holonomy " + (reverseHolonomy ? "reverse" : "forward")
+  };
+}
+
+String onOff(boolean value) {
+  return value ? "on" : "off";
+}
+
+String topologyBlendLabel(float[] scores) {
+  String label = "";
+  for (int i = 0; i < scores.length; i++) {
+    if (i > 0) label += "/";
+    label += nf(scores[i], 1, 2);
+  }
+  return label;
 }
 
 String styleLabel(String style) {
