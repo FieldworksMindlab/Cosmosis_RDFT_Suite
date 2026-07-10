@@ -1394,32 +1394,34 @@ void drawFoundryPreview(int x, int y, int w, int h) {
 }
 
 void drawStochasticCadPanel(int x, int y, int w, int h) {
-  int yy = y;
-  drawButton(x, yy, 112, 22, cadPreviewEnabled ? "PREVIEW ON" : "PREVIEW OFF", cadPreviewEnabled ? color(55, 86, 72) : color(55, 55, 62));
-  drawButton(x + 124, yy, 112, 22, cadInternalLattice ? "LATTICE ON" : "LATTICE OFF", cadInternalLattice ? color(55, 86, 72) : color(55, 55, 62));
-  yy += 34;
-  drawButton(x, yy, 166, 22, cadGraphicDrafting ? "GRAPHIC BW" : "TONAL LINES", cadGraphicDrafting ? color(90, 82, 36) : color(42, 57, 68));
-  metricLine(x, yy + 30, "render strategy", cadGraphicDrafting ? "binary drafting" : "tonal accumulation");
-  yy += 48;
-  drawButton(x, yy, 78, 22, "STRIDE -", color(42, 57, 68));
-  drawButton(x + 88, yy, 78, 22, "STRIDE +", color(42, 57, 68));
-  metricLine(x, yy + 30, "internal stride", str(cadInternalStride));
-  yy += 48;
-  drawButton(x, yy, 78, 22, "CULL -", color(42, 57, 68));
-  drawButton(x + 88, yy, 78, 22, "CULL +", color(42, 57, 68));
-  metricLine(x, yy + 30, "edge cull", nf(cadEdgeCull, 1, 2));
-  yy += 48;
-  drawButton(x, yy, 78, 22, "SHADE -", color(42, 57, 68));
-  drawButton(x + 88, yy, 78, 22, "SHADE +", color(42, 57, 68));
-  metricLine(x, yy + 30, "shadow", nf(cadShadowThreshold, 1, 2));
-  yy += 48;
-  drawButton(x, yy, 78, 22, "RAND -", color(42, 57, 68));
-  drawButton(x + 88, yy, 78, 22, "RAND +", color(42, 57, 68));
-  metricLine(x, yy + 30, "stochastic", nf(cadStochastic, 1, 2));
+  int topGap = 6;
+  int topW = (w - topGap * 2) / 3;
+  drawButton(x, y, topW, 22, cadPreviewEnabled ? "PREVIEW ON" : "PREVIEW OFF", cadPreviewEnabled ? color(55, 86, 72) : color(55, 55, 62));
+  drawButton(x + topW + topGap, y, topW, 22, cadInternalLattice ? "LATTICE ON" : "LATTICE OFF", cadInternalLattice ? color(55, 86, 72) : color(55, 55, 62));
+  drawButton(x + (topW + topGap) * 2, y, topW, 22, cadGraphicDrafting ? "GRAPHIC BW" : "TONAL", cadGraphicDrafting ? color(90, 82, 36) : color(42, 57, 68));
+
+  int cellGap = 10;
+  int cellW = (w - cellGap) / 2;
+  int row1 = y + 31;
+  int row2 = y + 69;
+  drawCadStepper(x, row1, cellW, "STRIDE", str(cadInternalStride));
+  drawCadStepper(x + cellW + cellGap, row1, cellW, "CULL", nf(cadEdgeCull, 1, 2));
+  drawCadStepper(x, row2, cellW, "SHADE", nf(cadShadowThreshold, 1, 2));
+  drawCadStepper(x + cellW + cellGap, row2, cellW, "RAND", nf(cadStochastic, 1, 2));
+}
+
+void drawCadStepper(int x, int y, int w, String label, String value) {
   fill(126, 160, 170);
   textSize(8);
   textAlign(LEFT, TOP);
-  text("Loose CAD preview controls the voxel call-sheet renderer before writing files. GRAPHIC BW uses white masks, binary shadow, explicit hatching, and sparse structure.", x, yy + 50, w, max(34, h - (yy - y) - 52));
+  text(label, x, y);
+  textAlign(RIGHT, TOP);
+  text(value, x + w, y);
+  int buttonY = y + 12;
+  int buttonGap = 4;
+  int buttonW = (w - buttonGap) / 2;
+  drawButton(x, buttonY, buttonW, 20, "-", color(42, 57, 68));
+  drawButton(x + buttonW + buttonGap, buttonY, buttonW, 20, "+", color(42, 57, 68));
 }
 
 void drawStochasticCadPreview(int x, int y, int w, int h) {
@@ -6008,17 +6010,28 @@ void mousePressed() {
     if (over(cx + 88, cy + 162, 78, 22)) cycleFoundryGeometry(1);
     if (over(cx, cy + 212, 112, 22)) { foundryRaisedVeins = !foundryRaisedVeins; markFoundryStale(); }
     int cadY = py + 578;
-    if (over(cx, cadY, 112, 22)) cadPreviewEnabled = !cadPreviewEnabled;
-    if (over(cx + 124, cadY, 112, 22)) cadInternalLattice = !cadInternalLattice;
-    if (over(cx, cadY + 34, 166, 22)) cadGraphicDrafting = !cadGraphicDrafting;
-    if (over(cx, cadY + 82, 78, 22)) cadInternalStride = max(1, cadInternalStride - 1);
-    if (over(cx + 88, cadY + 82, 78, 22)) cadInternalStride = min(8, cadInternalStride + 1);
-    if (over(cx, cadY + 130, 78, 22)) cadEdgeCull = max(0, cadEdgeCull - 0.06);
-    if (over(cx + 88, cadY + 130, 78, 22)) cadEdgeCull = min(0.92, cadEdgeCull + 0.06);
-    if (over(cx, cadY + 178, 78, 22)) cadShadowThreshold = max(0.05, cadShadowThreshold - 0.03);
-    if (over(cx + 88, cadY + 178, 78, 22)) cadShadowThreshold = min(0.55, cadShadowThreshold + 0.03);
-    if (over(cx, cadY + 226, 78, 22)) cadStochastic = max(0, cadStochastic - 0.06);
-    if (over(cx + 88, cadY + 226, 78, 22)) cadStochastic = min(1, cadStochastic + 0.06);
+    int cadW = rightW - 32;
+    int topGap = 6;
+    int topW = (cadW - topGap * 2) / 3;
+    if (over(cx, cadY, topW, 22)) cadPreviewEnabled = !cadPreviewEnabled;
+    if (over(cx + topW + topGap, cadY, topW, 22)) cadInternalLattice = !cadInternalLattice;
+    if (over(cx + (topW + topGap) * 2, cadY, topW, 22)) cadGraphicDrafting = !cadGraphicDrafting;
+
+    int cellGap = 10;
+    int cellW = (cadW - cellGap) / 2;
+    int buttonGap = 4;
+    int buttonW = (cellW - buttonGap) / 2;
+    int row1Buttons = cadY + 43;
+    int row2Buttons = cadY + 81;
+    int rightCell = cx + cellW + cellGap;
+    if (over(cx, row1Buttons, buttonW, 20)) cadInternalStride = max(1, cadInternalStride - 1);
+    if (over(cx + buttonW + buttonGap, row1Buttons, buttonW, 20)) cadInternalStride = min(8, cadInternalStride + 1);
+    if (over(rightCell, row1Buttons, buttonW, 20)) cadEdgeCull = max(0, cadEdgeCull - 0.06);
+    if (over(rightCell + buttonW + buttonGap, row1Buttons, buttonW, 20)) cadEdgeCull = min(0.92, cadEdgeCull + 0.06);
+    if (over(cx, row2Buttons, buttonW, 20)) cadShadowThreshold = max(0.05, cadShadowThreshold - 0.03);
+    if (over(cx + buttonW + buttonGap, row2Buttons, buttonW, 20)) cadShadowThreshold = min(0.55, cadShadowThreshold + 0.03);
+    if (over(rightCell, row2Buttons, buttonW, 20)) cadStochastic = max(0, cadStochastic - 0.06);
+    if (over(rightCell + buttonW + buttonGap, row2Buttons, buttonW, 20)) cadStochastic = min(1, cadStochastic + 0.06);
   }
   for (SliderKnob s : sliders) s.mousePressed();
 }
