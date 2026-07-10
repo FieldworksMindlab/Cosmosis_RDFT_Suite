@@ -8,14 +8,14 @@
 4. Press `G` to generate a mesh.
 5. Press `C` to generate call sheets and relief outputs.
 
-## RDFT Synth Session
+## Cosmosis Navigator Synth Session
 
 1. Open SuperCollider.
-2. Start the Chladni Sphere synth:
+2. Start Cosmosis Navigator, which contains the developed Chladni/RDFT synth workspace:
 
 ```bash
-cd apps/rdft-chladni-sphere-synth
-./start_chladni_mac.sh
+cd apps/cosmosis-navigator
+./start_cosmosis.sh
 ```
 
 3. Use Processing controls to shape field, surface, holonomy, and layer behavior.

@@ -6,9 +6,8 @@ The goal of this repository is preservation and invitation: a durable public arc
 
 ## Project Map
 
-- `apps/cosmosis-navigator` - the original Cosmosis performance/research instrument, combining RDFT field dynamics, synthesis control, environmental bridges, quantum/holonomy panels, and SuperCollider routing.
+- `apps/cosmosis-navigator` - the mature Cosmosis performance/research instrument, combining the developed Chladni/RDFT synth interface, field dynamics, synthesis control, environmental bridges, quantum/holonomy panels, and SuperCollider routing.
 - `apps/cosmosis-visual-observatory` - a visual-only RDFT laboratory with field atlases, topology lab, material targets, Surface Foundry, call-sheet generation, and relief/STL workflows.
-- `apps/rdft-chladni-sphere-synth` - a performance-focused synth interface centered on a playable Chladni sphere while preserving the deeper RDFT audio and data model.
 - `apps/holo-drive-rdft-eg-synth` - the Mac migration of the HOLO Drive RDFT/EG synth, including Floquet shaping, solar/ocean/galaxy bridges, CTC channel behavior, and SuperCollider integration.
 - `apps/rdft-hopf-visualization-kit` - Python/PyGFX and TouchDesigner tools for Hopf, PCA, Berry, winding, and manifold portrait views from RDFT CSV runs.
 
@@ -23,8 +22,8 @@ open apps/cosmosis-visual-observatory/Cosmosis_Visual_Observatory.pde
 Audio synth workspace:
 
 ```bash
-cd apps/rdft-chladni-sphere-synth
-./start_chladni_mac.sh
+cd apps/cosmosis-navigator
+./start_cosmosis.sh
 ```
 
 Hopf viewer:

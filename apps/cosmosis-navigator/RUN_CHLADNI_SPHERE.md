@@ -1,11 +1,12 @@
-# RDFT Chladni Sphere Synth
+# Cosmosis Navigator Chladni/RDFT Workspace
 
-This is a performance-focused variant of the current HOLO Drive RDFT synth.
-The synthesis engine and data model remain the same:
+Cosmosis Navigator is the developed version of the earlier Chladni Sphere synth work. This workspace keeps the Chladni performance surface while folding it into the fuller Cosmosis/RDFT instrument.
+
+The synthesis engine and data model remain active across the workspace:
 
 - Processing still computes the RDFT field, orbit dynamics, Phi residual, holonomy, Berry/Floquet metrics, galaxy/surface coupling, MIDI pilot, and environmental bridge state.
 - SuperCollider still receives the same OSC messages in `ColdSun_ShimmerB.scd`, especially `/rdf/field`, `/rdf/orbit`, `/rdf/surface`, `/rdf/mix`, `/rdf/egProbe`, `/rdf/floquet_*`, `/rdf/solar`, and `/rdf/ocean`.
-- The Chladni Sphere UI only changes the playable surface: controls are moved, the dense panel stack is bypassed, and the main display now emphasizes a large sphere driven by the active SuperCollider layer mix.
+- The Chladni/RDFT interface emphasizes a large playable sphere driven by the active SuperCollider layer mix while preserving the deeper field, holonomy, Floquet, surface, and bridge behavior.
 
 ## Launch
 
@@ -42,7 +43,7 @@ To stop the background senders:
 
 ## Design Notes
 
-The current full interface is powerful but heavy because it draws many panels, lower bands, image panels, and dense diagnostics every frame. This variant keeps the physics and sound path alive while reducing the main visual workload to the panels that are most playable.
+The current full interface is powerful but heavy because it draws many panels, lower bands, image panels, and dense diagnostics every frame. The Chladni/RDFT workspace keeps the physics and sound path alive while reducing the main visual workload to the panels that are most playable.
 
 The central visual uses the attached mockups as the target direction, but the second pass is narrower and more vertical: square RDFT side panels, a dominant sphere interface, and controls grouped by function.
 
