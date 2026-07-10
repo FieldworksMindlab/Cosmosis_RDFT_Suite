@@ -76,6 +76,17 @@ String cosmosisCsvStatus = "";
 String foundryStatus = "mesh not generated";
 String foundryLastExport = "";
 String foundryLastCallSheet = "";
+String foundryLastCallSheetBase = "";
+String foundryLastSurfacePng = "";
+String foundryLastLatticePng = "";
+String foundryLastSurfaceSvg = "";
+String foundryLastLatticeSvg = "";
+String foundryLastSourceStl = "";
+String foundryLastReliefDefinedStl = "";
+String foundryLastReliefDramaticStl = "";
+String foundryLastReliefPreviewPng = "";
+String foundryLastReliefHeightPng = "";
+String foundryLastManifestJson = "";
 String foundryCallSheetStatus = "drawings not generated";
 String foundryCallSheetGeneratedAt = "";
 int foundryResolution = 36;
@@ -858,7 +869,7 @@ void drawControls() {
   drawGauge(22, y, UI_W - 44, "ctc window", ctcScore, color(210, 142, 255)); y += 34;
   fill(100, 130, 145);
   textSize(9);
-  text("Keys: 1-9 select lenses, [ ] target material, M source mode, O opens Cosmosis CSV, U reloads data, V applies target, G generates STL mesh, C call sheets, E exports STL, N cycles Foundry geometry, SPACE pauses, R resets, H help.", 22, y, UI_W - 44, 60);
+  text("Keys: 1-9 select lenses, [ ] target material, M source mode, O opens Cosmosis CSV, U reloads data, V applies target, G generates STL mesh, C call sheets, X pulls SVG, E exports STL, N cycles Foundry geometry, SPACE pauses, R resets, H help.", 22, y, UI_W - 44, 60);
 }
 
 int materialPanelY() {
@@ -1480,6 +1491,7 @@ float graphicAdaptiveKeep(float base) {
 void drawFoundryControls(int x, int y, int w) {
   drawButton(x, y, 132, 26, "GENERATE MESH", color(45, 86, 72));
   drawButton(x + 142, y, 102, 26, "CALL SHEET", foundryMesh == null ? color(47, 68, 90) : color(62, 82, 96));
+  drawButton(x + 252, y, 78, 26, "PULL SVG", foundryLastCallSheetBase.length() == 0 ? color(50, 52, 62) : color(86, 72, 38));
   drawButton(x + 142, y + 30, 102, 22, "EXPORT STL", foundryMesh == null ? color(42, 50, 58) : color(86, 66, 42));
 
   int yy = y + 62;
@@ -1710,17 +1722,51 @@ void generateFoundryCallSheets() {
   String reliefHeightPng = "call_sheet/output/" + base + "_relief_heightfield.png";
   String manifestJson = "call_sheet/configs/" + base + ".json";
 
-  writeFoundryCallSheetSvg(surfaceSvg, "surface_silhouette");
   writeFoundryCallSheetPng(surfacePng, "surface_silhouette");
-  writeFoundryCallSheetSvg(latticeSvg, "voxel_lattice");
   writeFoundryCallSheetPng(latticePng, "voxel_lattice");
   foundryMesh.writeSTL(sourceStl);
   writeFoundryReliefSuite(reliefDefinedStl, reliefDramaticStl, reliefPreviewPng, reliefHeightPng);
-  writeFoundryCallSheetManifest(manifestJson, surfaceSvg, surfacePng, latticeSvg, latticePng, sourceStl, reliefDefinedStl, reliefDramaticStl, reliefPreviewPng, reliefHeightPng);
+  writeFoundryCallSheetManifest(manifestJson, "", surfacePng, "", latticePng, sourceStl, reliefDefinedStl, reliefDramaticStl, reliefPreviewPng, reliefHeightPng);
 
-  foundryLastCallSheet = surfaceSvg + " / " + latticeSvg;
-  foundryCallSheetStatus = "generated 2 styles + relief";
-  foundryStatus = "call sheets + relief generated";
+  foundryLastCallSheetBase = base;
+  foundryLastSurfacePng = surfacePng;
+  foundryLastLatticePng = latticePng;
+  foundryLastSurfaceSvg = surfaceSvg;
+  foundryLastLatticeSvg = latticeSvg;
+  foundryLastSourceStl = sourceStl;
+  foundryLastReliefDefinedStl = reliefDefinedStl;
+  foundryLastReliefDramaticStl = reliefDramaticStl;
+  foundryLastReliefPreviewPng = reliefPreviewPng;
+  foundryLastReliefHeightPng = reliefHeightPng;
+  foundryLastManifestJson = manifestJson;
+  foundryLastCallSheet = surfacePng + " / " + latticePng;
+  foundryCallSheetStatus = "PNGs + STLs generated; SVG optional";
+  foundryStatus = "call sheet PNG/STL generated";
+}
+
+void pullFoundryCallSheetSvgs() {
+  if (foundryLastCallSheetBase.length() == 0 || foundryLastSurfacePng.length() == 0 || foundryLastLatticePng.length() == 0) {
+    foundryCallSheetStatus = "make call sheet before SVG";
+    foundryStatus = "call sheet first";
+    return;
+  }
+  if (foundryMesh == null || foundryMesh.tris.size() == 0 || foundryMeshStale || foundryCallSheetSolid == null) {
+    foundryCallSheetStatus = "regenerate call sheet before SVG";
+    foundryStatus = "call sheet stale";
+    return;
+  }
+
+  ensureDir(sketchPath("call_sheet"));
+  ensureDir(sketchPath("call_sheet/output"));
+  ensureDir(sketchPath("call_sheet/configs"));
+
+  writeFoundryCallSheetSvg(foundryLastSurfaceSvg, "surface_silhouette");
+  writeFoundryCallSheetSvg(foundryLastLatticeSvg, "voxel_lattice");
+  writeFoundryCallSheetManifest(foundryLastManifestJson, foundryLastSurfaceSvg, foundryLastSurfacePng, foundryLastLatticeSvg, foundryLastLatticePng, foundryLastSourceStl, foundryLastReliefDefinedStl, foundryLastReliefDramaticStl, foundryLastReliefPreviewPng, foundryLastReliefHeightPng);
+
+  foundryLastCallSheet = foundryLastSurfaceSvg + " / " + foundryLastLatticeSvg;
+  foundryCallSheetStatus = "SVG pulled for active render mode";
+  foundryStatus = "SVG call sheets generated";
 }
 
 void writeFoundryReliefSuite(String definedStl, String dramaticStl, String previewPng, String heightPng) {
@@ -3730,11 +3776,13 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   JSONObject a = new JSONObject();
   a.setString("style", "surface_silhouette");
   a.setString("svg", surfaceSvg);
+  a.setBoolean("svg_available", surfaceSvg.length() > 0 && new File(sketchPath(surfaceSvg)).exists());
   a.setString("png", surfacePng);
   outputs.setJSONObject(0, a);
   JSONObject b = new JSONObject();
   b.setString("style", "voxel_lattice");
   b.setString("svg", latticeSvg);
+  b.setBoolean("svg_available", latticeSvg.length() > 0 && new File(sketchPath(latticeSvg)).exists());
   b.setString("png", latticePng);
   outputs.setJSONObject(1, b);
   JSONObject c = new JSONObject();
@@ -5511,7 +5559,7 @@ void drawHelpOverlay() {
   text("Cosmosis Visual Observatory", x + 24, y + 22);
   fill(145, 178, 186);
   textSize(10);
-  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select workspaces. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates call sheets. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nSurface Foundry exports fabrication geometry from the same topology field, with optional geometry wrapping over gyroid, Schwarz P, Beltrami saddle, Hopf torus, Petaminx, Mandelbrot, Julia, and fractal ridge carriers. The CTC and Wigner views are analogical diagnostics, intended for visual exploration rather than physical claims.", x + 24, y + 58, w - 48, h - 80);
+  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select workspaces. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nSurface Foundry exports fabrication geometry from the same topology field, with optional geometry wrapping over gyroid, Schwarz P, Beltrami saddle, Hopf torus, Petaminx, Mandelbrot, Julia, and fractal ridge carriers. The CTC and Wigner views are analogical diagnostics, intended for visual exploration rather than physical claims.", x + 24, y + 58, w - 48, h - 80);
 }
 
 void resetState() {
@@ -5606,6 +5654,7 @@ void mousePressed() {
     int cy = py + 42;
     if (over(cx, cy, 132, 26)) generateSurfaceFoundryMesh();
     if (over(cx + 142, cy, 102, 26)) generateFoundryCallSheets();
+    if (over(cx + 252, cy, 78, 26)) pullFoundryCallSheetSvgs();
     if (over(cx + 142, cy + 30, 102, 22)) exportSurfaceFoundryMesh();
     if (over(cx, cy + 62, 78, 22)) { foundryResolution = max(24, foundryResolution - 6); markFoundryStale(); }
     if (over(cx + 88, cy + 62, 78, 22)) { foundryResolution = min(96, foundryResolution + 6); markFoundryStale(); }
@@ -5656,6 +5705,7 @@ void keyPressed() {
   else if (key == 's' || key == 'S') saveFrame("exports/cosmosis_visual_####.png");
   else if (key == 'g' || key == 'G') generateSurfaceFoundryMesh();
   else if (key == 'c' || key == 'C') generateFoundryCallSheets();
+  else if (key == 'x' || key == 'X') pullFoundryCallSheetSvgs();
   else if (key == 'e' || key == 'E') exportSurfaceFoundryMesh();
   else if (key == 'n' || key == 'N') cycleFoundryGeometry(1);
   else if (key == 'm' || key == 'M') cycleMaterialSource();

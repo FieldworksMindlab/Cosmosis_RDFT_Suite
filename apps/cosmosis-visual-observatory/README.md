@@ -44,7 +44,8 @@ The sketch uses Processing's built-in Java mode and hand-rolled UI controls.
 - Press `V` or click `APPLY` to map the selected material profile into the RDFT controls.
 - `1` through `9` selects a workspace.
 - Press `G` in Surface Foundry to generate a printable mesh.
-- Press `C` or click `CALL SHEET` in Surface Foundry to generate drafting sheets.
+- Press `C` or click `CALL SHEET` in Surface Foundry to generate PNG drafting sheets, source STL, relief STLs, and metadata.
+- Click `PULL SVG` or press `X` after a call sheet when you explicitly want plotter/vector SVG files for the current render strategy.
 - Press `E` in Surface Foundry to export STL plus metadata JSON.
 - Press `N` in Surface Foundry to cycle the geometry carrier used for field wrapping.
 - `Space` pauses/resumes.
@@ -136,14 +137,24 @@ Exports are written to `exports/` as:
 
 Call sheets are generated from the same in-memory triangle mesh used by STL
 export, so they do not need to import an STL first. Press `C` or click
-`CALL SHEET` directly above `EXPORT STL` to write:
+`CALL SHEET` directly above `EXPORT STL` to write the lightweight/default
+outputs:
 
-- `call_sheet/output/*_surface_silhouette.svg`
 - `call_sheet/output/*_surface_silhouette.png`
-- `call_sheet/output/*_voxel_lattice.svg`
 - `call_sheet/output/*_voxel_lattice.png`
 - `call_sheet/output/*_source.stl`
+- `call_sheet/output/*_relief_defined.stl`
+- `call_sheet/output/*_relief_dramatic.stl`
 - `call_sheet/configs/*.json`
+
+SVGs can become extremely large at high resolution. They are now generated only
+when requested. After `CALL SHEET`, click `PULL SVG` or press `X` to write:
+
+- `call_sheet/output/*_surface_silhouette.svg`
+- `call_sheet/output/*_voxel_lattice.svg`
+
+The SVG pull uses the current `TONAL LINES` or `GRAPHIC BW` render strategy and
+updates the matching manifest with `svg_available: true`.
 
 The drawing layout follows the Surface Foundry call-sheet spec: a 3 by 3
 matrix of rotated orthographic isometric views, plus one large standard
@@ -164,9 +175,9 @@ with heavier side/depth contours for a sharper plotter hierarchy. The surface
 silhouette path also includes a sparse spectral stipple pass: small solid black
 circle clusters are placed by recursive Fourier-like bands in shadow and neck
 regions, giving the drawing a controlled crackle/pointillist mass without
-grayscale or opacity. SVG is the current plotter/vector source; PNG is a quick
-preview. PDF can be layered on later through Processing's PDF renderer if
-needed.
+grayscale or opacity. SVG is the optional plotter/vector source; PNG is the
+default quick preview and archive-friendly output. PDF can be layered on later
+through Processing's PDF renderer if needed.
 
 The Stochastic CAD panel lets you tune the voxel call-sheet style before
 committing to file generation. `STRIDE` controls the sampled internal lattice,
