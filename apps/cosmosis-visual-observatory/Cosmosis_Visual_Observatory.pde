@@ -206,6 +206,7 @@ void setup() {
   initFloquet();
   computeField();
   computeMetrics();
+  initializeDcrteMilestone0();
 }
 
 void draw() {
@@ -226,6 +227,7 @@ void draw() {
     computeMetrics();
     lastMetricFrame = frameCount;
   }
+  updateDcrteMilestone0();
 
   background(7, 10, 15);
   drawTopBar();
@@ -1386,6 +1388,7 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   popMatrix();
 
   if (cadPreviewEnabled) drawStochasticCadPreview(x, y, w, h);
+  drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);
 
   fill(132, 168, 176);
   textSize(9);
@@ -1509,6 +1512,7 @@ void drawFoundryControls(int x, int y, int w) {
   drawButton(x, y, 132, 26, "GENERATE MESH", color(45, 86, 72));
   drawButton(x + 142, y, 102, 26, "CALL SHEET", foundryMesh == null ? color(47, 68, 90) : color(62, 82, 96));
   drawButton(x + 252, y, 78, 26, "PULL SVG", foundryLastCallSheetBase.length() == 0 ? color(50, 52, 62) : color(86, 72, 38));
+  drawButton(x, y + 30, 132, 22, dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "PIPE LEGACY" : "PIPE ADAPTER", dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? color(42, 57, 68) : color(65, 82, 55));
   drawButton(x + 142, y + 30, 102, 22, "EXPORT STL", foundryMesh == null ? color(42, 50, 58) : color(86, 66, 42));
 
   int yy = y + 62;
@@ -1530,6 +1534,32 @@ void drawFoundryControls(int x, int y, int w) {
   drawButton(x, yy, 112, 22, foundryRaisedVeins ? "VEINS ON" : "VEINS OFF", foundryRaisedVeins ? color(55, 86, 72) : color(55, 55, 62));
   metricLine(x, yy + 32, "vein radius", nf(foundryVeinRadiusMM, 1, 1) + " mm");
   metricLine(x, yy + 54, "scale", nf(foundryScaleMM, 1, 0) + " mm");
+}
+
+void drawDcrteDiagnosticsOverlay(int x, int y, int w, int h) {
+  boolean testing = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_ADAPTER_TEST;
+  color accent = testing
+    ? (dcrteAdapterDiagnostics.passed() ? color(122, 230, 165) : color(255, 188, 92))
+    : color(106, 145, 158);
+  fill(3, 9, 13, 226);
+  stroke(red(accent), green(accent), blue(accent), 190);
+  strokeWeight(1.0);
+  rect(x, y, w, h, 5);
+  fill(accent);
+  textAlign(LEFT, TOP);
+  textSize(9);
+  text("DCRTE-ET MILESTONE 0", x + 10, y + 8);
+  fill(150, 184, 190);
+  textSize(8);
+  text("pipeline  " + dcrtePipelineMode.id(), x + 10, y + 25);
+  text("engine    " + dcrteGenerationFieldEngineId(), x + 10, y + 38);
+  if (testing) {
+    text("adapter   " + dcrteAdapterDiagnostics.status + "  n=" + dcrteAdapterDiagnostics.sampleCount, x + 10, y + 51);
+    text("error max " + nf(dcrteAdapterDiagnostics.maxAbsoluteError, 1, 8) + "  mean " + nf(dcrteAdapterDiagnostics.meanAbsoluteError, 1, 8), x + 10, y + 64);
+  } else {
+    text("adapter   idle; generation remains direct", x + 10, y + 51);
+    text("selector  optional parity diagnostics", x + 10, y + 64);
+  }
 }
 
 void drawFoundryStats(int x, int y, int w) {
@@ -1851,6 +1881,7 @@ void writeFoundryMetadata(String filename) {
   JSONArray blend = new JSONArray();
   for (int i = 0; i < scores.length; i++) blend.setFloat(i, scores[i]);
   meta.setJSONArray("topology_blend", blend);
+  appendDcrteMetadata(meta);
   saveJSONObject(meta, filename);
 }
 
@@ -4079,6 +4110,7 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   JSONArray blend = new JSONArray();
   for (int i = 0; i < scores.length; i++) blend.setFloat(i, scores[i]);
   meta.setJSONArray("topology_blend", blend);
+  appendDcrteMetadata(meta);
   saveJSONObject(meta, filename);
 }
 
@@ -4113,6 +4145,7 @@ String[] callSheetConfigurationLines(String style) {
   String meshAudit = foundryBoundaryEdges + "/" + foundryNonManifoldEdges + "/" + foundryDegenerateFaces;
   return new String[] {
     "OUTPUT " + styleLabel(style) + " | " + (cadGraphicDrafting ? "graphic BW" : "tonal lines"),
+    "DCRTE " + dcrtePipelineLabel() + " | engine " + (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "direct" : "legacy adapter"),
     "CAD preview " + onOff(cadPreviewEnabled) + " | lattice " + onOff(cadInternalLattice) + " | stride " + cadInternalStride,
     "CAD cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
     "FIELD alpha " + nf(alpha, 1, 3) + " | depth " + depth + " | deep " + nf(deepDetail, 1, 3),
@@ -6094,6 +6127,7 @@ void mousePressed() {
     if (over(cx, cy, 132, 26)) generateSurfaceFoundryMesh();
     if (over(cx + 142, cy, 102, 26)) generateFoundryCallSheets();
     if (over(cx + 252, cy, 78, 26)) pullFoundryCallSheetSvgs();
+    if (over(cx, cy + 30, 132, 22)) cycleDcrtePipelineMode();
     if (over(cx + 142, cy + 30, 102, 22)) exportSurfaceFoundryMesh();
     if (over(cx, cy + 62, 78, 22)) { foundryResolution = max(24, foundryResolution - 6); markFoundryStale(); }
     if (over(cx + 88, cy + 62, 78, 22)) { foundryResolution = min(96, foundryResolution + 6); markFoundryStale(); }

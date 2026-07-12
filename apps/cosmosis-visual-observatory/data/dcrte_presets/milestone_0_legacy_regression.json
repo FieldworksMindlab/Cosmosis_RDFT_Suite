@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.3-m0",
+  "fixture_id": "milestone_0_legacy_regression",
+  "pipeline_mode": "DCRTE_ADAPTER_TEST",
+  "generation_path": "legacy_direct",
+  "adapter_role": "diagnostic_only",
+  "field_engine_id": "legacy_topology_scalar_adapter",
+  "field_engine_version": "0.1.0-m0",
+  "sample_sequence": "radical_inverse_bases_2_3_5",
+  "sample_count": 256,
+  "maximum_absolute_error_tolerance": 0.0000001,
+  "expected_maximum_absolute_error": 0.0,
+  "expected_mean_absolute_error": 0.0,
+  "notes": "Milestone 0 parity fixture. It does not select or execute a domain-constrained materialization path."
+}

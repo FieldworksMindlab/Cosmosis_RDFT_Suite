@@ -235,6 +235,48 @@ mesh passes this manifold audit. The current extractor remains dependency-free
 and draft-friendly; marching cubes or surface nets can still be added later for
 smoother production surfaces.
 
+## DCRTE-ET Milestone 0
+
+Surface Foundry includes an opt-in compatibility layer for the
+Domain-Constrained Recursive Topology Engine with Emergent Entropic Scheduling
+(DCRTE-ET). Milestone 0 introduces architecture and parity diagnostics only. It
+does not import domains, build signed distance fields, add intrinsic
+coordinates, or run an entropic scheduler.
+
+The Surface Build panel provides two pipeline selections:
+
+- `PIPE LEGACY`: the default. Surface Foundry operates through the unchanged
+  direct `topologyScalar(...)` and `foundryScalar(...)` path.
+- `PIPE ADAPTER`: enables a diagnostic comparison between direct scalar calls
+  and `LegacyTopologyScalarAdapter`. Mesh generation still uses the legacy
+  direct path in this milestone.
+
+Adapter mode compares both paths over the same deterministic 256-point
+low-discrepancy sample set every 30 frames. The preview reports sample count,
+maximum absolute error, and mean absolute error. The comparison uses no random
+calls and passes at a maximum error of `1e-7` or less. Returning to
+`PIPE LEGACY` disables comparison work and restores the prior runtime path.
+
+`DCRTE_Config.pde` captures current field, topology, Surface Foundry, shaper,
+and material-selection state without replacing the existing globals. It builds
+a canonical, explicitly ordered representation and assigns a SHA-256
+configuration ID. Surface Foundry metadata and call-sheet manifests now add:
+
+- `dcrte_pipeline_mode`
+- `dcrte_field_engine_id`
+- `dcrte_field_engine_version`
+- `dcrte_configuration_id`
+- `dcrte_generation_path`
+- `dcrte_adapter_role`
+- nested `dcrte_configuration`
+
+The metadata states `generation_path: legacy_direct` and
+`adapter_role: diagnostic_only` so adapter-test provenance cannot be mistaken
+for a new materialization pipeline. The canonical architecture is documented in
+`docs/architecture/DCRTE_ET_ARCHITECTURE_SPEC.md`; implementation boundaries and
+the Milestone 1 refactor inventory are in
+`DCRTE_MILESTONE_0_IMPLEMENTATION_NOTES.md`.
+
 ## Floquet Shaper Influence
 
 Floquet Forge includes an optional Shaper layer. When off, the sketch behaves as
