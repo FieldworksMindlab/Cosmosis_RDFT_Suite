@@ -1,0 +1,1255 @@
+{
+  "schema_version": "0.5-m2",
+  "application": "Cosmosis Visual Observatory",
+  "generated_at": "2026-07-13 09:40:12",
+  "acceptance_passed": 8,
+  "regressions": {
+    "adapter_status": "PASS",
+    "legacy_printable": true,
+    "printed_cylinder_shell_printable": true,
+    "legacy_triangles": 38236,
+    "m1_deterministic_tests": true,
+    "primitive_hard": [
+      {
+        "outside_solid": 0,
+        "domain": "sphere",
+        "printable": true
+      },
+      {
+        "outside_solid": 0,
+        "domain": "box",
+        "printable": true
+      },
+      {
+        "outside_solid": 0,
+        "domain": "cylinder",
+        "printable": true
+      }
+    ]
+  },
+  "acceptance_total": 8,
+  "deterministic_tests": {
+    "failures": [],
+    "passed": 34,
+    "failed": 0,
+    "status": "pass"
+  },
+  "runs": [
+    {
+      "expected_valid": true,
+      "observation": "hard_interior",
+      "mesh_report": {
+        "absolute_volume_world": 6.2295043390197815,
+        "sanitation_millis": 0,
+        "world_bounds": {
+          "volume": 6.229504108428955,
+          "min": [
+            -0.9200000166893005,
+            -0.9200000166893005,
+            -0.9200000166893005
+          ],
+          "max": [
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005
+          ]
+        },
+        "merge_tolerance": 3.4641016100067645E-6,
+        "unique_edge_count": 18,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 12,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 0,
+        "parsed_triangle_count": 12,
+        "boundary_edge_count": 0,
+        "source_name": "M2-A_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 28,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "684",
+        "output_vertex_count": 8,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 6.2295043390197815,
+        "global_winding_flipped": false,
+        "watertight": true,
+        "input_vertex_count": 36,
+        "area_tolerance": 1.1999999952050366E-11,
+        "declared_triangle_count": 12,
+        "input_triangle_count": 12,
+        "source_bounds": {
+          "volume": 8,
+          "min": [
+            -1,
+            -1,
+            -1
+          ],
+          "max": [
+            1,
+            1,
+            1
+          ]
+        },
+        "source_sha256": "d47d0a5a42abfebf18a557ed1c2d47cd7b9676d1c76f57c78150bb512aad45b5",
+        "signed_volume_source": 8,
+        "absolute_volume_source": 8,
+        "errors": [],
+        "status": "pass_with_warnings"
+      },
+      "acceptance_passed": true,
+      "elapsed_millis": 524,
+      "resolution": 64,
+      "loaded": true,
+      "domain_valid": true,
+      "mesh_printable": true,
+      "sdf": {
+        "zero_band_count": 20888,
+        "min_distance": -0.90625,
+        "signed": true,
+        "finite_count": 262144,
+        "nonfinite_count": 0,
+        "spec": {
+          "sample_volume": 3.0517578125E-5,
+          "spacing_x": 0.03125,
+          "spacing_y": 0.03125,
+          "spacing_z": 0.03125,
+          "bounds": {
+            "volume": 8,
+            "min": [
+              -1,
+              -1,
+              -1
+            ],
+            "max": [
+              1,
+              1,
+              1
+            ]
+          },
+          "resolution": [
+            64,
+            64,
+            64
+          ]
+        },
+        "max_distance": 0.10825317353010178,
+        "quality": {
+          "nonfinite_distance_count": 0,
+          "sampled_inside_volume": 6.591796875,
+          "jitter_magnitude": 3.12499992105586E-6,
+          "boundary_threshold": 0.027063606306910515,
+          "reference_mesh_volume": 6.2295043390197815,
+          "distance_transform_millis": 7,
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "boundary_voxel_count": 20888,
+          "voxel_spacing": 0.03125,
+          "finite_distance_count": 262144,
+          "surface_distance_model": "euclidean_distance_to_nearest_boundary_voxel_center",
+          "boundary_build_millis": 1,
+          "quality_check_millis": 0,
+          "min_signed_distance": -0.90625,
+          "inside_outside_millis": 4,
+          "algorithm": "grid_euclidean_distance_transform",
+          "outside_voxel_count": 46144,
+          "deduplicated_intersection_count": 116,
+          "failed_scanline_count": 0,
+          "total_millis": 17,
+          "warnings": [],
+          "signed": true,
+          "volume_relative_error": 0.05815752205370894,
+          "ambiguous_scanline_count": 0,
+          "retried_scanline_count": 0,
+          "zero_band_count": 20888,
+          "max_signed_distance": 0.10825317353010178,
+          "inside_voxel_count": 216000,
+          "half_voxel_correction": false,
+          "intersection_tolerance": 0.0062500000931322575,
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "export_enabled": true,
+      "mesh_strict_valid": true,
+      "material_stl": "M2-A_material.stl",
+      "id": "M2-A",
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.3016481399536133,
+        "field_sample_millis": 79,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 65156,
+        "domain_build_millis": 111,
+        "total_millis": 524,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 6.591796875,
+        "domain_volume_warning_threshold": 0.11999999731779099,
+        "domain_inside_samples": 216000,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.823974609375,
+        "analytic_domain_volume": 6.229504108428955,
+        "materialize_millis": 294,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.05815755948424339,
+        "admitted_samples": 216000,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.2485504150390625,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "expected_valid": true,
+      "observation": "hard_interior",
+      "mesh_report": {
+        "absolute_volume_world": 3.2313446328230238,
+        "sanitation_millis": 2,
+        "world_bounds": {
+          "volume": 6.229504108428955,
+          "min": [
+            -0.9200000166893005,
+            -0.9200000166893005,
+            -0.9200000166893005
+          ],
+          "max": [
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005
+          ]
+        },
+        "merge_tolerance": 3.4641016100067645E-6,
+        "unique_edge_count": 2484,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 1656,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 4,
+        "parsed_triangle_count": 1656,
+        "boundary_edge_count": 0,
+        "source_name": "M2-B_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 4138,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "82884",
+        "output_vertex_count": 830,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 3.2313446328230238,
+        "global_winding_flipped": false,
+        "watertight": true,
+        "input_vertex_count": 4968,
+        "area_tolerance": 1.1999999952050366E-11,
+        "declared_triangle_count": 1656,
+        "input_triangle_count": 1656,
+        "source_bounds": {
+          "volume": 8,
+          "min": [
+            -1,
+            -1,
+            -1
+          ],
+          "max": [
+            1,
+            1,
+            1
+          ]
+        },
+        "source_sha256": "6bdb708ee2e1c96f6aa7c468d4bc0c7a97bc771f6efb33feda6a6215ccb22241",
+        "signed_volume_source": 4.1497293613976085,
+        "absolute_volume_source": 4.1497293613976085,
+        "errors": [],
+        "status": "pass_with_warnings"
+      },
+      "acceptance_passed": true,
+      "elapsed_millis": 318,
+      "resolution": 64,
+      "loaded": true,
+      "domain_valid": true,
+      "mesh_printable": true,
+      "sdf": {
+        "zero_band_count": 18816,
+        "min_distance": -0.8643323183059692,
+        "signed": true,
+        "finite_count": 262144,
+        "nonfinite_count": 0,
+        "spec": {
+          "sample_volume": 3.0517578125E-5,
+          "spacing_x": 0.03125,
+          "spacing_y": 0.03125,
+          "spacing_z": 0.03125,
+          "bounds": {
+            "volume": 8,
+            "min": [
+              -1,
+              -1,
+              -1
+            ],
+            "max": [
+              1,
+              1,
+              1
+            ]
+          },
+          "resolution": [
+            64,
+            64,
+            64
+          ]
+        },
+        "max_distance": 0.7762339115142822,
+        "quality": {
+          "nonfinite_distance_count": 0,
+          "sampled_inside_volume": 3.52392578125,
+          "jitter_magnitude": 3.12499992105586E-6,
+          "boundary_threshold": 0.027063606306910515,
+          "reference_mesh_volume": 3.2313446328230238,
+          "distance_transform_millis": 7,
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "boundary_voxel_count": 18816,
+          "voxel_spacing": 0.03125,
+          "finite_distance_count": 262144,
+          "surface_distance_model": "euclidean_distance_to_nearest_boundary_voxel_center",
+          "boundary_build_millis": 5,
+          "quality_check_millis": 0,
+          "min_signed_distance": -0.8643323183059692,
+          "inside_outside_millis": 25,
+          "algorithm": "grid_euclidean_distance_transform",
+          "outside_voxel_count": 146672,
+          "deduplicated_intersection_count": 0,
+          "failed_scanline_count": 0,
+          "total_millis": 39,
+          "warnings": [],
+          "signed": true,
+          "volume_relative_error": 0.09054470558634484,
+          "ambiguous_scanline_count": 0,
+          "retried_scanline_count": 0,
+          "zero_band_count": 18816,
+          "max_signed_distance": 0.7762339115142822,
+          "inside_voxel_count": 115472,
+          "half_voxel_correction": false,
+          "intersection_tolerance": 0.0062500000931322575,
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "export_enabled": true,
+      "mesh_strict_valid": true,
+      "material_stl": "M2-B_material.stl",
+      "id": "M2-B",
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31205832958221436,
+        "field_sample_millis": 57,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 36034,
+        "domain_build_millis": 37,
+        "total_millis": 318,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 3.52392578125,
+        "domain_volume_warning_threshold": 0.11999999731779099,
+        "domain_inside_samples": 115472,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.44049072265625,
+        "analytic_domain_volume": 3.231344699859619,
+        "materialize_millis": 172,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.0905446857213974,
+        "admitted_samples": 115472,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.13745880126953125,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "expected_valid": true,
+      "observation": "hard_interior",
+      "mesh_report": {
+        "absolute_volume_world": 1.3851882613486581,
+        "sanitation_millis": 16,
+        "world_bounds": {
+          "volume": 2.713130474090576,
+          "min": [
+            -0.6071506142616272,
+            -0.9200000166893005,
+            -0.6071506142616272
+          ],
+          "max": [
+            0.6071506142616272,
+            0.9200000166893005,
+            0.6071506142616272
+          ]
+        },
+        "merge_tolerance": 3.282879333710298E-6,
+        "unique_edge_count": 18144,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 12096,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 17,
+        "parsed_triangle_count": 12096,
+        "boundary_edge_count": 0,
+        "source_name": "M2-C_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 30238,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "604884",
+        "output_vertex_count": 6050,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 1.3851882613486581,
+        "global_winding_flipped": false,
+        "watertight": true,
+        "input_vertex_count": 36288,
+        "area_tolerance": 1.0777296589881136E-11,
+        "declared_triangle_count": 12096,
+        "input_triangle_count": 12096,
+        "source_bounds": {
+          "volume": 6.020755767822266,
+          "min": [
+            -0.7919356226921082,
+            -1.2000000476837158,
+            -0.7919356226921082
+          ],
+          "max": [
+            0.7919356226921082,
+            1.2000000476837158,
+            0.7919356226921082
+          ]
+        },
+        "source_sha256": "3791b1277a98822646218f841ad81ba9fada444bda7f2701d500118864f02415",
+        "signed_volume_source": 3.073895404171536,
+        "absolute_volume_source": 3.073895404171536,
+        "errors": [],
+        "status": "pass_with_warnings"
+      },
+      "acceptance_passed": true,
+      "elapsed_millis": 370,
+      "resolution": 64,
+      "loaded": true,
+      "domain_valid": true,
+      "mesh_printable": true,
+      "sdf": {
+        "zero_band_count": 11048,
+        "min_distance": -0.55901700258255,
+        "signed": true,
+        "finite_count": 262144,
+        "nonfinite_count": 0,
+        "spec": {
+          "sample_volume": 3.0517578125E-5,
+          "spacing_x": 0.03125,
+          "spacing_y": 0.03125,
+          "spacing_z": 0.03125,
+          "bounds": {
+            "volume": 8,
+            "min": [
+              -1,
+              -1,
+              -1
+            ],
+            "max": [
+              1,
+              1,
+              1
+            ]
+          },
+          "resolution": [
+            64,
+            64,
+            64
+          ]
+        },
+        "max_distance": 1.0336147546768188,
+        "quality": {
+          "nonfinite_distance_count": 0,
+          "sampled_inside_volume": 1.5604248046875,
+          "jitter_magnitude": 3.12499992105586E-6,
+          "boundary_threshold": 0.027063606306910515,
+          "reference_mesh_volume": 1.3851882613486581,
+          "distance_transform_millis": 6,
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "boundary_voxel_count": 11048,
+          "voxel_spacing": 0.03125,
+          "finite_distance_count": 262144,
+          "surface_distance_model": "euclidean_distance_to_nearest_boundary_voxel_center",
+          "boundary_build_millis": 7,
+          "quality_check_millis": 0,
+          "min_signed_distance": -0.55901700258255,
+          "inside_outside_millis": 182,
+          "algorithm": "grid_euclidean_distance_transform",
+          "outside_voxel_count": 211012,
+          "deduplicated_intersection_count": 0,
+          "failed_scanline_count": 0,
+          "total_millis": 198,
+          "warnings": ["SDF_VOLUME_ERROR_HIGH"],
+          "signed": true,
+          "volume_relative_error": 0.12650738403473522,
+          "ambiguous_scanline_count": 0,
+          "retried_scanline_count": 0,
+          "zero_band_count": 11048,
+          "max_signed_distance": 1.0336147546768188,
+          "inside_voxel_count": 51132,
+          "half_voxel_correction": false,
+          "intersection_tolerance": 0.0062500000931322575,
+          "errors": [],
+          "status": "pass_with_warnings"
+        }
+      },
+      "export_enabled": true,
+      "mesh_strict_valid": true,
+      "material_stl": "M2-C_material.stl",
+      "id": "M2-C",
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.32112962007522583,
+        "field_sample_millis": 57,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 16420,
+        "domain_build_millis": 38,
+        "total_millis": 370,
+        "warnings": [
+          "RAISED_VEINS_SUPPRESSED",
+          "DOMAIN_VOLUME_ERROR_HIGH"
+        ],
+        "sampled_domain_volume": 1.5604248046875,
+        "domain_volume_warning_threshold": 0.11999999731779099,
+        "domain_inside_samples": 51132,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.1950531005859375,
+        "analytic_domain_volume": 1.3851882219314575,
+        "materialize_millis": 65,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.12650741636753082,
+        "admitted_samples": 51132,
+        "validation_millis": 0,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.0626373291015625,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "expected_valid": true,
+      "observation": "shell_band",
+      "mesh_report": {
+        "absolute_volume_world": 1.3851882613486581,
+        "sanitation_millis": 11,
+        "world_bounds": {
+          "volume": 2.713130474090576,
+          "min": [
+            -0.6071506142616272,
+            -0.9200000166893005,
+            -0.6071506142616272
+          ],
+          "max": [
+            0.6071506142616272,
+            0.9200000166893005,
+            0.6071506142616272
+          ]
+        },
+        "merge_tolerance": 3.282879333710298E-6,
+        "unique_edge_count": 18144,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 12096,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 12,
+        "parsed_triangle_count": 12096,
+        "boundary_edge_count": 0,
+        "source_name": "M2-D_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 30238,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "604884",
+        "output_vertex_count": 6050,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 1.3851882613486581,
+        "global_winding_flipped": false,
+        "watertight": true,
+        "input_vertex_count": 36288,
+        "area_tolerance": 1.0777296589881136E-11,
+        "declared_triangle_count": 12096,
+        "input_triangle_count": 12096,
+        "source_bounds": {
+          "volume": 6.020755767822266,
+          "min": [
+            -0.7919356226921082,
+            -1.2000000476837158,
+            -0.7919356226921082
+          ],
+          "max": [
+            0.7919356226921082,
+            1.2000000476837158,
+            0.7919356226921082
+          ]
+        },
+        "source_sha256": "14e3ab1e778bf7bbddc9b8e3864d1782ca5bd02ed461134ef27e924d7f1998d9",
+        "signed_volume_source": 3.073895404171536,
+        "absolute_volume_source": 3.073895404171536,
+        "errors": [],
+        "status": "pass_with_warnings"
+      },
+      "acceptance_passed": true,
+      "elapsed_millis": 401,
+      "resolution": 64,
+      "loaded": true,
+      "domain_valid": true,
+      "mesh_printable": true,
+      "sdf": {
+        "zero_band_count": 11048,
+        "min_distance": -0.55901700258255,
+        "signed": true,
+        "finite_count": 262144,
+        "nonfinite_count": 0,
+        "spec": {
+          "sample_volume": 3.0517578125E-5,
+          "spacing_x": 0.03125,
+          "spacing_y": 0.03125,
+          "spacing_z": 0.03125,
+          "bounds": {
+            "volume": 8,
+            "min": [
+              -1,
+              -1,
+              -1
+            ],
+            "max": [
+              1,
+              1,
+              1
+            ]
+          },
+          "resolution": [
+            64,
+            64,
+            64
+          ]
+        },
+        "max_distance": 1.0336147546768188,
+        "quality": {
+          "nonfinite_distance_count": 0,
+          "sampled_inside_volume": 1.5604248046875,
+          "jitter_magnitude": 3.12499992105586E-6,
+          "boundary_threshold": 0.027063606306910515,
+          "reference_mesh_volume": 1.3851882613486581,
+          "distance_transform_millis": 6,
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "boundary_voxel_count": 11048,
+          "voxel_spacing": 0.03125,
+          "finite_distance_count": 262144,
+          "surface_distance_model": "euclidean_distance_to_nearest_boundary_voxel_center",
+          "boundary_build_millis": 6,
+          "quality_check_millis": 0,
+          "min_signed_distance": -0.55901700258255,
+          "inside_outside_millis": 172,
+          "algorithm": "grid_euclidean_distance_transform",
+          "outside_voxel_count": 211012,
+          "deduplicated_intersection_count": 0,
+          "failed_scanline_count": 0,
+          "total_millis": 185,
+          "warnings": ["SDF_VOLUME_ERROR_HIGH"],
+          "signed": true,
+          "volume_relative_error": 0.12650738403473522,
+          "ambiguous_scanline_count": 0,
+          "retried_scanline_count": 0,
+          "zero_band_count": 11048,
+          "max_signed_distance": 1.0336147546768188,
+          "inside_voxel_count": 51132,
+          "half_voxel_correction": false,
+          "intersection_tolerance": 0.0062500000931322575,
+          "errors": [],
+          "status": "pass_with_warnings"
+        }
+      },
+      "export_enabled": true,
+      "mesh_strict_valid": true,
+      "material_stl": "M2-D_material.stl",
+      "id": "M2-D",
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31061097979545593,
+        "field_sample_millis": 86,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 9578,
+        "domain_build_millis": 55,
+        "total_millis": 401,
+        "warnings": [
+          "RAISED_VEINS_SUPPRESSED",
+          "DOMAIN_VOLUME_ERROR_HIGH"
+        ],
+        "sampled_domain_volume": 1.5604248046875,
+        "domain_volume_warning_threshold": 0.11999999731779099,
+        "domain_inside_samples": 51132,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.1176300048828125,
+        "analytic_domain_volume": 1.3851882219314575,
+        "materialize_millis": 34,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.12650741636753082,
+        "admitted_samples": 30836,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.03653717041015625,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "expected_valid": true,
+      "observation": "hard_interior",
+      "mesh_report": {
+        "absolute_volume_world": 1.3851882613486581,
+        "sanitation_millis": 4,
+        "world_bounds": {
+          "volume": 2.713130474090576,
+          "min": [
+            -0.6071506142616272,
+            -0.9200000166893005,
+            -0.6071506142616272
+          ],
+          "max": [
+            0.6071506142616272,
+            0.9200000166893005,
+            0.6071506142616272
+          ]
+        },
+        "merge_tolerance": 3.282879333710298E-6,
+        "unique_edge_count": 18144,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 12096,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 5,
+        "parsed_triangle_count": 12096,
+        "boundary_edge_count": 0,
+        "source_name": "M2-E_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 30238,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "604884",
+        "output_vertex_count": 6050,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 1.3851882613486581,
+        "global_winding_flipped": false,
+        "watertight": true,
+        "input_vertex_count": 36288,
+        "area_tolerance": 1.0777296589881136E-11,
+        "declared_triangle_count": 12096,
+        "input_triangle_count": 12096,
+        "source_bounds": {
+          "volume": 6.020755767822266,
+          "min": [
+            -0.7919356226921082,
+            -1.2000000476837158,
+            -0.7919356226921082
+          ],
+          "max": [
+            0.7919356226921082,
+            1.2000000476837158,
+            0.7919356226921082
+          ]
+        },
+        "source_sha256": "b4fa375ebfd81182a0d89374b19733c11f12aaf4ffe70a800aae417026480a45",
+        "signed_volume_source": 3.073895404171536,
+        "absolute_volume_source": 3.073895404171536,
+        "errors": [],
+        "status": "pass_with_warnings"
+      },
+      "acceptance_passed": true,
+      "elapsed_millis": 1716,
+      "resolution": 128,
+      "loaded": true,
+      "domain_valid": true,
+      "mesh_printable": true,
+      "sdf": {
+        "zero_band_count": 43992,
+        "min_distance": -0.5831705331802368,
+        "signed": true,
+        "finite_count": 2097152,
+        "nonfinite_count": 0,
+        "spec": {
+          "sample_volume": 3.814697265625E-6,
+          "spacing_x": 0.015625,
+          "spacing_y": 0.015625,
+          "spacing_z": 0.015625,
+          "bounds": {
+            "volume": 8,
+            "min": [
+              -1,
+              -1,
+              -1
+            ],
+            "max": [
+              1,
+              1,
+              1
+            ]
+          },
+          "resolution": [
+            128,
+            128,
+            128
+          ]
+        },
+        "max_distance": 1.0595086812973022,
+        "quality": {
+          "nonfinite_distance_count": 0,
+          "sampled_inside_volume": 1.470855712890625,
+          "jitter_magnitude": 1.56249996052793E-6,
+          "boundary_threshold": 0.013531803153455257,
+          "reference_mesh_volume": 1.3851882613486581,
+          "distance_transform_millis": 51,
+          "resolution": [
+            128,
+            128,
+            128
+          ],
+          "boundary_voxel_count": 43992,
+          "voxel_spacing": 0.015625,
+          "finite_distance_count": 2097152,
+          "surface_distance_model": "euclidean_distance_to_nearest_boundary_voxel_center",
+          "boundary_build_millis": 13,
+          "quality_check_millis": 0,
+          "min_signed_distance": -0.5831705331802368,
+          "inside_outside_millis": 684,
+          "algorithm": "grid_euclidean_distance_transform",
+          "outside_voxel_count": 1711576,
+          "deduplicated_intersection_count": 0,
+          "failed_scanline_count": 0,
+          "total_millis": 758,
+          "warnings": [],
+          "signed": true,
+          "volume_relative_error": 0.061845349063641815,
+          "ambiguous_scanline_count": 0,
+          "retried_scanline_count": 0,
+          "zero_band_count": 43992,
+          "max_signed_distance": 1.0595086812973022,
+          "inside_voxel_count": 385576,
+          "half_voxel_correction": false,
+          "intersection_tolerance": 0.0031250000465661287,
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "export_enabled": true,
+      "mesh_strict_valid": true,
+      "material_stl": "M2-E_material.stl",
+      "id": "M2-E",
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.3180825710296631,
+        "field_sample_millis": 393,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 122645,
+        "domain_build_millis": 284,
+        "total_millis": 1716,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 1.470855712890625,
+        "domain_volume_warning_threshold": 0.07000000029802322,
+        "domain_inside_samples": 385576,
+        "candidate_solid_samples": 634565,
+        "admitted_fraction": 0.18385696411132812,
+        "analytic_domain_volume": 1.3851882219314575,
+        "materialize_millis": 201,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.06184538081288338,
+        "admitted_samples": 385576,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 2097152,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.058481693267822266,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "loaded": true,
+      "domain_valid": false,
+      "expected_valid": false,
+      "mesh_printable": false,
+      "export_enabled": false,
+      "observation": "hard_interior",
+      "mesh_strict_valid": false,
+      "mesh_report": {
+        "absolute_volume_world": 5.191253615849818,
+        "sanitation_millis": 0,
+        "world_bounds": {
+          "volume": 6.229504108428955,
+          "min": [
+            -0.9200000166893005,
+            -0.9200000166893005,
+            -0.9200000166893005
+          ],
+          "max": [
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005
+          ]
+        },
+        "merge_tolerance": 3.4641016100067645E-6,
+        "unique_edge_count": 17,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 10,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 1,
+        "parsed_triangle_count": 10,
+        "boundary_edge_count": 4,
+        "source_name": "M2-F_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 22,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "584",
+        "output_vertex_count": 8,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 5.191253615849818,
+        "global_winding_flipped": false,
+        "watertight": false,
+        "input_vertex_count": 30,
+        "area_tolerance": 1.1999999952050366E-11,
+        "declared_triangle_count": 10,
+        "input_triangle_count": 10,
+        "source_bounds": {
+          "volume": 8,
+          "min": [
+            -1,
+            -1,
+            -1
+          ],
+          "max": [
+            1,
+            1,
+            1
+          ]
+        },
+        "source_sha256": "3a2d3f51a181626b626c19db0e06421f64f95e3b04721a90b0c4daf382f8e7e0",
+        "signed_volume_source": 6.666666666666667,
+        "absolute_volume_source": 6.666666666666667,
+        "errors": [
+          "MESH_BOUNDARY_EDGES",
+          "MESH_NOT_WATERTIGHT"
+        ],
+        "status": "fail"
+      },
+      "acceptance_passed": true,
+      "id": "M2-F",
+      "elapsed_millis": 0,
+      "resolution": 64
+    },
+    {
+      "loaded": true,
+      "domain_valid": false,
+      "expected_valid": false,
+      "mesh_printable": false,
+      "export_enabled": false,
+      "observation": "hard_interior",
+      "mesh_strict_valid": false,
+      "mesh_report": {
+        "absolute_volume_world": 0,
+        "sanitation_millis": 0,
+        "world_bounds": {
+          "volume": 1.5573760271072388,
+          "min": [
+            -0.46000000834465027,
+            -0.9200000166893005,
+            -0.46000000834465027
+          ],
+          "max": [
+            0.46000000834465027,
+            0.9200000166893005,
+            0.46000000834465027
+          ]
+        },
+        "merge_tolerance": 2.4494897843396757E-6,
+        "unique_edge_count": 7,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 1,
+        "output_triangle_count": 3,
+        "duplicate_triangles_removed": 0,
+        "manifold": false,
+        "import_parse_millis": 0,
+        "parsed_triangle_count": 3,
+        "boundary_edge_count": 6,
+        "source_name": "M2-G_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 4,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "234",
+        "output_vertex_count": 5,
+        "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+        "consistently_oriented": true,
+        "signed_volume_world": 0,
+        "global_winding_flipped": false,
+        "watertight": false,
+        "input_vertex_count": 9,
+        "area_tolerance": 6.000000409706052E-12,
+        "declared_triangle_count": 3,
+        "input_triangle_count": 3,
+        "source_bounds": {
+          "volume": 2,
+          "min": [
+            0,
+            -1,
+            0
+          ],
+          "max": [
+            1,
+            1,
+            1
+          ]
+        },
+        "source_sha256": "39dca379238f22f4b0eb566840b3df977549d7689738264c5ca3b4f4ec08f47d",
+        "signed_volume_source": 0,
+        "absolute_volume_source": 0,
+        "errors": [
+          "MESH_BOUNDARY_EDGES",
+          "MESH_NOT_WATERTIGHT",
+          "MESH_NONMANIFOLD_EDGES",
+          "MESH_SIGNED_VOLUME_INVALID"
+        ],
+        "status": "fail"
+      },
+      "acceptance_passed": true,
+      "id": "M2-G",
+      "elapsed_millis": 0,
+      "resolution": 64
+    },
+    {
+      "expected_valid": true,
+      "observation": "hard_interior",
+      "mesh_report": {
+        "absolute_volume_world": 3.2313446328230238,
+        "sanitation_millis": 1,
+        "world_bounds": {
+          "volume": 6.229504108428955,
+          "min": [
+            -0.9200000166893005,
+            -0.9200000166893005,
+            -0.9200000166893005
+          ],
+          "max": [
+            0.9200000166893005,
+            0.9200000166893005,
+            0.9200000166893005
+          ]
+        },
+        "merge_tolerance": 3.4641016100067645E-6,
+        "unique_edge_count": 2484,
+        "inconsistent_orientation_edge_count": 0,
+        "zero_area_triangles_removed": 0,
+        "nonmanifold_edge_count": 0,
+        "output_triangle_count": 1656,
+        "duplicate_triangles_removed": 0,
+        "manifold": true,
+        "import_parse_millis": 1,
+        "parsed_triangle_count": 1656,
+        "boundary_edge_count": 0,
+        "source_name": "M2-H_source.stl",
+        "source_format": "binary_stl",
+        "duplicate_vertices_merged": 4138,
+        "invalid_index_triangles_removed": 0,
+        "source_bytes": "82884",
+        "output_vertex_count": 830,
+        "warnings": [
+          "MESH_DUPLICATE_VERTICES_MERGED",
+          "MESH_GLOBAL_WINDING_FLIPPED"
+        ],
+        "consistently_oriented": true,
+        "signed_volume_world": 3.2313446328230238,
+        "global_winding_flipped": true,
+        "watertight": true,
+        "input_vertex_count": 4968,
+        "area_tolerance": 1.1999999952050366E-11,
+        "declared_triangle_count": 1656,
+        "input_triangle_count": 1656,
+        "source_bounds": {
+          "volume": 8,
+          "min": [
+            -1,
+            -1,
+            -1
+          ],
+          "max": [
+            1,
+            1,
+            1
+          ]
+        },
+        "source_sha256": "a8db48207eb0fefce0c077538e67eb7d37c70965bb822c4c4ca2875a4bf067f8",
+        "signed_volume_source": 4.1497293613976085,
+        "absolute_volume_source": 4.1497293613976085,
+        "errors": [],
+        "status": "pass_with_warnings"
+      },
+      "acceptance_passed": true,
+      "elapsed_millis": 226,
+      "resolution": 64,
+      "loaded": true,
+      "domain_valid": true,
+      "mesh_printable": true,
+      "sdf": {
+        "zero_band_count": 18816,
+        "min_distance": -0.8643323183059692,
+        "signed": true,
+        "finite_count": 262144,
+        "nonfinite_count": 0,
+        "spec": {
+          "sample_volume": 3.0517578125E-5,
+          "spacing_x": 0.03125,
+          "spacing_y": 0.03125,
+          "spacing_z": 0.03125,
+          "bounds": {
+            "volume": 8,
+            "min": [
+              -1,
+              -1,
+              -1
+            ],
+            "max": [
+              1,
+              1,
+              1
+            ]
+          },
+          "resolution": [
+            64,
+            64,
+            64
+          ]
+        },
+        "max_distance": 0.7762339115142822,
+        "quality": {
+          "nonfinite_distance_count": 0,
+          "sampled_inside_volume": 3.52392578125,
+          "jitter_magnitude": 3.12499992105586E-6,
+          "boundary_threshold": 0.027063606306910515,
+          "reference_mesh_volume": 3.2313446328230238,
+          "distance_transform_millis": 8,
+          "resolution": [
+            64,
+            64,
+            64
+          ],
+          "boundary_voxel_count": 18816,
+          "voxel_spacing": 0.03125,
+          "finite_distance_count": 262144,
+          "surface_distance_model": "euclidean_distance_to_nearest_boundary_voxel_center",
+          "boundary_build_millis": 5,
+          "quality_check_millis": 0,
+          "min_signed_distance": -0.8643323183059692,
+          "inside_outside_millis": 25,
+          "algorithm": "grid_euclidean_distance_transform",
+          "outside_voxel_count": 146672,
+          "deduplicated_intersection_count": 0,
+          "failed_scanline_count": 0,
+          "total_millis": 40,
+          "warnings": [],
+          "signed": true,
+          "volume_relative_error": 0.09054470558634484,
+          "ambiguous_scanline_count": 0,
+          "retried_scanline_count": 0,
+          "zero_band_count": 18816,
+          "max_signed_distance": 0.7762339115142822,
+          "inside_voxel_count": 115472,
+          "half_voxel_correction": false,
+          "intersection_tolerance": 0.0062500000931322575,
+          "errors": [],
+          "status": "pass"
+        }
+      },
+      "export_enabled": true,
+      "mesh_strict_valid": true,
+      "material_stl": "M2-H_material.stl",
+      "id": "M2-H",
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31205832958221436,
+        "field_sample_millis": 54,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 36034,
+        "domain_build_millis": 36,
+        "total_millis": 226,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 3.52392578125,
+        "domain_volume_warning_threshold": 0.11999999731779099,
+        "domain_inside_samples": 115472,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.44049072265625,
+        "analytic_domain_volume": 3.231344699859619,
+        "materialize_millis": 85,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.0905446857213974,
+        "admitted_samples": 115472,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.13745880126953125,
+        "status": "pass_with_warnings"
+      }
+    }
+  ],
+  "architecture": "DCRTE-ET v0.3"
+}

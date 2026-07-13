@@ -32,6 +32,29 @@ validation rejects empty, non-finite, outside-domain, or non-manifold results.
 This is a controlled generative-design instrument, not a constitutive material
 simulation or mechanical performance claim.
 
-Current surfaces are exploratory. Imported mesh domains, mesh-derived signed
-distance fields, intrinsic coordinates, entropic scheduling, and mechanical
-analysis are intentionally deferred to later milestones.
+## Imported Mesh Observation Domains
+
+DCRTE-ET Milestone 2 extends the same contract to closed, watertight STL meshes.
+The imported surface is not a deformation target. It supplies a validated
+boundary, an inside/outside relation, and a signed-distance volume in normalized
+observation coordinates. The independent recursive field is sampled on that
+grid and admitted through the existing hard-interior or inward shell-band rule.
+
+```text
+final material = imported domain admits sample AND existing field rule is solid
+```
+
+Binary and common ASCII STL files pass through source hashing, transparent mesh
+sanitation, a reversible centered uniform fit, conservative boundary
+voxelization, deterministic parity classification, and a grid Euclidean
+distance transform. Strict mode blocks open and non-manifold domains. Unsigned
+preview mode displays diagnostics without making inside/outside claims or
+enabling fabrication export.
+
+The canonical egg is a deterministic imported-domain fixture, not a special
+mask. It is written to STL and re-imported through the production path so the
+asymmetric ovoid tests the same architecture used for user geometry.
+
+Current surfaces remain exploratory. Intrinsic coordinates, entropic
+scheduling, mechanical analysis, automatic repair, remeshing, and claims of
+biological or structural validity are intentionally deferred.

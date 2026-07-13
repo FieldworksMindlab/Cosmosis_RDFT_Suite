@@ -369,9 +369,78 @@ For a non-interactive regression run:
 ```
 
 This writes the compact report `logs/dcrte_m1_acceptance_latest.json` and exits.
-Imported meshes, mesh-derived SDFs, intrinsic coordinates, propagation,
-entropic scheduling, adaptive sampling, and mechanical analysis remain outside
-Milestone 1.
+Imported meshes and mesh-derived SDFs are added by Milestone 2 below. Intrinsic
+coordinates, propagation, entropic scheduling, adaptive sampling, and
+mechanical analysis remain outside the current implementation.
+
+## DCRTE-ET Milestone 2: Imported Mesh Domains
+
+Milestone 2 adds `PIPE DCRTE IMPORTED`. In this mode Surface Foundry does not
+deform a recursive object to match the source STL. The source mesh is validated
+and converted into a signed-distance observation domain. The recursive field is
+then independently sampled, admitted by that domain, and materialized through
+the existing Observation Layer, immediate scheduler, validation, voxel
+materializer, preview, call-sheet, and STL export paths.
+
+### Import workflow
+
+1. Select `PIPE DCRTE IMPORTED` in Surface Foundry.
+2. Click `LOAD STL`, or `LOAD EGG FIXTURE` for the deterministic reference ovoid.
+3. Inspect watertight, manifold, orientation, boundary-edge, and non-manifold
+   counts before building.
+4. Use fit, quarter-turn rotation, uniform scale, and `32^3` / `64^3` / `128^3`
+   resolution controls as needed.
+5. Click `REBUILD SDF`. A `128^3` research build requires a second confirming
+   click within ten seconds.
+6. Select hard-interior or inward shell-band observation, then generate the
+   material through the normal Surface Foundry controls.
+
+Binary and common ASCII STL are supported. Source coordinates remain unitless;
+the recorded transform maps them into normalized `[-1,1]^3` observation space,
+while Surface Foundry output scale independently maps the result to millimeters.
+The source filename, format, byte count, SHA-256, sanitation counts and
+tolerances, transform, SDF algorithm and timings, observation settings, field
+configuration, validation, and output scale are recorded in JSON provenance.
+Full local source paths are not exported.
+
+### Strict and preview policies
+
+`STRICT` is required for signed SDF construction, field materialization, call
+sheets, and STL export. Open, non-manifold, inconsistently oriented, or otherwise
+unreliable meshes remain visible with exact diagnostics but cannot produce
+material. `UNSIGNED PREVIEW` permits mesh, boundary-voxel, and unsigned-distance
+inspection only. It never makes inside/outside claims and never enables export.
+
+Sanitation is deliberately narrow: near-duplicate vertices can be merged,
+degenerate or duplicate faces removed, and a valid closed mesh can receive one
+global winding flip. No holes are filled, no gaps are bridged, and no source
+topology is reconstructed.
+
+### SDF and fixture
+
+The full accepted mesh is conservatively boundary-voxelized, classified by
+deterministic X-scanline parity, and converted with an exact Euclidean distance
+transform over boundary voxel centers. SDF slices are available on XY, XZ, and
+YZ axes with interior, boundary band, exterior, and optional final-material
+overlays. Preview stride never reduces the authoritative validation or SDF mesh.
+
+The canonical egg is a deterministic imported-domain fixture used to test an
+asymmetric ovoid boundary. It is generated as a closed 12,096-triangle mesh,
+written to binary STL, released, and processed through the same importer,
+validator, transform, SDF, materialization, and export path as user files.
+
+For an offline acceptance run:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="$PWD" \
+  --output=/tmp/cosmosis-dcrte-m2 \
+  --force --run --dcrte-m2-acceptance
+```
+
+The run writes `logs/dcrte_m2_acceptance_latest.json` and exits. Measured fixture
+results and architecture insertion points are documented in
+`DCRTE_MILESTONE_2_IMPLEMENTATION_REPORT.md`.
 
 ## Floquet Shaper Influence
 
