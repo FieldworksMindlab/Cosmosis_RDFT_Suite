@@ -13,7 +13,8 @@ final String DCRTE_LEGACY_DIRECT_VERSION = "legacy-topology-scalar-v1";
 enum DCRTEPipelineMode {
   LEGACY_DIRECT,
   DCRTE_ADAPTER_TEST,
-  DCRTE_PRIMITIVE;
+  DCRTE_PRIMITIVE,
+  DCRTE_IMPORTED_MESH;
 
   String id() {
     return name();
@@ -85,12 +86,19 @@ void cycleDcrtePipelineMode() {
   } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_ADAPTER_TEST) {
     dcrtePipelineMode = DCRTEPipelineMode.DCRTE_PRIMITIVE;
     dcrteAdapterDiagnostics.status = "IDLE";
+  } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
+    dcrtePipelineMode = DCRTEPipelineMode.DCRTE_IMPORTED_MESH;
+    dcrteAdapterDiagnostics.status = "IDLE";
   } else {
     dcrtePipelineMode = DCRTEPipelineMode.LEGACY_DIRECT;
     dcrteAdapterDiagnostics.status = "IDLE";
   }
   if (previous == DCRTEPipelineMode.DCRTE_PRIMITIVE || dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
     markDcrtePrimitiveStale("pipeline changed; regenerate");
+  }
+  if (previous == DCRTEPipelineMode.DCRTE_IMPORTED_MESH || dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    markFoundryStale();
+    foundryStatus = dcrteImportedSourceMesh == null ? "load a watertight STL" : "pipeline changed; generate imported material";
   }
 }
 
@@ -153,7 +161,8 @@ float dcrteRadicalInverse(int value, int base) {
 String dcrtePipelineLabel() {
   if (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT) return "LEGACY";
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_ADAPTER_TEST) return "ADAPTER TEST";
-  return "DCRTE PRIMITIVE";
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) return "DCRTE PRIMITIVE";
+  return "DCRTE IMPORTED";
 }
 
 String dcrteGenerationFieldEngineId() {

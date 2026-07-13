@@ -81,6 +81,29 @@ class DCRTEConfig {
   String materializerIdValue = "none";
   String raisedVeinsPolicyValue = "legacy_behavior";
 
+  String importedSourceNameValue = "";
+  String importedSourceFormatValue = "";
+  String importedSourceHashValue = "";
+  long importedSourceBytesValue;
+  int importedParsedTrianglesValue;
+  String importedPolicyValue = "strict";
+  int importedResolutionValue;
+  int importedRotateXValue;
+  int importedRotateYValue;
+  int importedRotateZValue;
+  float importedFitMarginValue;
+  float importedScaleMultiplierValue;
+  float importedUniformScaleValue;
+  boolean importedSdfSignedValue;
+  String importedSdfAlgorithmValue = "none";
+  float importedBoundaryThresholdValue;
+  float importedIntersectionToleranceValue;
+  float importedJitterMagnitudeValue;
+  int importedBoundaryVoxelsValue;
+  int importedInsideVoxelsValue;
+  int importedFailedScanlinesValue;
+  double importedVolumeErrorValue;
+
   float[] topologyBlendCopy() {
     float[] copy = new float[topologyBlend.length];
     System.arraycopy(topologyBlend, 0, copy, 0, topologyBlend.length);
@@ -162,6 +185,36 @@ class DCRTEConfig {
       dcrteCanonical(out, "scheduler_id", schedulerIdValue);
       dcrteCanonical(out, "materializer_id", materializerIdValue);
       dcrteCanonical(out, "raised_veins_policy", raisedVeinsPolicyValue);
+    } else if (pipelineMode.equals("DCRTE_IMPORTED_MESH")) {
+      dcrteCanonical(out, "imported_source_name", importedSourceNameValue);
+      dcrteCanonical(out, "imported_source_format", importedSourceFormatValue);
+      dcrteCanonical(out, "imported_source_hash", importedSourceHashValue);
+      dcrteCanonical(out, "imported_source_bytes", Long.toString(importedSourceBytesValue));
+      dcrteCanonical(out, "imported_parsed_triangles", importedParsedTrianglesValue);
+      dcrteCanonical(out, "imported_policy", importedPolicyValue);
+      dcrteCanonical(out, "imported_resolution", importedResolutionValue);
+      dcrteCanonical(out, "imported_rotate_x", importedRotateXValue);
+      dcrteCanonical(out, "imported_rotate_y", importedRotateYValue);
+      dcrteCanonical(out, "imported_rotate_z", importedRotateZValue);
+      dcrteCanonical(out, "imported_fit_margin", importedFitMarginValue);
+      dcrteCanonical(out, "imported_scale_multiplier", importedScaleMultiplierValue);
+      dcrteCanonical(out, "imported_uniform_scale", importedUniformScaleValue);
+      dcrteCanonical(out, "imported_sdf_signed", importedSdfSignedValue);
+      dcrteCanonical(out, "imported_sdf_algorithm", importedSdfAlgorithmValue);
+      dcrteCanonical(out, "imported_boundary_threshold", importedBoundaryThresholdValue);
+      dcrteCanonical(out, "imported_intersection_tolerance", importedIntersectionToleranceValue);
+      dcrteCanonical(out, "imported_jitter_magnitude", importedJitterMagnitudeValue);
+      dcrteCanonical(out, "imported_boundary_voxels", importedBoundaryVoxelsValue);
+      dcrteCanonical(out, "imported_inside_voxels", importedInsideVoxelsValue);
+      dcrteCanonical(out, "imported_failed_scanlines", importedFailedScanlinesValue);
+      dcrteCanonical(out, "imported_volume_error", Double.toString(importedVolumeErrorValue));
+      dcrteCanonical(out, "observation_mode", observationModeValue);
+      dcrteCanonical(out, "boundary_epsilon", boundaryEpsilonValue);
+      dcrteCanonical(out, "shell_thickness", shellThicknessValue);
+      dcrteCanonical(out, "shell_thickness_voxels", shellThicknessVoxelsValue);
+      dcrteCanonical(out, "scheduler_id", schedulerIdValue);
+      dcrteCanonical(out, "materializer_id", materializerIdValue);
+      dcrteCanonical(out, "raised_veins_policy", raisedVeinsPolicyValue);
     }
     return out.toString();
   }
@@ -172,14 +225,15 @@ class DCRTEConfig {
     root.setInt("dcrte_milestone", dcrteMilestone);
     root.setString("configuration_id", configurationId);
     root.setString("architecture_version", "DCRTE-ET v0.3");
-    root.setString("application_version", "Cosmosis Visual Observatory M1");
+    root.setString("application_version", dcrteMilestone >= 2 ? "Cosmosis Visual Observatory M2" : "Cosmosis Visual Observatory M1");
 
     JSONObject pipeline = new JSONObject();
     pipeline.setString("mode", pipelineMode);
     pipeline.setString("field_engine_id", fieldEngineId);
     pipeline.setString("field_engine_version", fieldEngineVersion);
-    pipeline.setString("generation_path", pipelineMode.equals("DCRTE_PRIMITIVE") ? "dcrte_primitive" : "legacy_direct");
-    pipeline.setString("adapter_role", pipelineMode.equals("DCRTE_PRIMITIVE") ? "field_and_materializer_boundary" : "diagnostic_only");
+    boolean dcrteGeneration = pipelineMode.equals("DCRTE_PRIMITIVE") || pipelineMode.equals("DCRTE_IMPORTED_MESH");
+    pipeline.setString("generation_path", pipelineMode.equals("DCRTE_IMPORTED_MESH") ? "dcrte_imported_mesh" : pipelineMode.equals("DCRTE_PRIMITIVE") ? "dcrte_primitive" : "legacy_direct");
+    pipeline.setString("adapter_role", dcrteGeneration ? "field_and_materializer_boundary" : "diagnostic_only");
     root.setJSONObject("pipeline", pipeline);
 
     JSONObject fieldConfig = new JSONObject();
@@ -271,6 +325,40 @@ class DCRTEConfig {
       raisedVeins.setBoolean("applied", false);
       raisedVeins.setString("reason", raisedVeinsPolicyValue);
       root.setJSONObject("raised_veins", raisedVeins);
+    } else if (pipelineMode.equals("DCRTE_IMPORTED_MESH")) {
+      JSONObject sourceMesh = new JSONObject();
+      sourceMesh.setString("filename", importedSourceNameValue);
+      sourceMesh.setString("format", importedSourceFormatValue);
+      sourceMesh.setString("sha256", importedSourceHashValue);
+      sourceMesh.setString("source_units", "unspecified");
+      sourceMesh.setString("source_bytes", Long.toString(importedSourceBytesValue));
+      sourceMesh.setInt("parsed_triangles", importedParsedTrianglesValue);
+      root.setJSONObject("source_mesh", sourceMesh);
+      if (dcrteImportedMeshReport != null) root.setJSONObject("mesh_report", dcrteImportedMeshReport.toJSON());
+      if (dcrteImportedTransform != null) root.setJSONObject("transform", dcrteImportedTransform.toJSON());
+      VolumeSpec spec = new VolumeSpec(importedResolutionValue, importedResolutionValue, importedResolutionValue,
+        new Bounds3D(observerMinXValue, observerMinYValue, observerMinZValue, observerMaxXValue, observerMaxYValue, observerMaxZValue));
+      UniformGridObserver observer = new UniformGridObserver();
+      observer.initialize(spec);
+      root.setJSONObject("observer", observer.toJSON());
+      if (dcrteImportedSdf != null) root.setJSONObject("sdf", dcrteImportedSdf.toJSON());
+      ObservationLayer observation = observationModeValue.equals("shell_band")
+        ? new ShellBandObservation(boundaryEpsilonValue, shellThicknessValue, shellThicknessVoxelsValue)
+        : new HardInteriorObservation(boundaryEpsilonValue);
+      root.setJSONObject("observation", observation.toJSON());
+      root.setJSONObject("scheduler", dcrteImmediateScheduler.toJSON());
+      root.setJSONObject("materializer", dcrteLegacyMaterializer.toJSON());
+      JSONObject coordinates = new JSONObject();
+      coordinates.setString("type", "cartesian");
+      coordinates.setString("source", "uniform_grid_observer");
+      coordinates.setString("source_to_observation", "fit_centered_uniform");
+      root.setJSONObject("coordinates", coordinates);
+      JSONObject raisedVeins = new JSONObject();
+      raisedVeins.setBoolean("requested", foundryRaisedVeinsValue);
+      raisedVeins.setBoolean("applied", false);
+      raisedVeins.setString("reason", raisedVeinsPolicyValue);
+      root.setJSONObject("raised_veins", raisedVeins);
+      if (dcrteImportedSourceIsFixture && dcrteImportedFixtureMetadata != null) root.setJSONObject("fixture", dcrteImportedFixtureMetadata);
     }
     return root;
   }
@@ -281,6 +369,10 @@ DCRTEConfig dcrteLastBuildConfiguration = null;
 DCRTEConfig captureDcrteConfig() {
   DCRTEConfig config = new DCRTEConfig();
   config.pipelineMode = dcrtePipelineMode.id();
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    config.schemaVersion = "0.5-m2";
+    config.dcrteMilestone = 2;
+  }
   config.fieldEngineId = dcrteGenerationFieldEngineId();
   config.fieldEngineVersion = dcrteGenerationFieldEngineVersion();
   config.seedValue = seed;
@@ -333,7 +425,8 @@ DCRTEConfig captureDcrteConfig() {
   config.primitiveBoxHalfZValue = dcrteBoxHalfZ;
   config.primitiveCylinderRadiusValue = dcrteCylinderRadius;
   config.primitiveCylinderHalfHeightValue = dcrteCylinderHalfHeight;
-  config.observerResolutionValue = dcrtePrimitiveResolution;
+  config.observerResolutionValue = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
+    ? dcrteImportedResolution : dcrtePrimitiveResolution;
   config.observerMinXValue = dcrteObserverBounds.minX;
   config.observerMinYValue = dcrteObserverBounds.minY;
   config.observerMinZValue = dcrteObserverBounds.minZ;
@@ -341,35 +434,67 @@ DCRTEConfig captureDcrteConfig() {
   config.observerMaxYValue = dcrteObserverBounds.maxY;
   config.observerMaxZValue = dcrteObserverBounds.maxZ;
   config.observationModeValue = dcrteObservationMode.id();
-  VolumeSpec primitiveSpec = createDcrteVolumeSpec();
-  config.boundaryEpsilonValue = dcrteBoundaryEpsilon(primitiveSpec);
-  config.shellThicknessValue = dcrteShellThickness(primitiveSpec);
+  VolumeSpec observationSpec = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
+    ? createDcrteImportedVolumeSpec() : createDcrteVolumeSpec();
+  config.boundaryEpsilonValue = dcrteBoundaryEpsilon(observationSpec);
+  config.shellThicknessValue = dcrteShellThickness(observationSpec);
   config.shellThicknessVoxelsValue = dcrteShellThicknessVoxels;
   config.schedulerIdValue = dcrteImmediateScheduler.getId();
   config.materializerIdValue = dcrteLegacyMaterializer.getId();
   config.raisedVeinsPolicyValue = dcrteRaisedVeinsPolicy();
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    config.importedSourceNameValue = dcrteImportedSourceMesh == null ? "" : dcrteImportedSourceMesh.sourceName;
+    config.importedSourceFormatValue = dcrteImportedSourceMesh == null ? "" : dcrteImportedSourceMesh.sourceFormat;
+    config.importedSourceHashValue = dcrteImportedSourceMesh == null ? "" : dcrteImportedSourceMesh.sourceHashSha256;
+    config.importedSourceBytesValue = dcrteImportedSourceMesh == null ? 0 : dcrteImportedSourceMesh.sourceBytes;
+    config.importedParsedTrianglesValue = dcrteImportedMeshReport == null ? 0 : dcrteImportedMeshReport.parsedTriangleCount;
+    config.importedPolicyValue = dcrteImportedPolicy.id();
+    config.importedResolutionValue = dcrteImportedResolution;
+    config.importedRotateXValue = dcrteImportedRotateX;
+    config.importedRotateYValue = dcrteImportedRotateY;
+    config.importedRotateZValue = dcrteImportedRotateZ;
+    config.importedFitMarginValue = dcrteImportedFitMargin;
+    config.importedScaleMultiplierValue = dcrteImportedScaleMultiplier;
+    config.importedUniformScaleValue = dcrteImportedTransform == null ? 0 : dcrteImportedTransform.uniformScale;
+    config.importedSdfSignedValue = dcrteImportedSdf != null && dcrteImportedSdf.signed;
+    config.importedSdfAlgorithmValue = dcrteImportedSdf == null || dcrteImportedSdf.quality == null ? "none" : dcrteImportedSdf.quality.algorithm;
+    config.importedBoundaryThresholdValue = dcrteImportedBoundary == null ? 0 : dcrteImportedBoundary.boundaryThreshold;
+    config.importedIntersectionToleranceValue = dcrteImportedInsideOutside == null ? 0 : dcrteImportedInsideOutside.intersectionTolerance;
+    config.importedJitterMagnitudeValue = dcrteImportedInsideOutside == null ? 0 : dcrteImportedInsideOutside.jitterMagnitude;
+    config.importedBoundaryVoxelsValue = dcrteImportedBoundary == null ? 0 : dcrteImportedBoundary.boundaryCount;
+    config.importedInsideVoxelsValue = dcrteImportedInsideOutside == null ? 0 : dcrteImportedInsideOutside.insideCount;
+    config.importedFailedScanlinesValue = dcrteImportedInsideOutside == null ? 0 : dcrteImportedInsideOutside.failedScanlineCount;
+    config.importedVolumeErrorValue = dcrteImportedSdf == null || dcrteImportedSdf.quality == null ? Double.NaN : dcrteImportedSdf.quality.volumeRelativeError;
+  }
   config.finalizeIdentity();
   return config;
 }
 
 void appendDcrteMetadata(JSONObject metadata) {
-  DCRTEConfig config = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE
-    && dcrteLastBuildConfiguration != null && !dcrtePrimitiveStale
-    ? dcrteLastBuildConfiguration
-    : captureDcrteConfig();
+  DCRTEConfig config;
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE && dcrteLastBuildConfiguration != null && !dcrtePrimitiveStale) {
+    config = dcrteLastBuildConfiguration;
+  } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH && dcrteImportedLastBuildConfiguration != null && !dcrteImportedStale) {
+    config = dcrteImportedLastBuildConfiguration;
+  } else config = captureDcrteConfig();
   dcrteLastConfiguration = config;
   metadata.setString("dcrte_pipeline_mode", config.pipelineMode);
   metadata.setString("dcrte_field_engine_id", config.fieldEngineId);
   metadata.setString("dcrte_field_engine_version", config.fieldEngineVersion);
   metadata.setString("dcrte_configuration_id", config.configurationId);
   boolean primitive = config.pipelineMode.equals("DCRTE_PRIMITIVE");
-  metadata.setString("dcrte_generation_path", primitive ? "dcrte_primitive" : "legacy_direct");
-  metadata.setString("dcrte_adapter_role", primitive ? "field_and_materializer_boundary" : "diagnostic_only");
+  boolean imported = config.pipelineMode.equals("DCRTE_IMPORTED_MESH");
+  metadata.setString("dcrte_generation_path", imported ? "dcrte_imported_mesh" : primitive ? "dcrte_primitive" : "legacy_direct");
+  metadata.setString("dcrte_adapter_role", primitive || imported ? "field_and_materializer_boundary" : "diagnostic_only");
   JSONObject configuration = config.toJSONObject();
   if (primitive && dcrteLastValidationReport != null) {
     configuration.setJSONObject("validation", dcrteLastValidationReport.toJSON());
     if (dcrtePrimitiveVolume != null) configuration.setJSONObject("volume", dcrtePrimitiveVolume.toJSON());
     configuration.setJSONObject("deterministic_tests", dcrteM1Tests.toJSON());
+  } else if (imported) {
+    if (dcrteLastValidationReport != null) configuration.setJSONObject("validation", dcrteLastValidationReport.toJSON());
+    if (dcrteImportedVolume != null) configuration.setJSONObject("volume", dcrteImportedVolume.toJSON());
+    configuration.setJSONObject("deterministic_tests", dcrteM2Tests.toJSON());
   }
   metadata.setJSONObject("dcrte_configuration", configuration);
 }

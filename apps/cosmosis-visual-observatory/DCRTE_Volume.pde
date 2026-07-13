@@ -98,10 +98,12 @@ void markDcrtePrimitiveStale(String reason) {
 
 int foundryActiveVolumeResolution() {
   if (foundryCallSheetSolid != null) return foundryCallSheetSolid.length;
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) return dcrteImportedResolution;
   return dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrtePrimitiveResolution : foundryResolution;
 }
 
 void markCurrentFoundryStale(String reason) {
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) markDcrtePrimitiveStale(reason);
+  else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) markDcrteImportedMaterialStale(reason);
   else markFoundryStale();
 }

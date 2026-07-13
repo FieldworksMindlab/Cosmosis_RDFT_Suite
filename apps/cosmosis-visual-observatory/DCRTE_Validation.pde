@@ -180,6 +180,7 @@ void validateDcrteVolume(DCRTEValidationReport report, DCRTEVolume volume, Obser
 
 float dcrteDomainVolumeWarningThreshold(ObservationDomain domain) {
   if (domain != null && domain.getId().equals("box")) return 0.04f;
+  if (domain != null && domain.getId().equals("imported_mesh")) return dcrteImportedResolution >= 128 ? 0.07f : 0.12f;
   return 0.08f;
 }
 
@@ -200,6 +201,23 @@ void validateCurrentDcrtePrimitiveVolume() {
 }
 
 boolean dcrtePrimitiveExportAllowed() {
-  return dcrtePipelineMode != DCRTEPipelineMode.DCRTE_PRIMITIVE
-    || (dcrteLastValidationReport != null && dcrteLastValidationReport.exportAllowed() && !dcrtePrimitiveStale);
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
+    return dcrteLastValidationReport != null && dcrteLastValidationReport.exportAllowed() && !dcrtePrimitiveStale;
+  }
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) return dcrteImportedExportAllowed();
+  return true;
+}
+
+String dcrteFoundryExportBlockMessage() {
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
+    return dcrtePrimitiveStale ? "primitive build is stale" : "export blocked by DCRTE validation";
+  }
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    if (dcrteImportedPolicy == InvalidDomainPolicy.UNSIGNED_PREVIEW) return "export blocked: imported domain is preview only";
+    if (dcrteImportedMeshReport == null || !dcrteImportedMeshReport.strictValid()) return "export blocked: imported mesh is not a valid closed domain";
+    if (dcrteImportedSdfDirty) return "export blocked: imported SDF is stale";
+    if (dcrteImportedStale) return "export blocked: regenerate imported material";
+    return "export blocked by imported-domain validation";
+  }
+  return "export blocked by DCRTE validation";
 }

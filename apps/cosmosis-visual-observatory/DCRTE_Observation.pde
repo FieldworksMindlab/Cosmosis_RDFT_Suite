@@ -115,10 +115,18 @@ void cycleDcrteObservationMode() {
   dcrteObservationMode = dcrteObservationMode == DCRTEObservationMode.HARD_INTERIOR
     ? DCRTEObservationMode.SHELL_BAND
     : DCRTEObservationMode.HARD_INTERIOR;
-  markDcrtePrimitiveStale("observation mode changed; regenerate");
+  markDcrteObservationMaterialStale("observation mode changed; regenerate");
 }
 
 void adjustDcrteShellThickness(float deltaVoxels) {
   dcrteShellThicknessVoxels = constrain(dcrteShellThicknessVoxels + deltaVoxels, 1.0f, 24.0f);
-  markDcrtePrimitiveStale("shell thickness changed; regenerate");
+  markDcrteObservationMaterialStale("shell thickness changed; regenerate");
+}
+
+void markDcrteObservationMaterialStale(String reason) {
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    markDcrteImportedMaterialStale(reason);
+  } else {
+    markDcrtePrimitiveStale(reason);
+  }
 }

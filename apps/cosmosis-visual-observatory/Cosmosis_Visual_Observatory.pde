@@ -208,6 +208,12 @@ void setup() {
   computeMetrics();
   initializeDcrteMilestone0();
   initializeDcrteMilestone1();
+  initializeDcrteMilestone2();
+  if (dcrteCommandLineFlag("--dcrte-m2-acceptance")) {
+    runDcrteMilestone2AcceptanceMatrix();
+    exit();
+    return;
+  }
   if (dcrteCommandLineFlag("--dcrte-m1-acceptance")) {
     runDcrteMilestone1AcceptanceMatrix();
     exit();
@@ -1377,7 +1383,9 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   rotateY(-0.55 + simT * 0.08);
   rotateZ(0.18);
   float previewScale = min(w, h) * 0.34;
-  if (foundryMesh != null && foundryMesh.tris.size() > 0) {
+  if (foundryMesh != null && foundryMesh.tris.size() > 0
+      && !(dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
+        && (!dcrteImportedShowMaterial || dcrteImportedStale))) {
     foundryMesh.drawPreview(previewScale / max(1.0, foundryScaleMM * 0.5));
   } else if (foundryGeometryIndex > 0) {
     drawFoundryWrappedGeometryPreview(previewScale);
@@ -1391,12 +1399,17 @@ void drawFoundryPreview(int x, int y, int w, int h) {
     drawAnchoredTopologyFibers(scores, active, previewScale);
   }
   drawDcrtePrimitiveWireframe(previewScale);
+  drawDcrteImportedDomainPreview(previewScale);
   popMatrix();
 
   if (cadPreviewEnabled) drawStochasticCadPreview(x, y, w, h);
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
     drawDcrtePrimitivePanel(x + w - 306, y + 12, 294, 248);
     drawDcrteCenterSlice(x, y, w, h);
+  } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    int importedPanelW = min(370, max(330, w - 24));
+    drawDcrteImportedPanel(x + w - importedPanelW - 12, y + 12, importedPanelW, 380);
+    drawDcrteImportedSdfSlice(x, y, w, h);
   } else {
     drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);
   }
@@ -1823,7 +1836,7 @@ int foundryFaceNeighborCount(boolean[][][] solid, int x, int y, int z) {
 
 void exportSurfaceFoundryMesh() {
   if (!dcrtePrimitiveExportAllowed()) {
-    foundryStatus = dcrtePrimitiveStale ? "primitive build is stale" : "export blocked by DCRTE validation";
+    foundryStatus = dcrteFoundryExportBlockMessage();
     return;
   }
   if (foundryMesh == null || foundryMesh.tris.size() == 0) {
@@ -4150,12 +4163,13 @@ String callSheetGeneratedLabel() {
 
 String[] callSheetSettingsLines(String style) {
   float[] scores = currentTopologyScores();
-  return new String[] {
+  String[] base = new String[] {
     styleLabel(style) + " | " + (cadGraphicDrafting ? "GRAPHIC BW" : "TONAL") + " | stride " + cadInternalStride + " | cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
     "res " + foundryActiveVolumeResolution() + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 0) + "mm | geom " + foundryGeometryName() + " | wrap " + nf(foundryGeometryIndex == 0 ? 0 : foundryWrapBlend, 1, 2),
     "alpha " + nf(alpha, 1, 2) + " | depth " + depth + " | source " + nf(sourcePressure, 1, 2) + " | floquet " + nf(floquetCoupling, 1, 2) + " | quasi " + nf(quasiEnergy, 1, 2) + " | coherence " + nf(coherenceBias, 1, 2),
     "topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18) + " | veins " + (foundryRaisedVeinsApplied() ? "applied" : (foundryRaisedVeins ? "suppressed" : "off")) + " | shaper " + (shaperEnabled ? shaperSourceStatus : "off")
   };
+  return base;
 }
 
 String[] callSheetConfigurationLines(String style) {
@@ -4168,15 +4182,30 @@ String[] callSheetConfigurationLines(String style) {
   float effectiveWrap = foundryGeometryIndex == 0 ? 0 : foundryWrapBlend;
   String meshAudit = foundryBoundaryEdges + "/" + foundryNonManifoldEdges + "/" + foundryDegenerateFaces;
   String dcrteValidation = dcrteLastValidationReport == null ? "not_run" : dcrteLastValidationReport.status.id();
-  int dcrteAdmitted = dcrtePrimitiveVolume == null ? 0 : dcrtePrimitiveVolume.admittedCount;
-  int dcrteFinal = dcrtePrimitiveVolume == null ? 0 : dcrtePrimitiveVolume.finalSolidCount;
+  DCRTEVolume dcrteActiveVolume = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
+    ? dcrteImportedVolume : dcrtePrimitiveVolume;
+  int dcrteAdmitted = dcrteActiveVolume == null ? 0 : dcrteActiveVolume.admittedCount;
+  int dcrteFinal = dcrteActiveVolume == null ? 0 : dcrteActiveVolume.finalSolidCount;
   int dcrteOutside = dcrteLastValidationReport == null ? 0 : dcrteLastValidationReport.outsideSolidSamples;
-  return new String[] {
+  boolean imported = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH;
+  String importedSource = dcrteImportedSourceMesh == null ? "none" : shortText(dcrteImportedSourceMesh.sourceName, 24);
+  String importedHash = dcrteImportedSourceMesh == null ? "-" : dcrteImportedSourceMesh.sourceHashSha256;
+  if (importedHash.length() > 16) importedHash = importedHash.substring(0, 16);
+  String observationDomain = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE
+    ? dcrtePrimitiveDomainType.id()
+    : imported ? "imported_mesh / " + importedSource : "not applied";
+  String observerLabel = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE
+    ? dcrtePrimitiveResolution + "^3 [-1,1]^3 voxel-center"
+    : imported ? dcrteImportedResolution + "^3 [-1,1]^3 voxel-center" : "legacy direct sampler";
+  String observationLabel = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE || imported
+    ? dcrteObservationMode.id() + " | shell " + nf(dcrteShellThicknessVoxels, 1, 1) + " vox"
+    : "not applied";
+  String[] base = new String[] {
     "OUTPUT " + styleLabel(style) + " | " + (cadGraphicDrafting ? "graphic BW" : "tonal lines"),
     "DCRTE " + dcrtePipelineLabel() + " | engine " + (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "direct" : "legacy adapter"),
-    "OBS DOMAIN " + (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrtePrimitiveDomainType.id() : "not applied") + " | field carrier remains independent",
-    "OBSERVER " + (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrtePrimitiveResolution + "^3 [-1,1]^3 voxel-center" : "legacy direct sampler"),
-    "OBS LAYER " + (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrteObservationMode.id() + " | shell " + nf(dcrteShellThicknessVoxels, 1, 1) + " vox" : "not applied"),
+    "OBS DOMAIN " + observationDomain + " | field carrier remains independent",
+    "OBSERVER " + observerLabel,
+    "OBS LAYER " + observationLabel,
     "DCRTE VALID " + dcrteValidation + " | admitted " + dcrteAdmitted + " | final " + dcrteFinal + " | outside " + dcrteOutside,
     "CAD preview " + onOff(cadPreviewEnabled) + " | lattice " + onOff(cadInternalLattice) + " | stride " + cadInternalStride,
     "CAD cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
@@ -4204,6 +4233,15 @@ String[] callSheetConfigurationLines(String style) {
     "MESH tris " + (foundryMesh == null ? 0 : foundryMesh.tris.size()) + " | bridge " + foundryBridgeVoxels + " | audit " + meshAudit,
     "STATE simT " + nf(simT, 1, 3) + " | paused " + onOff(paused) + " | holonomy " + (reverseHolonomy ? "reverse" : "forward")
   };
+  if (!imported) return base;
+  String[] expanded = new String[base.length + 3];
+  System.arraycopy(base, 0, expanded, 0, 6);
+  expanded[6] = "IMPORT source " + importedSource + " | sha " + importedHash + " | units unspecified";
+  expanded[7] = "IMPORT policy " + dcrteImportedPolicy.id() + " | fit " + nf(dcrteImportedFitMargin, 1, 3) + " | scale " + nf(dcrteImportedScaleMultiplier, 1, 3);
+  expanded[8] = "IMPORT rot " + dcrteImportedRotateX + "/" + dcrteImportedRotateY + "/" + dcrteImportedRotateZ
+    + " quarter-turns | SDF " + (dcrteImportedSdf == null ? "not built" : dcrteImportedSdf.signed ? "signed" : "unsigned");
+  System.arraycopy(base, 6, expanded, 9, base.length - 6);
+  return expanded;
 }
 
 String onOff(boolean value) {
@@ -6081,6 +6119,7 @@ void resetState() {
   initParticles();
   dirtyField = true;
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) markDcrtePrimitiveStale("field state reset; regenerate");
+  else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) markDcrteImportedMaterialStale("field state reset; regenerate material");
 }
 
 void randomizeState() {
@@ -6160,6 +6199,7 @@ void mousePressed() {
     int cx = rightX + 16;
     int cy = py + 42;
     if (handleDcrtePrimitivePanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
+    if (handleDcrteImportedPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
     if (over(cx, cy, 132, 26)) generateSelectedSurfaceFoundryMesh();
     if (over(cx + 142, cy, 102, 26)) generateFoundryCallSheets();
     if (over(cx + 252, cy, 78, 26)) pullFoundryCallSheetSvgs();
@@ -6167,10 +6207,12 @@ void mousePressed() {
     if (over(cx + 142, cy + 30, 102, 22)) exportSurfaceFoundryMesh();
     if (over(cx, cy + 62, 78, 22)) {
       if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) adjustDcrtePrimitiveResolution(-1);
+      else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) adjustDcrteImportedResolution(-1);
       else { foundryResolution = max(24, foundryResolution - 6); markFoundryStale(); }
     }
     if (over(cx + 88, cy + 62, 78, 22)) {
       if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) adjustDcrtePrimitiveResolution(1);
+      else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) adjustDcrteImportedResolution(1);
       else { foundryResolution = min(96, foundryResolution + 6); markFoundryStale(); }
     }
     if (over(cx, cy + 112, 78, 22)) { foundryIsoBand = max(0.035, foundryIsoBand - 0.01); markCurrentFoundryStale("iso band changed; regenerate"); }
@@ -6217,6 +6259,7 @@ void mouseDragged() {
     syncControls();
     dirtyField = true;
     if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) markDcrtePrimitiveStale("field controls changed; regenerate");
+    else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) markDcrteImportedMaterialStale("field controls changed; regenerate material");
   }
 }
 
