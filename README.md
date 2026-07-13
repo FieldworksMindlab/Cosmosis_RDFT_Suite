@@ -7,7 +7,7 @@ The goal of this repository is preservation and invitation: a durable public arc
 ## Project Map
 
 - `apps/cosmosis-navigator` - the mature Cosmosis performance/research instrument, combining the developed Chladni/RDFT synth interface, field dynamics, synthesis control, environmental bridges, quantum/holonomy panels, and SuperCollider routing.
-- `apps/cosmosis-visual-observatory` - a visual-only RDFT laboratory with field atlases, topology lab, material targets, Surface Foundry, call-sheet generation, and relief/STL workflows.
+- `apps/cosmosis-visual-observatory` - a visual-only RDFT laboratory with field atlases, topology lab, material targets, Surface Foundry, call-sheet generation, relief/STL workflows, and DCRTE primitive observation domains.
 - `apps/holo-drive-rdft-eg-synth` - the Mac migration of the HOLO Drive RDFT/EG synth, including Floquet shaping, solar/ocean/galaxy bridges, CTC channel behavior, and SuperCollider integration.
 - `apps/rdft-hopf-visualization-kit` - Python/PyGFX and TouchDesigner tools for Hopf, PCA, Berry, winding, and manifold portrait views from RDFT CSV runs.
 
@@ -39,6 +39,10 @@ Surface Foundry:
 ```text
 Open Cosmosis Visual Observatory, select Surface Foundry, press G to generate a mesh, then C to generate call sheets and relief/STL artifacts.
 ```
+
+Surface Foundry also includes an opt-in `DCRTE PRIMITIVE` pipeline for observing
+the unchanged field through sphere, box, or cylinder constraints with validated
+hard-interior and inward shell-band materialization.
 
 ## Requirements
 

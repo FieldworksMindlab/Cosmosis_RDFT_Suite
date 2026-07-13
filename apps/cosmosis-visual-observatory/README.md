@@ -243,7 +243,7 @@ Domain-Constrained Recursive Topology Engine with Emergent Entropic Scheduling
 does not import domains, build signed distance fields, add intrinsic
 coordinates, or run an entropic scheduler.
 
-The Surface Build panel provides two pipeline selections:
+Milestone 0 established two pipeline selections:
 
 - `PIPE LEGACY`: the default. Surface Foundry operates through the unchanged
   direct `topologyScalar(...)` and `foundryScalar(...)` path.
@@ -276,6 +276,102 @@ for a new materialization pipeline. The canonical architecture is documented in
 `docs/architecture/DCRTE_ET_ARCHITECTURE_SPEC.md`; implementation boundaries and
 the Milestone 1 refactor inventory are in
 `DCRTE_MILESTONE_0_IMPLEMENTATION_NOTES.md`.
+
+## DCRTE-ET Milestone 1: Primitive Observation Domains
+
+Milestone 1 adds a third, opt-in Surface Foundry pipeline: `PIPE DCRTE
+PRIMITIVE`. In this mode, the recursive field remains unchanged. Sphere, box,
+and cylinder domains act as finite observation constraints. Material is produced
+only where the selected domain admits a field sample and the existing Surface
+Foundry material rule classifies that sample as solid.
+
+The field carrier and observation domain are deliberately separate:
+
+- **Field carrier** is the selected TPMS, manifold, lattice, or fractal used by
+  `foundryScalar(...)` to wrap and combine the RDFT field.
+- **Observation domain** is an analytic sphere, axis-aligned box, or finite
+  Y-axis cylinder that decides where samples may become material.
+
+Changing the observation domain does not deform a finished mesh and does not
+change the field equations. It creates a new finite observation of the same
+field configuration.
+
+### Primitive controls
+
+Cycle the Surface Build pipeline button until the preview reads `DCRTE-ET
+PRIMITIVE DOMAIN`. Its overlay provides clickable controls for:
+
+- `DOMAIN`: sphere, box, or cylinder;
+- `HARD INTERIOR` / `SHELL BAND` observation;
+- `RES`: `32^3`, `64^3`, or `128^3` voxel-center sampling;
+- domain wireframe visibility;
+- inward shell thickness in voxel units;
+- center-slice visibility;
+- explicit `BUILD` and `VALIDATE` actions.
+
+The normal `GENERATE MESH`, `G`, call-sheet, and STL controls dispatch through
+the selected pipeline. No primitive volume is rebuilt continuously in
+`draw()`. Parameter changes mark the current primitive build stale and require
+an explicit rebuild.
+
+The center slice uses separate colors for rejected samples, admitted samples,
+and final solid samples. The wireframe and slice are diagnostics only; neither
+is included in the STL.
+
+### Observation behavior
+
+The observer samples Cartesian voxel centers over `[-1, 1]^3`. Hard-interior
+mode admits samples whose signed distance is at most one quarter of the minimum
+voxel spacing. Shell-band mode uses the same boundary epsilon and admits only
+an inward band, four voxels thick by default.
+
+Primitive builds use flat scalar and boolean arrays as the authoritative
+volume. A single adapter converts the final mask to the legacy
+`boolean[][][]` representation required by the established regularizer,
+call-sheet tools, and voxel-face mesher. Domain-aware cleanup resolves edge
+contacts without placing material outside the admission mask.
+
+Raised transport veins remain unchanged in `LEGACY_DIRECT`. They are suppressed
+in `DCRTE_PRIMITIVE` until segment-level domain clipping is implemented. The UI,
+validation warnings, call sheets, and JSON metadata distinguish requested veins
+from applied veins.
+
+### Validation and provenance
+
+Primitive export is blocked for invalid configuration, empty output,
+non-finite field values, outside-domain material, or a failed legacy
+materializer audit. The panel displays admitted and final counts, domain fill,
+outside-solid count, validation status, build time, and deterministic test
+status.
+
+Primitive metadata uses schema `0.4-m1` and records:
+
+- field engine and canonical configuration ID;
+- independent field carrier and observation-domain parameters;
+- observer bounds, resolution, voxel-center policy, and sample volume;
+- hard-interior or inward shell-band parameters;
+- immediate, frame-independent scheduler;
+- legacy materializer adapter and raised-vein policy;
+- validation counts, analytic-volume comparison, timings, and test result.
+
+The six standard `64^3` sphere/box/cylinder by hard/shell configurations pass
+with zero outside-domain material on the development machine. The measured
+matrix and implementation boundaries are recorded in
+`DCRTE_MILESTONE_1_IMPLEMENTATION_REPORT.md`.
+
+For a non-interactive regression run:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="$PWD" \
+  --output=/tmp/cosmosis-dcrte-m1 \
+  --force --run --dcrte-m1-acceptance
+```
+
+This writes the compact report `logs/dcrte_m1_acceptance_latest.json` and exits.
+Imported meshes, mesh-derived SDFs, intrinsic coordinates, propagation,
+entropic scheduling, adaptive sampling, and mechanical analysis remain outside
+Milestone 1.
 
 ## Floquet Shaper Influence
 

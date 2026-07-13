@@ -1,0 +1,603 @@
+{
+  "schema_version": "0.4-m1",
+  "sample_primitive_provenance": {
+    "surface_foundry": {
+      "wrap_blend": 0,
+      "scale_mm": 80,
+      "iso_band": 0.10499999672174454,
+      "raised_veins": true,
+      "geometry_index": 0,
+      "geometry_name": "TPMS BLEND",
+      "resolution": 64,
+      "vein_lift_mm": 1.2000000476837158,
+      "vein_radius_mm": 1.7999999523162842
+    },
+    "dcrte_milestone": 1,
+    "architecture_version": "DCRTE-ET v0.3",
+    "observation": {
+      "mode": "shell_band",
+      "side": "inside_only",
+      "boundary_epsilon": 0.0078125,
+      "thickness": 0.125,
+      "thickness_voxels": 4
+    },
+    "coordinates": {
+      "source": "uniform_grid_observer",
+      "type": "cartesian"
+    },
+    "raised_veins": {
+      "reason": "disabled_until_domain_clipping",
+      "requested": true,
+      "applied": false
+    },
+    "schema_version": "0.4-m1",
+    "pipeline": {
+      "mode": "DCRTE_PRIMITIVE",
+      "generation_path": "dcrte_primitive",
+      "field_engine_version": "0.1.0-m0",
+      "adapter_role": "field_and_materializer_boundary",
+      "field_engine_id": "legacy_topology_scalar_adapter"
+    },
+    "scheduler": {
+      "relational_progress": "not_applicable",
+      "type": "immediate",
+      "version": "1.0",
+      "stateful": false
+    },
+    "volume": {
+      "outside_solid_samples": 0,
+      "active_samples": 13004,
+      "candidate_solid_samples": 79334,
+      "final_solid_samples": 13004,
+      "nonfinite_scalar_samples": 0,
+      "domain_inside_samples": 83104,
+      "admitted_samples": 39488,
+      "estimated_storage_bytes": "2097152",
+      "spec": {
+        "sample_volume": 3.0517578125E-5,
+        "spacing_x": 0.03125,
+        "spacing_y": 0.03125,
+        "spacing_z": 0.03125,
+        "bounds": {
+          "volume": 8,
+          "min": [
+            -1,
+            -1,
+            -1
+          ],
+          "max": [
+            1,
+            1,
+            1
+          ]
+        },
+        "resolution": [
+          64,
+          64,
+          64
+        ]
+      }
+    },
+    "observer": {
+      "sample_volume": 3.0517578125E-5,
+      "coordinate_mode": "cartesian",
+      "spacing_x": 0.03125,
+      "spacing_y": 0.03125,
+      "spacing_z": 0.03125,
+      "sample_policy": "voxel_center",
+      "bounds": {
+        "volume": 8,
+        "min": [
+          -1,
+          -1,
+          -1
+        ],
+        "max": [
+          1,
+          1,
+          1
+        ]
+      },
+      "type": "uniform_grid",
+      "resolution": [
+        64,
+        64,
+        64
+      ]
+    },
+    "field": {
+      "seed": 1337,
+      "floquet": 0.41999998688697815,
+      "coherence": 0.6200000047683716,
+      "recursion_falloff": 0.30740001797676086,
+      "deep_detail": 0.5799999833106995,
+      "source": 0.47999998927116394,
+      "simulation_time": 0,
+      "brane_twist": 0.5799999833106995,
+      "quasi_energy": 0.36000001430511475,
+      "depth": 5,
+      "engine_id": "legacy_topology_scalar_adapter",
+      "time_scale": 0.7799999713897705,
+      "topology_blend": [
+        0.28871896862983704,
+        0.24986781179904938,
+        0.15162593126296997,
+        0.15594959259033203,
+        0.153837651014328
+      ],
+      "alpha": 2.3499999046325684,
+      "ctc_bias": 0.3499999940395355,
+      "engine_version": "0.1.0-m0",
+      "configuration_id": "8b0eaf596558db4d0f28e052020611026682ca848cb4c83b76d9f2f99879d771"
+    },
+    "material": {
+      "source_mode": "HEURISTIC",
+      "catalog_index": 0,
+      "source_id": "",
+      "target": "Graphene"
+    },
+    "shaper": {
+      "tide": 0.5,
+      "cosmic": 0,
+      "solar_wind": 0.5,
+      "use_sender": false,
+      "galactic_torsion": 0.5,
+      "ocean_current": 0.5,
+      "plasma": 0,
+      "drive": 0,
+      "mix": 0.6200000047683716,
+      "xray_flux": 0.5,
+      "water": 0,
+      "enabled": false
+    },
+    "materializer": {
+      "last_domain_repair_removals": 0,
+      "last_domain_repair_additions": 3,
+      "regularization": "legacy_regularizer_then_domain_clip_then_admission_aware_cleanup",
+      "type": "legacy_voxel_materializer_adapter",
+      "version": "1.0-m1",
+      "legacy_conversion": "boolean_3d_at_materializer_boundary",
+      "raised_veins_policy": "disabled_until_domain_clipping",
+      "authoritative_volume": "flat_primitive_arrays"
+    },
+    "domain": {
+      "center": [
+        0,
+        0,
+        0
+      ],
+      "bounds": {
+        "volume": 3.255295991897583,
+        "min": [
+          -0.6800000071525574,
+          -0.8799999952316284,
+          -0.6800000071525574
+        ],
+        "max": [
+          0.6800000071525574,
+          0.8799999952316284,
+          0.6800000071525574
+        ]
+      },
+      "half_height": 0.8799999952316284,
+      "analytic_volume": 2.556703805923462,
+      "type": "cylinder",
+      "radius": 0.6800000071525574,
+      "axis": "Y",
+      "version": "1.0"
+    },
+    "configuration_id": "8b0eaf596558db4d0f28e052020611026682ca848cb4c83b76d9f2f99879d771",
+    "validation": {
+      "outside_solid_samples": 0,
+      "final_fraction_of_domain": 0.3293152451515198,
+      "field_sample_millis": 56,
+      "first_nonfinite_world": [
+        0,
+        0,
+        0
+      ],
+      "final_solid_samples": 13004,
+      "domain_build_millis": 10,
+      "total_millis": 125,
+      "warnings": ["RAISED_VEINS_SUPPRESSED"],
+      "sampled_domain_volume": 2.5361328125,
+      "domain_volume_warning_threshold": 0.07999999821186066,
+      "domain_inside_samples": 83104,
+      "candidate_solid_samples": 79334,
+      "admitted_fraction": 0.150634765625,
+      "analytic_domain_volume": 2.556703805923462,
+      "materialize_millis": 47,
+      "nonfinite_scalar_samples": 0,
+      "domain_volume_relative_error": 0.008045904338359833,
+      "admitted_samples": 39488,
+      "validation_millis": 1,
+      "errors": [],
+      "total_samples": 262144,
+      "first_nonfinite_index": -1,
+      "final_fraction_of_grid": 0.0496063232421875,
+      "status": "pass_with_warnings"
+    },
+    "application_version": "Cosmosis Visual Observatory M1"
+  },
+  "application": "Cosmosis Visual Observatory",
+  "generated_at": "2026-07-12 20:19:08",
+  "adapter_regression": {
+    "mean_absolute_error": 0,
+    "sample_count": 256,
+    "max_absolute_error": 0,
+    "status": "PASS"
+  },
+  "legacy_regression": {
+    "triangles": 38236,
+    "mesh_printable": true,
+    "non_manifold_edges": 0,
+    "mesh_generated": true,
+    "boundary_edges": 0,
+    "degenerate_faces": 0
+  },
+  "acceptance_passed": 6,
+  "acceptance_total": 6,
+  "deterministic_tests": {
+    "failures": [],
+    "passed": 37,
+    "failed": 0,
+    "status": "pass"
+  },
+  "runs": [
+    {
+      "mesh_non_manifold_edges": 0,
+      "domain_repair_additions": 54,
+      "observation": "hard_interior",
+      "mesh_boundary_edges": 0,
+      "acceptance_passed": true,
+      "resolution": 64,
+      "build_stage": "READY",
+      "triangles": 55684,
+      "mesh_printable": true,
+      "domain": "sphere",
+      "domain_repair_removals": 0,
+      "regularizer_bridge_voxels": 129,
+      "id": "M1-A",
+      "mesh_degenerate_faces": 0,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31069645285606384,
+        "field_sample_millis": 72,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 29889,
+        "domain_build_millis": 15,
+        "total_millis": 288,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 2.858154296875,
+        "domain_volume_warning_threshold": 0.07999999821186066,
+        "domain_inside_samples": 93656,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.366973876953125,
+        "analytic_domain_volume": 2.854543447494507,
+        "materialize_millis": 177,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.0012649481650441885,
+        "admitted_samples": 96200,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.11401748657226562,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "mesh_non_manifold_edges": 0,
+      "domain_repair_additions": 119,
+      "observation": "shell_band",
+      "mesh_boundary_edges": 0,
+      "acceptance_passed": true,
+      "resolution": 64,
+      "build_stage": "READY",
+      "triangles": 33440,
+      "mesh_printable": true,
+      "domain": "sphere",
+      "domain_repair_removals": 0,
+      "regularizer_bridge_voxels": 242,
+      "id": "M1-B",
+      "mesh_degenerate_faces": 0,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31582993268966675,
+        "field_sample_millis": 75,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 12330,
+        "domain_build_millis": 20,
+        "total_millis": 186,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 2.858154296875,
+        "domain_volume_warning_threshold": 0.07999999821186066,
+        "domain_inside_samples": 93656,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.14892578125,
+        "analytic_domain_volume": 2.854543447494507,
+        "materialize_millis": 64,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.0012649481650441885,
+        "admitted_samples": 39040,
+        "validation_millis": 0,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.04703521728515625,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "mesh_non_manifold_edges": 0,
+      "domain_repair_additions": 0,
+      "observation": "hard_interior",
+      "mesh_boundary_edges": 0,
+      "acceptance_passed": true,
+      "resolution": 64,
+      "build_stage": "READY",
+      "triangles": 69668,
+      "mesh_printable": true,
+      "domain": "box",
+      "domain_repair_removals": 0,
+      "regularizer_bridge_voxels": 7,
+      "id": "M1-C",
+      "mesh_degenerate_faces": 0,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31597599387168884,
+        "field_sample_millis": 59,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 39497,
+        "domain_build_millis": 10,
+        "total_millis": 201,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 3.814697265625,
+        "domain_volume_warning_threshold": 0.03999999910593033,
+        "domain_inside_samples": 125000,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.476837158203125,
+        "analytic_domain_volume": 3.796415328979492,
+        "materialize_millis": 119,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.004815578460693359,
+        "admitted_samples": 125000,
+        "validation_millis": 0,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.15066909790039062,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "mesh_non_manifold_edges": 0,
+      "domain_repair_additions": 5,
+      "observation": "shell_band",
+      "mesh_boundary_edges": 0,
+      "acceptance_passed": true,
+      "resolution": 64,
+      "build_stage": "READY",
+      "triangles": 39692,
+      "mesh_printable": true,
+      "domain": "box",
+      "domain_repair_removals": 0,
+      "regularizer_bridge_voxels": 18,
+      "id": "M1-D",
+      "mesh_degenerate_faces": 0,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.3249921500682831,
+        "field_sample_millis": 58,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 16546,
+        "domain_build_millis": 9,
+        "total_millis": 141,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 3.814697265625,
+        "domain_volume_warning_threshold": 0.03999999910593033,
+        "domain_inside_samples": 125000,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.1942138671875,
+        "analytic_domain_volume": 3.796415328979492,
+        "materialize_millis": 63,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.004815578460693359,
+        "admitted_samples": 50912,
+        "validation_millis": 0,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.06311798095703125,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "mesh_non_manifold_edges": 0,
+      "domain_repair_additions": 0,
+      "observation": "hard_interior",
+      "mesh_boundary_edges": 0,
+      "acceptance_passed": true,
+      "resolution": 64,
+      "build_stage": "READY",
+      "triangles": 49504,
+      "mesh_printable": true,
+      "domain": "cylinder",
+      "domain_repair_removals": 0,
+      "regularizer_bridge_voxels": 32,
+      "id": "M1-E",
+      "mesh_degenerate_faces": 0,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31815633177757263,
+        "field_sample_millis": 106,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 27224,
+        "domain_build_millis": 38,
+        "total_millis": 272,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 2.5361328125,
+        "domain_volume_warning_threshold": 0.07999999821186066,
+        "domain_inside_samples": 83104,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.326416015625,
+        "analytic_domain_volume": 2.556703805923462,
+        "materialize_millis": 75,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.008045904338359833,
+        "admitted_samples": 85568,
+        "validation_millis": 0,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.103851318359375,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "mesh_non_manifold_edges": 0,
+      "domain_repair_additions": 3,
+      "observation": "shell_band",
+      "mesh_boundary_edges": 0,
+      "acceptance_passed": true,
+      "resolution": 64,
+      "build_stage": "READY",
+      "triangles": 31420,
+      "mesh_printable": true,
+      "domain": "cylinder",
+      "domain_repair_removals": 0,
+      "regularizer_bridge_voxels": 56,
+      "id": "M1-F",
+      "mesh_degenerate_faces": 0,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.3293152451515198,
+        "field_sample_millis": 56,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 13004,
+        "domain_build_millis": 10,
+        "total_millis": 125,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 2.5361328125,
+        "domain_volume_warning_threshold": 0.07999999821186066,
+        "domain_inside_samples": 83104,
+        "candidate_solid_samples": 79334,
+        "admitted_fraction": 0.150634765625,
+        "analytic_domain_volume": 2.556703805923462,
+        "materialize_millis": 47,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.008045904338359833,
+        "admitted_samples": 39488,
+        "validation_millis": 1,
+        "errors": [],
+        "total_samples": 262144,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.0496063232421875,
+        "status": "pass_with_warnings"
+      }
+    }
+  ],
+  "supplemental_runs": [
+    {
+      "triangles": 14008,
+      "mesh_printable": true,
+      "observation": "hard_interior",
+      "domain": "sphere",
+      "id": "M1-DEBUG-32",
+      "resolution": 32,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.31564515829086304,
+        "field_sample_millis": 7,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 3914,
+        "domain_build_millis": 1,
+        "total_millis": 25,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 2.845703125,
+        "domain_volume_warning_threshold": 0.07999999821186066,
+        "domain_inside_samples": 11656,
+        "candidate_solid_samples": 9946,
+        "admitted_fraction": 0.37841796875,
+        "analytic_domain_volume": 2.854543447494507,
+        "materialize_millis": 15,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 0.0030969304498285055,
+        "admitted_samples": 12400,
+        "validation_millis": 0,
+        "errors": [],
+        "total_samples": 32768,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.11944580078125,
+        "status": "pass_with_warnings"
+      }
+    },
+    {
+      "triangles": 222228,
+      "mesh_printable": true,
+      "observation": "hard_interior",
+      "domain": "sphere",
+      "id": "M1-PREVIEW-128",
+      "resolution": 128,
+      "validation": {
+        "outside_solid_samples": 0,
+        "final_fraction_of_domain": 0.309243381023407,
+        "field_sample_millis": 423,
+        "first_nonfinite_world": [
+          0,
+          0,
+          0
+        ],
+        "final_solid_samples": 234404,
+        "domain_build_millis": 69,
+        "total_millis": 973,
+        "warnings": ["RAISED_VEINS_SUPPRESSED"],
+        "sampled_domain_volume": 2.854522705078125,
+        "domain_volume_warning_threshold": 0.07999999821186066,
+        "domain_inside_samples": 748296,
+        "candidate_solid_samples": 634565,
+        "admitted_fraction": 0.3614387512207031,
+        "analytic_domain_volume": 2.854543447494507,
+        "materialize_millis": 393,
+        "nonfinite_scalar_samples": 0,
+        "domain_volume_relative_error": 7.266456577781355E-6,
+        "admitted_samples": 757992,
+        "validation_millis": 2,
+        "errors": [],
+        "total_samples": 2097152,
+        "first_nonfinite_index": -1,
+        "final_fraction_of_grid": 0.11177253723144531,
+        "status": "pass_with_warnings"
+      }
+    }
+  ],
+  "architecture": "DCRTE-ET v0.3"
+}
