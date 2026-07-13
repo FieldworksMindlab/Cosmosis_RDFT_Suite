@@ -6,7 +6,8 @@
 */
 
 class DCRTEConfig {
-  String schemaVersion = "0.3-m0";
+  String schemaVersion = "0.4-m1";
+  int dcrteMilestone = 1;
   String pipelineMode = "LEGACY_DIRECT";
   String fieldEngineId = "legacy_topology_scalar_direct";
   String fieldEngineVersion = "legacy-topology-scalar-v1";
@@ -55,6 +56,31 @@ class DCRTEConfig {
   String materialTargetValue = "";
   String materialSourceIdValue = "";
 
+  String primitiveDomainTypeValue = "none";
+  float primitiveCenterXValue;
+  float primitiveCenterYValue;
+  float primitiveCenterZValue;
+  float primitiveSphereRadiusValue;
+  float primitiveBoxHalfXValue;
+  float primitiveBoxHalfYValue;
+  float primitiveBoxHalfZValue;
+  float primitiveCylinderRadiusValue;
+  float primitiveCylinderHalfHeightValue;
+  int observerResolutionValue;
+  float observerMinXValue;
+  float observerMinYValue;
+  float observerMinZValue;
+  float observerMaxXValue;
+  float observerMaxYValue;
+  float observerMaxZValue;
+  String observationModeValue = "none";
+  float boundaryEpsilonValue;
+  float shellThicknessValue;
+  float shellThicknessVoxelsValue;
+  String schedulerIdValue = "none";
+  String materializerIdValue = "none";
+  String raisedVeinsPolicyValue = "legacy_behavior";
+
   float[] topologyBlendCopy() {
     float[] copy = new float[topologyBlend.length];
     System.arraycopy(topologyBlend, 0, copy, 0, topologyBlend.length);
@@ -68,6 +94,7 @@ class DCRTEConfig {
   String canonicalString() {
     StringBuilder out = new StringBuilder();
     dcrteCanonical(out, "schema_version", schemaVersion);
+    dcrteCanonical(out, "dcrte_milestone", dcrteMilestone);
     dcrteCanonical(out, "pipeline_mode", pipelineMode);
     dcrteCanonical(out, "field_engine_id", fieldEngineId);
     dcrteCanonical(out, "field_engine_version", fieldEngineVersion);
@@ -110,23 +137,55 @@ class DCRTEConfig {
     dcrteCanonical(out, "material_index", materialIndexValue);
     dcrteCanonical(out, "material_target", materialTargetValue);
     dcrteCanonical(out, "material_source_id", materialSourceIdValue);
+    if (pipelineMode.equals("DCRTE_PRIMITIVE")) {
+      dcrteCanonical(out, "primitive_domain_type", primitiveDomainTypeValue);
+      dcrteCanonical(out, "primitive_center_x", primitiveCenterXValue);
+      dcrteCanonical(out, "primitive_center_y", primitiveCenterYValue);
+      dcrteCanonical(out, "primitive_center_z", primitiveCenterZValue);
+      dcrteCanonical(out, "primitive_sphere_radius", primitiveSphereRadiusValue);
+      dcrteCanonical(out, "primitive_box_half_x", primitiveBoxHalfXValue);
+      dcrteCanonical(out, "primitive_box_half_y", primitiveBoxHalfYValue);
+      dcrteCanonical(out, "primitive_box_half_z", primitiveBoxHalfZValue);
+      dcrteCanonical(out, "primitive_cylinder_radius", primitiveCylinderRadiusValue);
+      dcrteCanonical(out, "primitive_cylinder_half_height", primitiveCylinderHalfHeightValue);
+      dcrteCanonical(out, "observer_resolution", observerResolutionValue);
+      dcrteCanonical(out, "observer_min_x", observerMinXValue);
+      dcrteCanonical(out, "observer_min_y", observerMinYValue);
+      dcrteCanonical(out, "observer_min_z", observerMinZValue);
+      dcrteCanonical(out, "observer_max_x", observerMaxXValue);
+      dcrteCanonical(out, "observer_max_y", observerMaxYValue);
+      dcrteCanonical(out, "observer_max_z", observerMaxZValue);
+      dcrteCanonical(out, "observation_mode", observationModeValue);
+      dcrteCanonical(out, "boundary_epsilon", boundaryEpsilonValue);
+      dcrteCanonical(out, "shell_thickness", shellThicknessValue);
+      dcrteCanonical(out, "shell_thickness_voxels", shellThicknessVoxelsValue);
+      dcrteCanonical(out, "scheduler_id", schedulerIdValue);
+      dcrteCanonical(out, "materializer_id", materializerIdValue);
+      dcrteCanonical(out, "raised_veins_policy", raisedVeinsPolicyValue);
+    }
     return out.toString();
   }
 
   JSONObject toJSONObject() {
     JSONObject root = new JSONObject();
     root.setString("schema_version", schemaVersion);
+    root.setInt("dcrte_milestone", dcrteMilestone);
     root.setString("configuration_id", configurationId);
+    root.setString("architecture_version", "DCRTE-ET v0.3");
+    root.setString("application_version", "Cosmosis Visual Observatory M1");
 
     JSONObject pipeline = new JSONObject();
     pipeline.setString("mode", pipelineMode);
     pipeline.setString("field_engine_id", fieldEngineId);
     pipeline.setString("field_engine_version", fieldEngineVersion);
-    pipeline.setString("generation_path", "legacy_direct");
-    pipeline.setString("adapter_role", "diagnostic_only");
+    pipeline.setString("generation_path", pipelineMode.equals("DCRTE_PRIMITIVE") ? "dcrte_primitive" : "legacy_direct");
+    pipeline.setString("adapter_role", pipelineMode.equals("DCRTE_PRIMITIVE") ? "field_and_materializer_boundary" : "diagnostic_only");
     root.setJSONObject("pipeline", pipeline);
 
     JSONObject fieldConfig = new JSONObject();
+    fieldConfig.setString("engine_id", fieldEngineId);
+    fieldConfig.setString("engine_version", fieldEngineVersion);
+    fieldConfig.setString("configuration_id", configurationId);
     fieldConfig.setInt("seed", seedValue);
     fieldConfig.setFloat("simulation_time", simulationTime);
     fieldConfig.setFloat("alpha", alphaValue);
@@ -178,9 +237,46 @@ class DCRTEConfig {
     material.setString("target", materialTargetValue);
     material.setString("source_id", materialSourceIdValue);
     root.setJSONObject("material", material);
+
+    if (pipelineMode.equals("DCRTE_PRIMITIVE")) {
+      ObservationDomain domain;
+      if (primitiveDomainTypeValue.equals("box")) {
+        domain = new BoxDomain(primitiveCenterXValue, primitiveCenterYValue, primitiveCenterZValue,
+          primitiveBoxHalfXValue, primitiveBoxHalfYValue, primitiveBoxHalfZValue);
+      } else if (primitiveDomainTypeValue.equals("cylinder")) {
+        domain = new CylinderDomain(primitiveCenterXValue, primitiveCenterYValue, primitiveCenterZValue,
+          primitiveCylinderRadiusValue, primitiveCylinderHalfHeightValue);
+      } else {
+        domain = new SphereDomain(primitiveCenterXValue, primitiveCenterYValue, primitiveCenterZValue,
+          primitiveSphereRadiusValue);
+      }
+      VolumeSpec spec = new VolumeSpec(observerResolutionValue, observerResolutionValue, observerResolutionValue,
+        new Bounds3D(observerMinXValue, observerMinYValue, observerMinZValue, observerMaxXValue, observerMaxYValue, observerMaxZValue));
+      UniformGridObserver observer = new UniformGridObserver();
+      observer.initialize(spec);
+      ObservationLayer observation = observationModeValue.equals("shell_band")
+        ? new ShellBandObservation(boundaryEpsilonValue, shellThicknessValue, shellThicknessVoxelsValue)
+        : new HardInteriorObservation(boundaryEpsilonValue);
+      root.setJSONObject("domain", domain.toJSON());
+      root.setJSONObject("observer", observer.toJSON());
+      root.setJSONObject("observation", observation.toJSON());
+      root.setJSONObject("scheduler", dcrteImmediateScheduler.toJSON());
+      root.setJSONObject("materializer", dcrteLegacyMaterializer.toJSON());
+      JSONObject coordinates = new JSONObject();
+      coordinates.setString("type", "cartesian");
+      coordinates.setString("source", "uniform_grid_observer");
+      root.setJSONObject("coordinates", coordinates);
+      JSONObject raisedVeins = new JSONObject();
+      raisedVeins.setBoolean("requested", foundryRaisedVeinsValue);
+      raisedVeins.setBoolean("applied", false);
+      raisedVeins.setString("reason", raisedVeinsPolicyValue);
+      root.setJSONObject("raised_veins", raisedVeins);
+    }
     return root;
   }
 }
+
+DCRTEConfig dcrteLastBuildConfiguration = null;
 
 DCRTEConfig captureDcrteConfig() {
   DCRTEConfig config = new DCRTEConfig();
@@ -201,7 +297,7 @@ DCRTEConfig captureDcrteConfig() {
   config.timeScaleValue = timeScale;
   config.recursionFalloffValue = recursionFalloff();
   config.topologyBlend = currentTopologyScores();
-  config.foundryResolutionValue = foundryResolution;
+  config.foundryResolutionValue = foundryActiveVolumeResolution();
   config.foundryIsoBandValue = foundryIsoBand;
   config.foundryScaleMMValue = foundryScaleMM;
   config.foundryGeometryIndexValue = foundryGeometryIndex;
@@ -227,20 +323,55 @@ DCRTEConfig captureDcrteConfig() {
   MaterialProfile material = activeMaterial();
   config.materialTargetValue = material == null ? "none" : safeString(material.name, "Unknown");
   config.materialSourceIdValue = material == null ? "" : safeString(material.sourceId, "");
+  config.primitiveDomainTypeValue = dcrtePrimitiveDomainType.id();
+  config.primitiveCenterXValue = dcrteDomainCenterX;
+  config.primitiveCenterYValue = dcrteDomainCenterY;
+  config.primitiveCenterZValue = dcrteDomainCenterZ;
+  config.primitiveSphereRadiusValue = dcrteSphereRadius;
+  config.primitiveBoxHalfXValue = dcrteBoxHalfX;
+  config.primitiveBoxHalfYValue = dcrteBoxHalfY;
+  config.primitiveBoxHalfZValue = dcrteBoxHalfZ;
+  config.primitiveCylinderRadiusValue = dcrteCylinderRadius;
+  config.primitiveCylinderHalfHeightValue = dcrteCylinderHalfHeight;
+  config.observerResolutionValue = dcrtePrimitiveResolution;
+  config.observerMinXValue = dcrteObserverBounds.minX;
+  config.observerMinYValue = dcrteObserverBounds.minY;
+  config.observerMinZValue = dcrteObserverBounds.minZ;
+  config.observerMaxXValue = dcrteObserverBounds.maxX;
+  config.observerMaxYValue = dcrteObserverBounds.maxY;
+  config.observerMaxZValue = dcrteObserverBounds.maxZ;
+  config.observationModeValue = dcrteObservationMode.id();
+  VolumeSpec primitiveSpec = createDcrteVolumeSpec();
+  config.boundaryEpsilonValue = dcrteBoundaryEpsilon(primitiveSpec);
+  config.shellThicknessValue = dcrteShellThickness(primitiveSpec);
+  config.shellThicknessVoxelsValue = dcrteShellThicknessVoxels;
+  config.schedulerIdValue = dcrteImmediateScheduler.getId();
+  config.materializerIdValue = dcrteLegacyMaterializer.getId();
+  config.raisedVeinsPolicyValue = dcrteRaisedVeinsPolicy();
   config.finalizeIdentity();
   return config;
 }
 
 void appendDcrteMetadata(JSONObject metadata) {
-  DCRTEConfig config = captureDcrteConfig();
+  DCRTEConfig config = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE
+    && dcrteLastBuildConfiguration != null && !dcrtePrimitiveStale
+    ? dcrteLastBuildConfiguration
+    : captureDcrteConfig();
   dcrteLastConfiguration = config;
   metadata.setString("dcrte_pipeline_mode", config.pipelineMode);
   metadata.setString("dcrte_field_engine_id", config.fieldEngineId);
   metadata.setString("dcrte_field_engine_version", config.fieldEngineVersion);
   metadata.setString("dcrte_configuration_id", config.configurationId);
-  metadata.setString("dcrte_generation_path", "legacy_direct");
-  metadata.setString("dcrte_adapter_role", "diagnostic_only");
-  metadata.setJSONObject("dcrte_configuration", config.toJSONObject());
+  boolean primitive = config.pipelineMode.equals("DCRTE_PRIMITIVE");
+  metadata.setString("dcrte_generation_path", primitive ? "dcrte_primitive" : "legacy_direct");
+  metadata.setString("dcrte_adapter_role", primitive ? "field_and_materializer_boundary" : "diagnostic_only");
+  JSONObject configuration = config.toJSONObject();
+  if (primitive && dcrteLastValidationReport != null) {
+    configuration.setJSONObject("validation", dcrteLastValidationReport.toJSON());
+    if (dcrtePrimitiveVolume != null) configuration.setJSONObject("volume", dcrtePrimitiveVolume.toJSON());
+    configuration.setJSONObject("deterministic_tests", dcrteM1Tests.toJSON());
+  }
+  metadata.setJSONObject("dcrte_configuration", configuration);
 }
 
 void dcrteCanonical(StringBuilder out, String key, String value) {

@@ -207,6 +207,11 @@ void setup() {
   computeField();
   computeMetrics();
   initializeDcrteMilestone0();
+  initializeDcrteMilestone1();
+  if (dcrteCommandLineFlag("--dcrte-m1-acceptance")) {
+    runDcrteMilestone1AcceptanceMatrix();
+    exit();
+  }
 }
 
 void draw() {
@@ -1385,10 +1390,16 @@ void drawFoundryPreview(int x, int y, int w, int h) {
     drawTopologySkeleton(scores, active, previewScale);
     drawAnchoredTopologyFibers(scores, active, previewScale);
   }
+  drawDcrtePrimitiveWireframe(previewScale);
   popMatrix();
 
   if (cadPreviewEnabled) drawStochasticCadPreview(x, y, w, h);
-  drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
+    drawDcrtePrimitivePanel(x + w - 306, y + 12, 294, 248);
+    drawDcrteCenterSlice(x, y, w, h);
+  } else {
+    drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);
+  }
 
   fill(132, 168, 176);
   textSize(9);
@@ -1497,7 +1508,7 @@ int graphicCadStride() {
 }
 
 float graphicResolutionBoost() {
-  return constrain((48.0 - foundryResolution) / 24.0, 0, 1);
+  return constrain((48.0 - foundryActiveVolumeResolution()) / 24.0, 0, 1);
 }
 
 float graphicAdaptiveSpacing(float base) {
@@ -1512,13 +1523,13 @@ void drawFoundryControls(int x, int y, int w) {
   drawButton(x, y, 132, 26, "GENERATE MESH", color(45, 86, 72));
   drawButton(x + 142, y, 102, 26, "CALL SHEET", foundryMesh == null ? color(47, 68, 90) : color(62, 82, 96));
   drawButton(x + 252, y, 78, 26, "PULL SVG", foundryLastCallSheetBase.length() == 0 ? color(50, 52, 62) : color(86, 72, 38));
-  drawButton(x, y + 30, 132, 22, dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "PIPE LEGACY" : "PIPE ADAPTER", dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? color(42, 57, 68) : color(65, 82, 55));
+  drawButton(x, y + 30, 132, 22, "PIPE " + dcrtePipelineLabel(), dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? color(42, 57, 68) : color(65, 82, 55));
   drawButton(x + 142, y + 30, 102, 22, "EXPORT STL", foundryMesh == null ? color(42, 50, 58) : color(86, 66, 42));
 
   int yy = y + 62;
   drawButton(x, yy, 78, 22, "RES -", color(42, 57, 68));
   drawButton(x + 88, yy, 78, 22, "RES +", color(42, 57, 68));
-  metricLine(x, yy + 32, "resolution", str(foundryResolution) + "^3");
+  metricLine(x, yy + 32, "resolution", str(foundryActiveVolumeResolution()) + "^3");
 
   yy += 50;
   drawButton(x, yy, 78, 22, "BAND -", color(42, 57, 68));
@@ -1568,7 +1579,7 @@ void drawFoundryStats(int x, int y, int w) {
   metricLine(x, y + 48, "material", activeMaterial() == null ? "none" : shortText(activeMaterial().name, 20));
   metricLine(x, y + 72, "topology", topologyName(activeTopologyIndex(currentTopologyScores())));
   metricLine(x, y + 96, "geometry", shortText(foundryGeometryName(), 20));
-  metricLine(x, y + 120, "raised veins", foundryRaisedVeins ? "included" : "off");
+  metricLine(x, y + 120, "raised veins", foundryRaisedVeinsApplied() ? "included" : (foundryRaisedVeins ? "suppressed" : "off"));
   metricLine(x, y + 144, "drawings", foundryCallSheetStatus);
   fill(100, 130, 145);
   textSize(8);
@@ -1590,7 +1601,7 @@ String foundryGeometryName() {
 
 void cycleFoundryGeometry(int delta) {
   foundryGeometryIndex = (foundryGeometryIndex + delta + foundryGeometryNames.length) % foundryGeometryNames.length;
-  markFoundryStale();
+  markCurrentFoundryStale("field carrier changed; regenerate");
 }
 
 void generateSurfaceFoundryMesh() {
@@ -1811,6 +1822,10 @@ int foundryFaceNeighborCount(boolean[][][] solid, int x, int y, int z) {
 }
 
 void exportSurfaceFoundryMesh() {
+  if (!dcrtePrimitiveExportAllowed()) {
+    foundryStatus = dcrtePrimitiveStale ? "primitive build is stale" : "export blocked by DCRTE validation";
+    return;
+  }
   if (foundryMesh == null || foundryMesh.tris.size() == 0) {
     foundryStatus = "generate mesh first";
     return;
@@ -1854,10 +1869,12 @@ void writeFoundryMetadata(String filename) {
   meta.setInt("mesh_non_manifold_edges", foundryNonManifoldEdges);
   meta.setInt("mesh_degenerate_faces", foundryDegenerateFaces);
   meta.setInt("mesh_bridge_voxels", foundryBridgeVoxels);
-  meta.setInt("resolution", foundryResolution);
+  meta.setInt("resolution", foundryActiveVolumeResolution());
   meta.setFloat("iso_band", foundryIsoBand);
   meta.setFloat("scale_mm", foundryScaleMM);
-  meta.setBoolean("raised_transport_veins", foundryRaisedVeins);
+  meta.setBoolean("raised_transport_veins", foundryRaisedVeinsApplied());
+  meta.setBoolean("raised_transport_veins_requested", foundryRaisedVeins);
+  meta.setString("raised_transport_veins_policy", dcrteRaisedVeinsPolicy());
   meta.setFloat("vein_radius_mm", foundryVeinRadiusMM);
   meta.setFloat("vein_lift_mm", foundryVeinLiftMM);
   meta.setInt("triangles", foundryMesh == null ? 0 : foundryMesh.tris.size());
@@ -1887,11 +1904,16 @@ void writeFoundryMetadata(String filename) {
 
 void generateFoundryCallSheets() {
   if (foundryMesh == null || foundryMesh.tris.size() == 0 || foundryMeshStale || foundryCallSheetSolid == null) {
-    generateSurfaceFoundryMesh();
+    generateSelectedSurfaceFoundryMesh();
   }
   if (foundryMesh == null || foundryMesh.tris.size() == 0) {
     foundryCallSheetStatus = "mesh unavailable";
     foundryStatus = "call sheet failed";
+    return;
+  }
+  if (!dcrtePrimitiveExportAllowed()) {
+    foundryCallSheetStatus = "blocked by DCRTE validation";
+    foundryStatus = "call sheet blocked";
     return;
   }
   if (!foundryMeshIsPrintable()) {
@@ -1991,7 +2013,7 @@ ReliefField buildFoundryReliefField() {
   ReliefField meshField = buildFoundryMeshReliefField();
   if (meshField != null) return meshField;
   if (foundryCallSheetSolid == null) return null;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   CallSheetBasis basis = callSheetBasis(45, 35.26438968);
   float minU = Float.MAX_VALUE;
   float maxU = -Float.MAX_VALUE;
@@ -2080,7 +2102,7 @@ ReliefField buildFoundryMeshReliefField() {
   }
   if (maxU <= minU || maxV <= minV) return null;
 
-  int grid = (int)constrain(max(202, foundryResolution * 3), 128, 220);
+  int grid = (int)constrain(max(202, foundryActiveVolumeResolution() * 3), 128, 220);
   float[][] front = new float[grid][grid];
   float[][] thickness = new float[grid][grid];
   boolean[][] mask = new boolean[grid][grid];
@@ -2745,7 +2767,7 @@ void drawRasterVoxelGraphicMask(PGraphics pg, CallSheetBasis basis, CallSheetBou
   if (foundryCallSheetSolid == null) return;
   pg.noStroke();
   pg.fill(255);
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -2767,7 +2789,7 @@ void drawRasterVoxelGraphicShadows(PGraphics pg, CallSheetBasis basis, CallSheet
   if (foundryCallSheetSolid == null) return;
   PVector light = new PVector(basis.view.x, basis.view.y, basis.view.z + 0.72);
   light.normalize();
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -2928,7 +2950,7 @@ float spectralStippleField(PVector p, PVector n) {
 
 void drawRasterVoxelDepthBands(PGraphics pg, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, boolean large) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -2962,7 +2984,7 @@ void drawRasterLargeIsoVoxelDepthField(PGraphics pg, CallSheetBasis basis, CallS
   PVector light = new PVector(basis.view.x, basis.view.y, basis.view.z + 0.72);
   light.normalize();
   float lowBoost = graphicResolutionBoost();
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3002,7 +3024,7 @@ void drawRasterLargeIsoVoxelDepthField(PGraphics pg, CallSheetBasis basis, CallS
 
 void drawRasterVoxelDepthContours(PGraphics pg, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, boolean large) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   float lowBoost = graphicResolutionBoost();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
@@ -3135,7 +3157,7 @@ void drawCallSheetRasterEdges(PGraphics pg, PVector center, CallSheetBasis basis
 
 void drawRasterVoxelEdgesForPanel(PGraphics pg, PVector center, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, HashSet<String> seen, boolean exposedEdges, boolean internalLattice) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3202,7 +3224,7 @@ void drawRasterVoxelShadowFaces(PGraphics pg, CallSheetBasis basis, CallSheetBou
   PVector light = new PVector(basis.view.x, basis.view.y, basis.view.z + 0.72);
   light.normalize();
   pg.noStroke();
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3243,7 +3265,7 @@ void drawCallSheetRasterVoxelMasses(PGraphics pg, PVector center, CallSheetBasis
 
 void drawCallSheetRasterVoxelGlyphs(PGraphics pg, PVector center, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, int stride, boolean large) {
   stride = max(1, stride);
-  float cell = constrain(scale * foundryScaleMM / max(1.0, foundryResolution) * (large ? 0.34 : 0.26), large ? 2.8 : 1.8, large ? 7.0 : 4.2);
+  float cell = constrain(scale * foundryScaleMM / max(1.0, foundryActiveVolumeResolution()) * (large ? 0.34 : 0.26), large ? 2.8 : 1.8, large ? 7.0 : 4.2);
   for (int i = 0; i < foundryMesh.tris.size(); i += stride) {
     MeshTri t = foundryMesh.tris.get(i);
     PVector centroid = new PVector((t.a.x + t.b.x + t.c.x) / 3.0, (t.a.y + t.b.y + t.c.y) / 3.0, (t.a.z + t.b.z + t.c.z) / 3.0);
@@ -3533,7 +3555,7 @@ void writeSvgVoxelGraphicBW(PrintWriter out, CallSheetBasis basis, CallSheetBoun
 
 void writeSvgVoxelGraphicMask(PrintWriter out, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3555,7 +3577,7 @@ void writeSvgVoxelGraphicShadows(PrintWriter out, CallSheetBasis basis, CallShee
   if (foundryCallSheetSolid == null) return;
   PVector light = new PVector(basis.view.x, basis.view.y, basis.view.z + 0.72);
   light.normalize();
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3677,7 +3699,7 @@ void writeSvgLargeIsoSurfaceDepthField(PrintWriter out, CallSheetBasis basis, PV
 
 void writeSvgVoxelDepthBands(PrintWriter out, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, boolean large) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3711,7 +3733,7 @@ void writeSvgLargeIsoVoxelDepthField(PrintWriter out, CallSheetBasis basis, Call
   PVector light = new PVector(basis.view.x, basis.view.y, basis.view.z + 0.72);
   light.normalize();
   float lowBoost = graphicResolutionBoost();
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3748,7 +3770,7 @@ void writeSvgLargeIsoVoxelDepthField(PrintWriter out, CallSheetBasis basis, Call
 
 void writeSvgVoxelDepthContours(PrintWriter out, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, boolean large) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   float lowBoost = graphicResolutionBoost();
   float weight = large ? 1.08 : 0.62;
   for (int ix = 0; ix < n; ix++) {
@@ -3804,7 +3826,7 @@ void writeCallSheetSvgEdges(PrintWriter out, PVector center, CallSheetBasis basi
 
 void writeSvgVoxelEdgesForPanel(PrintWriter out, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, HashSet<String> seen, boolean exposedEdges, boolean internalLattice, float opacity, float weight) {
   if (foundryCallSheetSolid == null) return;
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3870,7 +3892,7 @@ void writeSvgVoxelShadowFaces(PrintWriter out, CallSheetBasis basis, CallSheetBo
   if (foundryCallSheetSolid == null) return;
   PVector light = new PVector(basis.view.x, basis.view.y, basis.view.z + 0.72);
   light.normalize();
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -3907,7 +3929,7 @@ void writeCallSheetSvgVoxelMasses(PrintWriter out, PVector center, CallSheetBasi
 
 void writeCallSheetSvgVoxelGlyphs(PrintWriter out, PVector center, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, int stride, boolean large) {
   stride = max(1, stride);
-  float cell = constrain(scale * foundryScaleMM / max(1.0, foundryResolution) * (large ? 0.34 : 0.26), large ? 2.8 : 1.8, large ? 7.0 : 4.2);
+  float cell = constrain(scale * foundryScaleMM / max(1.0, foundryActiveVolumeResolution()) * (large ? 0.34 : 0.26), large ? 2.8 : 1.8, large ? 7.0 : 4.2);
   for (int i = 0; i < foundryMesh.tris.size(); i += stride) {
     MeshTri t = foundryMesh.tris.get(i);
     PVector centroid = new PVector((t.a.x + t.b.x + t.c.x) / 3.0, (t.a.y + t.b.y + t.c.y) / 3.0, (t.a.z + t.b.z + t.c.z) / 3.0);
@@ -4036,10 +4058,12 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   meta.setInt("source_mesh_non_manifold_edges", foundryNonManifoldEdges);
   meta.setInt("source_mesh_degenerate_faces", foundryDegenerateFaces);
   meta.setInt("source_mesh_bridge_voxels", foundryBridgeVoxels);
-  meta.setInt("resolution", foundryResolution);
+  meta.setInt("resolution", foundryActiveVolumeResolution());
   meta.setFloat("iso_band", foundryIsoBand);
   meta.setFloat("scale_mm", foundryScaleMM);
-  meta.setBoolean("raised_transport_veins", foundryRaisedVeins);
+  meta.setBoolean("raised_transport_veins", foundryRaisedVeinsApplied());
+  meta.setBoolean("raised_transport_veins_requested", foundryRaisedVeins);
+  meta.setString("raised_transport_veins_policy", dcrteRaisedVeinsPolicy());
   meta.setFloat("vein_radius_mm", foundryVeinRadiusMM);
   meta.setFloat("vein_lift_mm", foundryVeinLiftMM);
   meta.setBoolean("stochastic_cad_preview", cadPreviewEnabled);
@@ -4128,9 +4152,9 @@ String[] callSheetSettingsLines(String style) {
   float[] scores = currentTopologyScores();
   return new String[] {
     styleLabel(style) + " | " + (cadGraphicDrafting ? "GRAPHIC BW" : "TONAL") + " | stride " + cadInternalStride + " | cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
-    "res " + foundryResolution + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 0) + "mm | geom " + foundryGeometryName() + " | wrap " + nf(foundryGeometryIndex == 0 ? 0 : foundryWrapBlend, 1, 2),
+    "res " + foundryActiveVolumeResolution() + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 0) + "mm | geom " + foundryGeometryName() + " | wrap " + nf(foundryGeometryIndex == 0 ? 0 : foundryWrapBlend, 1, 2),
     "alpha " + nf(alpha, 1, 2) + " | depth " + depth + " | source " + nf(sourcePressure, 1, 2) + " | floquet " + nf(floquetCoupling, 1, 2) + " | quasi " + nf(quasiEnergy, 1, 2) + " | coherence " + nf(coherenceBias, 1, 2),
-    "topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18) + " | veins " + (foundryRaisedVeins ? "on" : "off") + " | shaper " + (shaperEnabled ? shaperSourceStatus : "off")
+    "topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18) + " | veins " + (foundryRaisedVeinsApplied() ? "applied" : (foundryRaisedVeins ? "suppressed" : "off")) + " | shaper " + (shaperEnabled ? shaperSourceStatus : "off")
   };
 }
 
@@ -4143,18 +4167,27 @@ String[] callSheetConfigurationLines(String style) {
   String materialSource = m == null ? "none" : shortText(safeString(m.source, ""), 38);
   float effectiveWrap = foundryGeometryIndex == 0 ? 0 : foundryWrapBlend;
   String meshAudit = foundryBoundaryEdges + "/" + foundryNonManifoldEdges + "/" + foundryDegenerateFaces;
+  String dcrteValidation = dcrteLastValidationReport == null ? "not_run" : dcrteLastValidationReport.status.id();
+  int dcrteAdmitted = dcrtePrimitiveVolume == null ? 0 : dcrtePrimitiveVolume.admittedCount;
+  int dcrteFinal = dcrtePrimitiveVolume == null ? 0 : dcrtePrimitiveVolume.finalSolidCount;
+  int dcrteOutside = dcrteLastValidationReport == null ? 0 : dcrteLastValidationReport.outsideSolidSamples;
   return new String[] {
     "OUTPUT " + styleLabel(style) + " | " + (cadGraphicDrafting ? "graphic BW" : "tonal lines"),
     "DCRTE " + dcrtePipelineLabel() + " | engine " + (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "direct" : "legacy adapter"),
+    "OBS DOMAIN " + (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrtePrimitiveDomainType.id() : "not applied") + " | field carrier remains independent",
+    "OBSERVER " + (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrtePrimitiveResolution + "^3 [-1,1]^3 voxel-center" : "legacy direct sampler"),
+    "OBS LAYER " + (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE ? dcrteObservationMode.id() + " | shell " + nf(dcrteShellThicknessVoxels, 1, 1) + " vox" : "not applied"),
+    "DCRTE VALID " + dcrteValidation + " | admitted " + dcrteAdmitted + " | final " + dcrteFinal + " | outside " + dcrteOutside,
     "CAD preview " + onOff(cadPreviewEnabled) + " | lattice " + onOff(cadInternalLattice) + " | stride " + cadInternalStride,
     "CAD cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
     "FIELD alpha " + nf(alpha, 1, 3) + " | depth " + depth + " | deep " + nf(deepDetail, 1, 3),
     "FIELD source " + nf(sourcePressure, 1, 3) + " | floquet " + nf(floquetCoupling, 1, 3) + " | quasi " + nf(quasiEnergy, 1, 3),
     "FIELD coherence " + nf(coherenceBias, 1, 3) + " | CTC " + nf(ctcBias, 1, 3) + " | brane " + nf(braneTwist, 1, 3),
     "FIELD time " + nf(timeScale, 1, 3) + " | falloff " + nf(recursionFalloff(), 1, 3) + " | seed " + seed,
-    "FOUNDRY res " + foundryResolution + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 1) + "mm",
-    "CARRIER " + foundryGeometryName() + " | w " + nf(effectiveWrap, 1, 2) + " | vox " + nf(foundryScaleMM / max(1.0, foundryResolution), 1, 2) + "mm",
-    "VEINS " + onOff(foundryRaisedVeins) + " | radius " + nf(foundryVeinRadiusMM, 1, 2) + "mm | lift " + nf(foundryVeinLiftMM, 1, 2) + "mm",
+    "FOUNDRY res " + foundryActiveVolumeResolution() + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 1) + "mm",
+    "CARRIER " + foundryGeometryName() + " | w " + nf(effectiveWrap, 1, 2) + " | vox " + nf(foundryScaleMM / max(1.0, foundryActiveVolumeResolution()), 1, 2) + "mm",
+    "VEINS requested " + onOff(foundryRaisedVeins) + " | applied " + onOff(foundryRaisedVeinsApplied()) + " | " + dcrteRaisedVeinsPolicy(),
+    "VEIN radius " + nf(foundryVeinRadiusMM, 1, 2) + "mm | lift " + nf(foundryVeinLiftMM, 1, 2) + "mm",
     "MATERIAL " + materialSourceLabel() + " | index " + (selectedMaterial + 1) + "/" + materials.size(),
     "TARGET " + materialName,
     "PROVIDER " + materialProvider,
@@ -4253,7 +4286,7 @@ CallSheetBounds callSheetVoxelBounds(CallSheetBasis basis) {
     b.include(new PVector(1, 1, 0));
     return b;
   }
-  int n = foundryResolution;
+  int n = foundryActiveVolumeResolution();
   for (int ix = 0; ix < n; ix++) {
     for (int iy = 0; iy < n; iy++) {
       for (int iz = 0; iz < n; iz++) {
@@ -4301,7 +4334,8 @@ float callSheetProjectedDensity(PVector a, PVector b, PVector c) {
 }
 
 PVector voxelGridPoint(int ix, int iy, int iz) {
-  return new PVector(foundryCoord(ix, foundryResolution), foundryCoord(iy, foundryResolution), foundryCoord(iz, foundryResolution));
+  int n = foundryActiveVolumeResolution();
+  return new PVector(foundryCoord(ix, n), foundryCoord(iy, n), foundryCoord(iz, n));
 }
 
 String voxelEdgeKey(int ax, int ay, int az, int bx, int by, int bz) {
@@ -4388,7 +4422,7 @@ boolean callSheetKeepGraphicSurfaceInterior(MeshTri t, CallSheetBasis basis, int
 }
 
 boolean callSheetAxisEdge(PVector a, PVector b) {
-  float eps = max(0.001, foundryScaleMM / max(1.0, foundryResolution) * 0.06);
+  float eps = max(0.001, foundryScaleMM / max(1.0, foundryActiveVolumeResolution()) * 0.06);
   int moving = 0;
   if (abs(a.x - b.x) > eps) moving++;
   if (abs(a.y - b.y) > eps) moving++;
@@ -6046,6 +6080,7 @@ void resetState() {
   simT = 0;
   initParticles();
   dirtyField = true;
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) markDcrtePrimitiveStale("field state reset; regenerate");
 }
 
 void randomizeState() {
@@ -6124,18 +6159,25 @@ void mousePressed() {
     int rightX = px + previewW + 24;
     int cx = rightX + 16;
     int cy = py + 42;
-    if (over(cx, cy, 132, 26)) generateSurfaceFoundryMesh();
+    if (handleDcrtePrimitivePanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
+    if (over(cx, cy, 132, 26)) generateSelectedSurfaceFoundryMesh();
     if (over(cx + 142, cy, 102, 26)) generateFoundryCallSheets();
     if (over(cx + 252, cy, 78, 26)) pullFoundryCallSheetSvgs();
     if (over(cx, cy + 30, 132, 22)) cycleDcrtePipelineMode();
     if (over(cx + 142, cy + 30, 102, 22)) exportSurfaceFoundryMesh();
-    if (over(cx, cy + 62, 78, 22)) { foundryResolution = max(24, foundryResolution - 6); markFoundryStale(); }
-    if (over(cx + 88, cy + 62, 78, 22)) { foundryResolution = min(96, foundryResolution + 6); markFoundryStale(); }
-    if (over(cx, cy + 112, 78, 22)) { foundryIsoBand = max(0.035, foundryIsoBand - 0.01); markFoundryStale(); }
-    if (over(cx + 88, cy + 112, 78, 22)) { foundryIsoBand = min(0.22, foundryIsoBand + 0.01); markFoundryStale(); }
+    if (over(cx, cy + 62, 78, 22)) {
+      if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) adjustDcrtePrimitiveResolution(-1);
+      else { foundryResolution = max(24, foundryResolution - 6); markFoundryStale(); }
+    }
+    if (over(cx + 88, cy + 62, 78, 22)) {
+      if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) adjustDcrtePrimitiveResolution(1);
+      else { foundryResolution = min(96, foundryResolution + 6); markFoundryStale(); }
+    }
+    if (over(cx, cy + 112, 78, 22)) { foundryIsoBand = max(0.035, foundryIsoBand - 0.01); markCurrentFoundryStale("iso band changed; regenerate"); }
+    if (over(cx + 88, cy + 112, 78, 22)) { foundryIsoBand = min(0.22, foundryIsoBand + 0.01); markCurrentFoundryStale("iso band changed; regenerate"); }
     if (over(cx, cy + 162, 78, 22)) cycleFoundryGeometry(-1);
     if (over(cx + 88, cy + 162, 78, 22)) cycleFoundryGeometry(1);
-    if (over(cx, cy + 212, 112, 22)) { foundryRaisedVeins = !foundryRaisedVeins; markFoundryStale(); }
+    if (over(cx, cy + 212, 112, 22)) { foundryRaisedVeins = !foundryRaisedVeins; markCurrentFoundryStale("raised vein request changed; regenerate"); }
     int cadY = py + 578;
     int cadW = rightW - 32;
     int topGap = 6;
@@ -6174,6 +6216,7 @@ void mouseDragged() {
   if (changed) {
     syncControls();
     dirtyField = true;
+    if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) markDcrtePrimitiveStale("field controls changed; regenerate");
   }
 }
 
@@ -6187,7 +6230,7 @@ void keyPressed() {
   else if (key == 'r' || key == 'R') resetState();
   else if (key == 'h' || key == 'H') showHelp = !showHelp;
   else if (key == 's' || key == 'S') saveFrame("exports/cosmosis_visual_####.png");
-  else if (key == 'g' || key == 'G') generateSurfaceFoundryMesh();
+  else if (key == 'g' || key == 'G') generateSelectedSurfaceFoundryMesh();
   else if (key == 'c' || key == 'C') generateFoundryCallSheets();
   else if (key == 'x' || key == 'X') pullFoundryCallSheetSvgs();
   else if (key == 'e' || key == 'E') exportSurfaceFoundryMesh();

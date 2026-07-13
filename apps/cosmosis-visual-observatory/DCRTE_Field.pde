@@ -12,7 +12,8 @@ final String DCRTE_LEGACY_DIRECT_VERSION = "legacy-topology-scalar-v1";
 
 enum DCRTEPipelineMode {
   LEGACY_DIRECT,
-  DCRTE_ADAPTER_TEST;
+  DCRTE_ADAPTER_TEST,
+  DCRTE_PRIMITIVE;
 
   String id() {
     return name();
@@ -21,7 +22,8 @@ enum DCRTEPipelineMode {
 
 interface FieldEngine {
   void configure(DCRTEConfig config);
-  float sample(PVector worldPosition, float[] topologyBlend);
+  float sample(float x, float y, float z, float[] topologyBlend);
+  float sampleFoundry(float x, float y, float z, float[] topologyBlend);
   String getId();
   String getVersion();
 }
@@ -33,8 +35,12 @@ class LegacyTopologyScalarAdapter implements FieldEngine {
     configuredSnapshot = config;
   }
 
-  public float sample(PVector worldPosition, float[] topologyBlend) {
-    return topologyScalar(worldPosition.x, worldPosition.y, worldPosition.z, topologyBlend);
+  public float sample(float x, float y, float z, float[] topologyBlend) {
+    return topologyScalar(x, y, z, topologyBlend);
+  }
+
+  public float sampleFoundry(float x, float y, float z, float[] topologyBlend) {
+    return foundryScalar(x, y, z, topologyBlend);
   }
 
   public String getId() {
@@ -72,12 +78,19 @@ void initializeDcrteMilestone0() {
 }
 
 void cycleDcrtePipelineMode() {
+  DCRTEPipelineMode previous = dcrtePipelineMode;
   if (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT) {
     dcrtePipelineMode = DCRTEPipelineMode.DCRTE_ADAPTER_TEST;
     runDcrteAdapterComparison();
+  } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_ADAPTER_TEST) {
+    dcrtePipelineMode = DCRTEPipelineMode.DCRTE_PRIMITIVE;
+    dcrteAdapterDiagnostics.status = "IDLE";
   } else {
     dcrtePipelineMode = DCRTEPipelineMode.LEGACY_DIRECT;
     dcrteAdapterDiagnostics.status = "IDLE";
+  }
+  if (previous == DCRTEPipelineMode.DCRTE_PRIMITIVE || dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
+    markDcrtePrimitiveStale("pipeline changed; regenerate");
   }
 }
 
@@ -97,9 +110,11 @@ void runDcrteAdapterComparison() {
   boolean finite = true;
 
   for (int i = 0; i < DCRTE_ADAPTER_SAMPLE_COUNT; i++) {
-    PVector point = dcrteDeterministicPoint(i);
-    float direct = topologyScalar(point.x, point.y, point.z, scores);
-    float adapted = dcrteFieldEngine.sample(point, scores);
+    float px = dcrteDeterministicCoordinate(i + 1, 2);
+    float py = dcrteDeterministicCoordinate(i + 1, 3);
+    float pz = dcrteDeterministicCoordinate(i + 1, 5);
+    float direct = topologyScalar(px, py, pz, scores);
+    float adapted = dcrteFieldEngine.sample(px, py, pz, scores);
     float error = abs(direct - adapted);
     if (Float.isNaN(error) || Float.isInfinite(error)) {
       finite = false;
@@ -119,13 +134,8 @@ void runDcrteAdapterComparison() {
   dcrteLastComparisonFrame = frameCount;
 }
 
-PVector dcrteDeterministicPoint(int index) {
-  int sampleIndex = index + 1;
-  return new PVector(
-    dcrteRadicalInverse(sampleIndex, 2) * 2.0f - 1.0f,
-    dcrteRadicalInverse(sampleIndex, 3) * 2.0f - 1.0f,
-    dcrteRadicalInverse(sampleIndex, 5) * 2.0f - 1.0f
-  );
+float dcrteDeterministicCoordinate(int sampleIndex, int base) {
+  return dcrteRadicalInverse(sampleIndex, base) * 2.0f - 1.0f;
 }
 
 float dcrteRadicalInverse(int value, int base) {
@@ -141,7 +151,9 @@ float dcrteRadicalInverse(int value, int base) {
 }
 
 String dcrtePipelineLabel() {
-  return dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "LEGACY" : "ADAPTER TEST";
+  if (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT) return "LEGACY";
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_ADAPTER_TEST) return "ADAPTER TEST";
+  return "DCRTE PRIMITIVE";
 }
 
 String dcrteGenerationFieldEngineId() {
@@ -152,4 +164,9 @@ String dcrteGenerationFieldEngineId() {
 String dcrteGenerationFieldEngineVersion() {
   if (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT) return DCRTE_LEGACY_DIRECT_VERSION;
   return dcrteFieldEngine == null ? "0.1.0-m0" : dcrteFieldEngine.getVersion();
+}
+
+float dcrteSampleFoundryField(float x, float y, float z, float[] topologyBlend) {
+  if (dcrteFieldEngine == null) dcrteFieldEngine = new LegacyTopologyScalarAdapter();
+  return dcrteFieldEngine.sampleFoundry(x, y, z, topologyBlend);
 }
