@@ -442,6 +442,67 @@ The run writes `logs/dcrte_m2_acceptance_latest.json` and exits. Measured fixtur
 results and architecture insertion points are documented in
 `DCRTE_MILESTONE_2_IMPLEMENTATION_REPORT.md`.
 
+## DCRTE-ET Milestone 2.5: Imported Domain Preflight
+
+Milestone 2.5 adds a staged qualification layer around the Milestone 2 imported
+mesh pipeline. It does not repair topology and does not relax any existing
+export gate. Instead, it identifies the first failed stage, records all
+blockers and warnings, locates representative geometry, and states which
+operations remain permitted: preview, strict SDF, materialization, and export.
+
+The fourteen stages are file, parse, geometry, topology, components,
+orientation, self-intersection, transform, resolution, boundary voxelization,
+inside/outside verification, signed distance, materialization, and export.
+Qualification advances from `NOT_LOADED` or `PARSE_FAILED` through
+`TOPOLOGY_INVALID`, `TOPOLOGY_VALID_SDF_UNRESOLVED`, `SDF_VALID`, and
+`MATERIALIZATION_READY`. A warning never overrides a blocker.
+
+### Operator workflow
+
+1. Load an STL in `PIPE DCRTE IMPORTED`.
+2. Open `PREFLIGHT`, then click `RUN PREFLIGHT` after changing the source,
+   transform, resolution, or invalid-domain policy.
+3. Use `SHOW BLOCKERS`, `SHOW WARNINGS`, `PREVIOUS ISSUE`, and `NEXT ISSUE` to
+   inspect the staged findings.
+4. Cycle `OVERLAY` through selected issue, boundary loops, components,
+   intersections, and sign-disagreement voxels.
+5. Use `EXPORT REPORT JSON` for the complete machine-readable record or
+   `COPY SUMMARY` for the compact operator report.
+6. Use `UNSIGNED PREVIEW` only for research inspection. It never enables
+   materialization or export for an untrusted domain.
+
+Safe sanitation is reported separately and is limited to exact and
+near-duplicate vertex merging at the established tolerance, degenerate and
+duplicate face removal, isolated-vertex removal, and one global winding flip
+for an otherwise valid closed component. Hole filling, Boolean union,
+remeshing, shell thickening, component bridging, and non-manifold surgery are
+not performed.
+
+Run the deterministic preflight matrix with:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="$PWD" \
+  --output=/tmp/cosmosis-dcrte-m25 \
+  --force --run --dcrte-m25-acceptance
+```
+
+Register a local, user-managed invalid STL as the required real-world reference
+case without copying the STL into the repository:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="$PWD" \
+  --output=/tmp/cosmosis-dcrte-m25-reference \
+  --force --run \
+  "--dcrte-m25-reference=/absolute/path/to/reference.stl"
+```
+
+The commands write `logs/dcrte_m25_acceptance_latest.json` and
+`logs/dcrte_reference_cases/DCRTE-M2-INVALID-EXT-001.json`. The implementation
+and measured results are recorded in
+`DCRTE_MILESTONE_2_5_IMPLEMENTATION_REPORT.md`.
+
 ## Floquet Shaper Influence
 
 Floquet Forge includes an optional Shaper layer. When off, the sketch behaves as

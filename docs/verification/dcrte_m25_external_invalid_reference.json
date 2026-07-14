@@ -1,0 +1,402 @@
+{
+  "parser_succeeded": true,
+  "materially_more_useful_than_generic_failure": true,
+  "recommended_action": "ACTION_REMOVE_NONMANIFOLD_GEOMETRY",
+  "parser_result": "pass",
+  "failed_stage": "topology",
+  "reference_case_id": "DCRTE-M2-INVALID-EXT-001",
+  "selected_resolution": 64,
+  "blocker_count": 2,
+  "source_sha256": "1b4f67943b5e1244d37948754314bed0d55c31c1889a6d1c6b47e24210c2d6b8",
+  "generated_at": "2026-07-14 11:38:27",
+  "source_filename": "surface_foundry_call_sheet_20260713_230856_source.stl",
+  "preflight_report": {
+    "milestone_3_handoff": {
+      "single_dominant_closed_component": true,
+      "nested_shell_status": "none_detected",
+      "principal_axis_confidence": 0.3333333432674408,
+      "inside_mask_dominant_fraction": 0,
+      "dominant_component_fraction": 1,
+      "self_intersection_status": "suspected_unresolved",
+      "inside_mask_component_count": 0,
+      "thin_feature_risk": true,
+      "component_count": 1,
+      "elongation_ratio": 1.5,
+      "sdf_resolution_confidence": 0.17347665131092072
+    },
+    "preview_enabled": true,
+    "components": [{
+      "signed_volume": 0.2638814964790669,
+      "consistently_oriented": true,
+      "bounds_world": {
+        "volume": 2.6994516849517822,
+        "min": [
+          -0.9200000166893005,
+          -0.6133333444595337,
+          -0.5979999899864197
+        ],
+        "max": [
+          0.9200000166893005,
+          0.6133333444595337,
+          0.5979999899864197
+        ]
+      },
+      "vertex_count": 47867,
+      "nested": false,
+      "absolute_volume": 0.2638814964790669,
+      "nonmanifold_edge_count": 0,
+      "surface_area_fraction": 1,
+      "triangle_count": 95856,
+      "volume_fraction": 1,
+      "tiny": false,
+      "surface_area": 11.268495559692383,
+      "closed": true,
+      "component_index": 0,
+      "boundary_edge_count": 0,
+      "open": false
+    }],
+    "mesh_report": {
+      "absolute_volume_world": 0.26388149856876386,
+      "sanitation_millis": 85,
+      "world_bounds": {
+        "volume": 2.6994516849517822,
+        "min": [
+          -0.9200000166893005,
+          -0.6133333444595337,
+          -0.5979999899864197
+        ],
+        "max": [
+          0.9200000166893005,
+          0.6133333444595337,
+          0.5979999899864197
+        ]
+      },
+      "merge_tolerance": 1.0247713362332433E-4,
+      "unique_edge_count": 143784,
+      "inconsistent_orientation_edge_count": 0,
+      "zero_area_triangles_removed": 0,
+      "isolated_vertices_removed": 0,
+      "nonmanifold_edge_count": 0,
+      "output_triangle_count": 95856,
+      "duplicate_triangles_removed": 0,
+      "manifold": true,
+      "import_parse_millis": 479,
+      "parsed_triangle_count": 95856,
+      "boundary_edge_count": 0,
+      "exact_duplicate_vertices_merged": 239701,
+      "source_name": "surface_foundry_call_sheet_20260713_230856_source.stl",
+      "source_format": "ascii_stl",
+      "duplicate_vertices_merged": 239701,
+      "invalid_index_triangles_removed": 0,
+      "source_bytes": "15591069",
+      "output_vertex_count": 47867,
+      "warnings": ["MESH_DUPLICATE_VERTICES_MERGED"],
+      "consistently_oriented": true,
+      "signed_volume_world": 0.26388149856876386,
+      "global_winding_flipped": false,
+      "watertight": true,
+      "input_vertex_count": 287568,
+      "near_duplicate_vertices_merged": 0,
+      "area_tolerance": 1.0501563174614148E-8,
+      "declared_triangle_count": 95856,
+      "input_triangle_count": 95856,
+      "source_bounds": {
+        "volume": 182812.5,
+        "min": [
+          -37.5,
+          -25,
+          -24.375
+        ],
+        "max": [
+          37.5,
+          25,
+          24.375
+        ]
+      },
+      "source_sha256": "1b4f67943b5e1244d37948754314bed0d55c31c1889a6d1c6b47e24210c2d6b8",
+      "near_zero_area_triangles_removed": 0,
+      "signed_volume_source": 17870.60546875,
+      "absolute_volume_source": 17870.60546875,
+      "errors": [],
+      "status": "pass_with_warnings"
+    },
+    "sanitation_policy": "safe_automatic",
+    "reference_case_id": "DCRTE-M2-INVALID-EXT-001",
+    "recommended_next_action": "ACTION_REMOVE_NONMANIFOLD_GEOMETRY",
+    "materialization_enabled": false,
+    "resolution_suitability": {
+      "minimum_source_edge_risk_indicator": 0.015333294868469238,
+      "reasons": [
+        "mesh-derived feature indicators fall below two voxel spacings",
+        "at least one source edge projects below one voxel",
+        "at least one triangle altitude projects below one voxel",
+        "edge and triangle sizes are risk indicators, not physical wall-thickness measurements"
+      ],
+      "edge_p05_risk_indicator": 0.015333324670791626,
+      "estimated_confidence": 0.17347665131092072,
+      "mesh_diagonal": 2.5141055583953857,
+      "estimated_minimum_resolved_channel": 0.0625,
+      "minimum_triangle_altitude_risk_indicator": 0.01084228791296482,
+      "estimated_minimum_resolved_wall": 0.0625,
+      "triangle_altitude_p05_risk_indicator": 0.010842290706932545,
+      "voxel_spacing": 0.03125,
+      "median_source_edge_risk_indicator": 0.01533333957195282,
+      "confidence_label": "low_confidence",
+      "recommended_minimum_resolution": 369,
+      "boundary_coverage_ratio": -1
+    },
+    "export_enabled": false,
+    "blockers": [
+      "PF_NONMANIFOLD_VERTICES",
+      "PF_BOWTIE_VERTICES"
+    ],
+    "self_intersection_report": {
+      "tested_pair_count": 48769,
+      "confirmed_intersection_count": 0,
+      "coplanar_overlap_count": 0,
+      "skipped_adjacent_pair_count": 119495,
+      "candidate_limit_reached": true,
+      "elapsed_millis": 291,
+      "candidate_pair_count": 500000,
+      "representative_intersections": []
+    },
+    "source_name": "surface_foundry_call_sheet_20260713_230856_source.stl",
+    "report_version": "1.0-m2.5",
+    "boundary_loops": [],
+    "sdf_build_enabled": false,
+    "total_millis": 702,
+    "warnings": [
+      "PF_SELF_INTERSECTION_SUSPECTED",
+      "PF_FEATURE_BELOW_ONE_VOXEL",
+      "PF_THIN_WALL_UNRESOLVED",
+      "PF_VOXEL_RESOLUTION_TOO_LOW",
+      "PF_BOUNDARY_ALIASING_HIGH"
+    ],
+    "selected_resolution": 64,
+    "report_stale": false,
+    "first_blocking_code": "PF_NONMANIFOLD_VERTICES",
+    "qualification": "topology_invalid",
+    "diagnostics": [
+      {
+        "severity": "info",
+        "code": "PF_SOURCE_UNITS_UNSPECIFIED",
+        "stage": "file",
+        "recommended_action": "",
+        "auto_sanitizable": false,
+        "title": "Source units unspecified",
+        "message": "STL does not encode physical units; normalized fit mode is active.",
+        "requires_topology_change": false,
+        "has_location": false
+      },
+      {
+        "severity": "info",
+        "code": "PF_DUPLICATE_VERTICES",
+        "stage": "geometry",
+        "recommended_action": "",
+        "count": 239701,
+        "auto_sanitizable": true,
+        "title": "Exact duplicate vertices merged",
+        "message": "Coincident STL vertices were indexed as shared vertices.",
+        "requires_topology_change": false,
+        "has_location": false
+      },
+      {
+        "severity": "blocker",
+        "code": "PF_NONMANIFOLD_VERTICES",
+        "stage": "topology",
+        "recommended_action": "ACTION_REMOVE_NONMANIFOLD_GEOMETRY",
+        "world_location": [
+          0.414000004529953,
+          -0.21466666460037231,
+          -0.42933332920074463
+        ],
+        "count": 53,
+        "auto_sanitizable": false,
+        "title": "Non-manifold vertices",
+        "message": "At least one vertex does not have a single disk-like surface neighborhood.",
+        "requires_topology_change": true,
+        "has_location": true
+      },
+      {
+        "severity": "blocker",
+        "code": "PF_BOWTIE_VERTICES",
+        "stage": "topology",
+        "recommended_action": "ACTION_REMOVE_NONMANIFOLD_GEOMETRY",
+        "world_location": [
+          0.414000004529953,
+          -0.21466666460037231,
+          -0.42933332920074463
+        ],
+        "count": 53,
+        "auto_sanitizable": false,
+        "title": "Bowtie vertex neighborhoods",
+        "message": "Disconnected surface fans touch only at a vertex.",
+        "requires_topology_change": true,
+        "has_location": true
+      },
+      {
+        "severity": "warning",
+        "code": "PF_SELF_INTERSECTION_SUSPECTED",
+        "stage": "self_intersection",
+        "recommended_action": "ACTION_SIMPLIFY_SOURCE_MESH",
+        "count": 500000,
+        "auto_sanitizable": false,
+        "title": "Intersection candidate limit reached",
+        "message": "Candidate density exceeded the deterministic in-app test budget; absence of further crossings is not claimed.",
+        "requires_topology_change": false,
+        "has_location": false
+      },
+      {
+        "severity": "warning",
+        "code": "PF_FEATURE_BELOW_ONE_VOXEL",
+        "triangle_index": 158,
+        "recommended_action": "ACTION_INCREASE_SDF_RESOLUTION",
+        "world_location": [
+          -0.10733333230018616,
+          -0.1635555475950241,
+          -0.5724444389343262
+        ],
+        "threshold": 0.03125,
+        "title": "Mesh feature indicator below one voxel",
+        "message": "At least one tessellation feature is smaller than the selected voxel spacing; physical wall thickness is not inferred.",
+        "stage": "resolution",
+        "auto_sanitizable": false,
+        "value": 0.01084228791296482,
+        "requires_topology_change": false,
+        "has_location": true
+      },
+      {
+        "severity": "warning",
+        "code": "PF_THIN_WALL_UNRESOLVED",
+        "stage": "resolution",
+        "recommended_action": "ACTION_INCREASE_SDF_RESOLUTION",
+        "auto_sanitizable": false,
+        "threshold": 0.0625,
+        "title": "Thin-wall risk unresolved",
+        "message": "The selected grid cannot prove that sub-voxel walls or channels persist.",
+        "value": 0.0625,
+        "requires_topology_change": false,
+        "has_location": false
+      },
+      {
+        "severity": "warning",
+        "code": "PF_VOXEL_RESOLUTION_TOO_LOW",
+        "stage": "resolution",
+        "recommended_action": "ACTION_INCREASE_SDF_RESOLUTION",
+        "auto_sanitizable": false,
+        "threshold": 0.3799999952316284,
+        "title": "Low SDF resolution confidence",
+        "message": "Increase resolution to test whether fine components and channels persist; resolution was not changed automatically.",
+        "value": 0.17347665131092072,
+        "requires_topology_change": false,
+        "has_location": false
+      },
+      {
+        "severity": "warning",
+        "code": "PF_BOUNDARY_ALIASING_HIGH",
+        "stage": "resolution",
+        "recommended_action": "ACTION_INCREASE_SDF_RESOLUTION",
+        "auto_sanitizable": false,
+        "title": "Boundary aliasing risk high",
+        "message": "Tessellation-derived feature indicators are too close to the voxel spacing for a strong boundary claim.",
+        "requires_topology_change": false,
+        "has_location": false
+      }
+    ],
+    "source_sha256": "1b4f67943b5e1244d37948754314bed0d55c31c1889a6d1c6b47e24210c2d6b8",
+    "first_blocking_stage": "topology",
+    "stages": [
+      {
+        "reason": "source file was read without retaining its private path",
+        "stage": "file",
+        "state": "pass",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "supported triangle mesh parsed",
+        "stage": "parse",
+        "state": "pass",
+        "elapsed_millis": 479
+      },
+      {
+        "reason": "safe sanitation and geometric bounds inspected",
+        "stage": "geometry",
+        "state": "pass",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "one or more blocking diagnostics were found",
+        "stage": "topology",
+        "state": "blocked",
+        "elapsed_millis": 364
+      },
+      {
+        "reason": "connected surface components characterized",
+        "stage": "components",
+        "state": "pass",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "edge winding and component volumes inspected",
+        "stage": "orientation",
+        "state": "pass",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "completed with warnings",
+        "stage": "self_intersection",
+        "state": "warning",
+        "elapsed_millis": 291
+      },
+      {
+        "reason": "fit, clipping, aspect, and inverse transform inspected",
+        "stage": "transform",
+        "state": "pass",
+        "elapsed_millis": 1
+      },
+      {
+        "reason": "completed with warnings",
+        "stage": "resolution",
+        "state": "warning",
+        "elapsed_millis": 46
+      },
+      {
+        "reason": "skipped due to earlier blocker",
+        "stage": "boundary_voxelization",
+        "state": "skipped",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "skipped due to earlier blocker",
+        "stage": "inside_outside",
+        "state": "skipped",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "skipped due to earlier blocker",
+        "stage": "signed_distance",
+        "state": "skipped",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "trusted SDF is not available",
+        "stage": "materialization",
+        "state": "skipped",
+        "elapsed_millis": 0
+      },
+      {
+        "reason": "validated materialization is required",
+        "stage": "export",
+        "state": "blocked",
+        "elapsed_millis": 0
+      }
+    ],
+    "information": [
+      "PF_SOURCE_UNITS_UNSPECIFIED",
+      "PF_DUPLICATE_VERTICES"
+    ],
+    "status": "fail"
+  },
+  "first_blocker": "PF_NONMANIFOLD_VERTICES",
+  "sanitation_result": "pass_with_warnings"
+}
