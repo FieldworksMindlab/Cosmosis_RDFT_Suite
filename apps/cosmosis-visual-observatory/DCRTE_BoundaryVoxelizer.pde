@@ -8,6 +8,7 @@ class VoxelBoundaryVolume {
   long candidateVoxelTests;
   int markedBoundaryVoxels;
   int trianglesWithZeroCandidates;
+  int trianglesWithNoMarkedVoxels;
   int outOfBoundsTriangles;
   float boundaryThreshold;
   float boundaryEpsilon;
@@ -30,6 +31,7 @@ class VoxelBoundaryVolume {
     json.setInt("boundary_count", boundaryCount);
     json.setFloat("boundary_fraction", boundary.length > 0 ? boundaryCount / (float)boundary.length : 0);
     json.setInt("triangles_with_zero_candidates", trianglesWithZeroCandidates);
+    json.setInt("triangles_with_no_marked_voxels", trianglesWithNoMarkedVoxels);
     json.setInt("out_of_bounds_triangles", outOfBoundsTriangles);
     json.setFloat("boundary_threshold", boundaryThreshold);
     json.setFloat("boundary_epsilon", boundaryEpsilon);
@@ -80,8 +82,10 @@ class ConservativeBoundaryVoxelizer {
       int z1 = dcrteLastVoxelCenterAtOrBelow(maxZ, spec.bounds.minZ, dz, spec.nz);
       if (x0 > x1 || y0 > y1 || z0 > z1) {
         result.trianglesWithZeroCandidates++;
+        result.trianglesWithNoMarkedVoxels++;
         continue;
       }
+      boolean triangleHit = false;
       for (int z = z0; z <= z1; z++) {
         float pz = spec.bounds.minZ + (z + 0.5f) * dz;
         for (int y = y0; y <= y1; y++) {
@@ -90,6 +94,7 @@ class ConservativeBoundaryVoxelizer {
             float px = spec.bounds.minX + (x + 0.5f) * dx;
             result.candidateVoxelTests++;
             if (dcrtePointTriangleDistanceSq(px, py, pz, ax, ay, az, bx, by, bz, cx, cy, cz) <= thresholdSq) {
+              triangleHit = true;
               int index = result.index(x, y, z);
               if (!result.boundary[index]) {
                 result.boundary[index] = true;
@@ -99,6 +104,7 @@ class ConservativeBoundaryVoxelizer {
           }
         }
       }
+      if (!triangleHit) result.trianglesWithNoMarkedVoxels++;
     }
     result.markedBoundaryVoxels = result.boundaryCount;
     result.buildMillis = millis() - start;

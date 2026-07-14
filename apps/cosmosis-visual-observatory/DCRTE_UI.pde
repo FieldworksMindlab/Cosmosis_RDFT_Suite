@@ -215,6 +215,10 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
   drawButton(innerX + quarterW + gap, by, quarterW, 20, dcrteImportedShowBoundary ? "BOUND ON" : "BOUND OFF", color(48, 72, 77));
   drawButton(innerX + (quarterW + gap) * 2, by, quarterW, 20, dcrteImportedShowSdf ? "SDF ON" : "SDF OFF", color(48, 72, 77));
   drawButton(innerX + (quarterW + gap) * 3, by, quarterW, 20, dcrteImportedShowMaterial ? "MAT ON" : "MAT OFF", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, dcrtePreflightPanelOpen ? "PREFLIGHT OPEN" : "PREFLIGHT CLOSED",
+    dcrtePreflightPanelOpen ? color(70, 78, 42) : color(48, 72, 77));
+  drawButton(innerX + halfW + gap, by, halfW, 20, "RUN PREFLIGHT", color(60, 82, 66));
 
   int metricsY = by + 28;
   MeshDomainReport report = dcrteImportedMeshReport;
@@ -294,6 +298,9 @@ boolean handleDcrteImportedPanelMouse(int previewX, int previewY, int previewW, 
   if (over(innerX + quarterW + gap, by, quarterW, 20)) { dcrteImportedShowBoundary = !dcrteImportedShowBoundary; return true; }
   if (over(innerX + (quarterW + gap) * 2, by, quarterW, 20)) { dcrteImportedShowSdf = !dcrteImportedShowSdf; return true; }
   if (over(innerX + (quarterW + gap) * 3, by, quarterW, 20)) { dcrteImportedShowMaterial = !dcrteImportedShowMaterial; return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { dcrtePreflightPanelOpen = !dcrtePreflightPanelOpen; return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { runDcrteImportedPreflight(); dcrtePreflightPanelOpen = true; return true; }
   return false;
 }
 
@@ -339,6 +346,7 @@ void drawDcrteImportedDomainPreview(float previewScale) {
     }
     endShape();
   }
+  drawDcrtePreflightDiagnosticGeometry(previewScale);
 }
 
 void dcrtePreviewVertex(TriangleMeshData mesh, int index, float scale) {
@@ -423,4 +431,259 @@ void drawDcrteImportedSdfSlice(int previewX, int previewY, int previewW, int pre
   text("SDF " + dcrteImportedSliceAxis.name() + " slice " + fixed + "  world " + nf(world, 1, 3), x0, y0 - 24);
   text("in " + insideCount + "  zero " + boundaryCount + "  out " + outsideCount
     + "  range " + nf(sliceMin, 1, 3) + ".." + nf(sliceMax, 1, 3), x0, y0 - 13);
+}
+
+void drawDcrtePreflightPanel(int previewX, int previewY, int previewW, int previewH) {
+  if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH || !dcrtePreflightPanelOpen) return;
+  int w = max(250, min(360, previewW - 400));
+  int h = min(510, previewH - 24);
+  int x = previewX + 12;
+  int y = previewY + 12;
+  DomainPreflightReport report = dcrteDisplayedPreflightReport();
+  color accent = report == null || report.qualification == DomainQualification.NOT_LOADED ? color(112, 164, 176)
+    : report.status == ValidationStatus.FAIL ? color(255, 96, 112)
+    : report.status == ValidationStatus.PASS_WITH_WARNINGS ? color(255, 198, 82) : color(98, 232, 168);
+  fill(3, 9, 13, 248);
+  stroke(accent);
+  strokeWeight(1);
+  rect(x, y, w, h, 5);
+  fill(accent);
+  textAlign(LEFT, TOP);
+  textSize(9);
+  text("DCRTE-ET DOMAIN PREFLIGHT", x + 10, y + 8);
+  fill(160, 192, 198);
+  textSize(8);
+  String qualification = report == null ? "NOT LOADED" : report.qualification.label();
+  text("qualification  " + qualification, x + 10, y + 24);
+  text("source         " + shortText(report == null ? "NONE" : report.sourceName, 34), x + 10, y + 36);
+  text("first blocker  " + (report == null || report.firstBlockingCode.length() == 0 ? "NONE" : report.firstBlockingCode), x + 10, y + 48);
+  text("permissions    preview " + dcrtePermissionWord(report != null && report.previewEnabled)
+    + "  sdf " + dcrtePermissionWord(report != null && report.sdfBuildEnabled)
+    + "  mat " + dcrtePermissionWord(report != null && report.materializationEnabled)
+    + "  export " + dcrtePermissionWord(report != null && report.exportEnabled), x + 10, y + 60);
+
+  int innerX = x + 10;
+  int innerW = w - 20;
+  int gap = 6;
+  int halfW = (innerW - gap) / 2;
+  int by = y + 76;
+  drawButton(innerX, by, halfW, 20, "RUN PREFLIGHT", color(55, 82, 68));
+  drawButton(innerX + halfW + gap, by, halfW, 20,
+    dcrteImportedPolicy == InvalidDomainPolicy.UNSIGNED_PREVIEW ? "UNSIGNED ACTIVE" : "USE UNSIGNED PREVIEW", color(72, 62, 42));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, dcrtePreflightShowBlockers ? "BLOCKERS SHOWN" : "SHOW BLOCKERS",
+    dcrtePreflightShowBlockers ? color(90, 47, 53) : color(48, 61, 66));
+  drawButton(innerX + halfW + gap, by, halfW, 20, dcrtePreflightShowWarnings ? "WARNINGS SHOWN" : "SHOW WARNINGS",
+    dcrtePreflightShowWarnings ? color(86, 72, 39) : color(48, 61, 66));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, "PREVIOUS ISSUE", color(48, 72, 77));
+  drawButton(innerX + halfW + gap, by, halfW, 20, "NEXT ISSUE", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, "EXPORT REPORT JSON", color(48, 72, 77));
+  drawButton(innerX + halfW + gap, by, halfW, 20, "COPY SUMMARY", color(48, 72, 77));
+  by += 24;
+  String[] overlayNames = {"ISSUE", "LOOPS", "COMPONENTS", "INTERSECTIONS", "SIGN VOXELS"};
+  drawButton(innerX, by, innerW, 20, "OVERLAY " + overlayNames[dcrtePreflightOverlayMode], color(46, 66, 78));
+
+  int stageY = by + 30;
+  fill(112, 178, 188);
+  textSize(8);
+  text("STAGE QUALIFICATION", innerX, stageY);
+  int stageCellW = (innerW - 6) / 2;
+  String[] stages = dcrtePreflightStageNames();
+  for (int i = 0; i < stages.length; i++) {
+    int sx = innerX + (i % 2) * (stageCellW + 6);
+    int sy = stageY + 13 + (i / 2) * 14;
+    DCRTEPreflightStageRecord stage = report == null ? null : report.stageRecord(stages[i]);
+    color stageColor = dcrteStageColor(stage == null ? DCRTEPreflightStageState.NOT_RUN : stage.state);
+    noStroke(); fill(stageColor); rect(sx, sy + 2, 5, 5);
+    fill(142, 174, 180); textSize(7); text(stages[i] + "  " + (stage == null ? "not_run" : stage.state.id()), sx + 9, sy);
+  }
+
+  int detailY = stageY + 116;
+  ArrayList<DomainDiagnostic> issues = dcrteVisiblePreflightIssues();
+  dcrtePreflightClampIssueIndex();
+  DomainDiagnostic issue = issues.size() == 0 ? null : issues.get(dcrtePreflightIssueIndex);
+  fill(112, 178, 188); textSize(8);
+  int boundaryEdges = report == null || report.meshReport == null ? 0 : report.meshReport.boundaryEdgeCount;
+  int nonmanifold = report == null || report.meshReport == null ? 0 : report.meshReport.nonManifoldEdgeCount;
+  int intersections = report == null || report.selfIntersectionReport == null ? 0 : report.selfIntersectionReport.confirmedIntersectionCount;
+  text("NUMERICAL LEGEND", innerX, detailY);
+  fill(150, 184, 190);
+  text("boundary edges " + boundaryEdges + "   loops " + (report == null ? 0 : report.boundaryLoops.size())
+    + "   nonmanifold " + nonmanifold, innerX, detailY + 13);
+  text("components " + (report == null ? 0 : report.componentCount) + "   intersections " + intersections
+    + "   resolution " + dcrteImportedResolution + "^3", innerX, detailY + 25);
+  text("issue " + (issues.size() == 0 ? "0/0" : (dcrtePreflightIssueIndex + 1) + "/" + issues.size()), innerX, detailY + 37);
+  if (issue != null) {
+    fill(dcrteSeverityColor(issue.severity));
+    text(issue.code + "  [" + issue.stage + "]", innerX, detailY + 51);
+    fill(190, 204, 206);
+    text(shortText(issue.title, 46), innerX, detailY + 63);
+    fill(142, 174, 180);
+    text(shortText(issue.message, 50), innerX, detailY + 75);
+    text("count " + (issue.count < 0 ? "-" : str(issue.count))
+      + "  value " + (!dcrteFinite(issue.value) ? "-" : nf(issue.value, 1, 4))
+      + "  threshold " + (!dcrteFinite(issue.threshold) ? "-" : nf(issue.threshold, 1, 4)), innerX, detailY + 87);
+    text("action  " + shortText(issue.recommendedAction, 42), innerX, detailY + 99);
+  } else {
+    fill(98, 232, 168);
+    text("No diagnostics match the active filters.", innerX, detailY + 53);
+  }
+}
+
+String dcrtePermissionWord(boolean enabled) { return enabled ? "ON" : "OFF"; }
+
+color dcrteStageColor(DCRTEPreflightStageState state) {
+  if (state == DCRTEPreflightStageState.PASS) return color(78, 224, 162);
+  if (state == DCRTEPreflightStageState.WARNING) return color(255, 192, 72);
+  if (state == DCRTEPreflightStageState.BLOCKED) return color(255, 86, 108);
+  if (state == DCRTEPreflightStageState.SKIPPED) return color(108, 110, 122);
+  return color(72, 116, 126);
+}
+
+color dcrteSeverityColor(DiagnosticSeverity severity) {
+  if (severity == DiagnosticSeverity.BLOCKER) return color(255, 86, 108);
+  if (severity == DiagnosticSeverity.WARNING) return color(255, 192, 72);
+  return color(86, 202, 228);
+}
+
+boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW, int previewH) {
+  if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH || !dcrtePreflightPanelOpen) return false;
+  int w = max(250, min(360, previewW - 400));
+  int x = previewX + 12;
+  int y = previewY + 12;
+  int innerX = x + 10;
+  int innerW = w - 20;
+  int gap = 6;
+  int halfW = (innerW - gap) / 2;
+  int by = y + 76;
+  if (over(innerX, by, halfW, 20)) { dcrteImportedAttemptPreflightReport = null; runDcrteImportedPreflight(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { useDcrteUnsignedPreview(); return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { dcrtePreflightShowBlockers = !dcrtePreflightShowBlockers; dcrtePreflightClampIssueIndex(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { dcrtePreflightShowWarnings = !dcrtePreflightShowWarnings; dcrtePreflightClampIssueIndex(); return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { stepDcrtePreflightIssue(-1); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { stepDcrtePreflightIssue(1); return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { exportDcrtePreflightReportJSON(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { copyDcrtePreflightSummary(); return true; }
+  by += 24;
+  if (over(innerX, by, innerW, 20)) { dcrtePreflightOverlayMode = (dcrtePreflightOverlayMode + 1) % 5; return true; }
+  return false;
+}
+
+void drawDcrtePreflightDiagnosticGeometry(float scale) {
+  if (!dcrtePreflightPanelOpen || dcrteImportedWorldMesh == null || dcrteImportedPreflightReport == null) return;
+  TriangleMeshData mesh = dcrteImportedWorldMesh;
+  DomainPreflightReport report = dcrteImportedPreflightReport;
+  if (dcrtePreflightOverlayMode == 1) drawDcrtePreflightLoops(mesh, report, scale);
+  else if (dcrtePreflightOverlayMode == 2) drawDcrtePreflightComponents(report, scale);
+  else if (dcrtePreflightOverlayMode == 3) drawDcrtePreflightIntersections(mesh, report, scale);
+  else if (dcrtePreflightOverlayMode == 4) drawDcrtePreflightSignVoxels(report, scale);
+  else drawDcrteSelectedDiagnostic(mesh, scale);
+}
+
+void drawDcrtePreflightLoops(TriangleMeshData mesh, DomainPreflightReport report, float scale) {
+  noFill();
+  for (int i = 0; i < report.boundaryLoops.size(); i++) {
+    MeshBoundaryLoopReport loop = report.boundaryLoops.get(i);
+    stroke(loop.largest ? color(255, 72, 96) : color(255, 192, 68));
+    strokeWeight(loop.largest ? 3.2f : 2.0f);
+    beginShape();
+    for (int j = 0; j < loop.vertexIndices.length; j++) {
+      int vertexIndex = loop.vertexIndices[j];
+      if (vertexIndex >= 0 && vertexIndex < mesh.vertexCount) dcrtePreviewVertex(mesh, vertexIndex, scale);
+    }
+    endShape(loop.closed ? CLOSE : OPEN);
+  }
+}
+
+void drawDcrtePreflightComponents(DomainPreflightReport report, float scale) {
+  for (int i = 0; i < report.components.size(); i++) {
+    MeshComponentReport component = report.components.get(i);
+    color c = color(70 + (i * 73) % 180, 110 + (i * 47) % 130, 210 - (i * 31) % 120);
+    dcrteDrawDiagnosticBounds(component.worldBounds, scale, c, component.tiny ? 2.8f : 1.5f);
+  }
+}
+
+void drawDcrtePreflightIntersections(TriangleMeshData mesh, DomainPreflightReport report, float scale) {
+  SelfIntersectionReport intersections = report.selfIntersectionReport;
+  if (intersections == null) return;
+  noFill(); stroke(255, 64, 96); strokeWeight(2.4f);
+  int count = min(intersections.triangleA.length, intersections.triangleB.length);
+  for (int i = 0; i < count; i++) {
+    dcrteDrawDiagnosticTriangle(mesh, intersections.triangleA[i], scale);
+    dcrteDrawDiagnosticTriangle(mesh, intersections.triangleB[i], scale);
+  }
+}
+
+void drawDcrtePreflightSignVoxels(DomainPreflightReport report, float scale) {
+  if (report.insideOutsideVerification == null || dcrteImportedBoundary == null) return;
+  InsideOutsideVerification verification = report.insideOutsideVerification;
+  stroke(255, 72, 158); strokeWeight(3.2f); beginShape(POINTS);
+  for (int i = 0; i < verification.disagreementVoxelIndices.length; i++) {
+    dcrteDiagnosticVoxelVertex(verification.disagreementVoxelIndices[i], dcrteImportedBoundary, scale);
+  }
+  endShape();
+  stroke(74, 210, 255); strokeWeight(2.2f); beginShape(POINTS);
+  for (int i = 0; i < verification.crossAxisDisagreementVoxelIndices.length; i++) {
+    dcrteDiagnosticVoxelVertex(verification.crossAxisDisagreementVoxelIndices[i], dcrteImportedBoundary, scale);
+  }
+  endShape();
+}
+
+void drawDcrteSelectedDiagnostic(TriangleMeshData mesh, float scale) {
+  ArrayList<DomainDiagnostic> issues = dcrteVisiblePreflightIssues();
+  if (issues.size() == 0) return;
+  dcrtePreflightClampIssueIndex();
+  DomainDiagnostic diagnostic = issues.get(dcrtePreflightIssueIndex);
+  stroke(dcrteSeverityColor(diagnostic.severity)); strokeWeight(3.0f); noFill();
+  if (diagnostic.edgeVertexA >= 0 && diagnostic.edgeVertexB >= 0
+      && diagnostic.edgeVertexA < mesh.vertexCount && diagnostic.edgeVertexB < mesh.vertexCount) {
+    line(mesh.vx(diagnostic.edgeVertexA) * scale, mesh.vy(diagnostic.edgeVertexA) * scale, mesh.vz(diagnostic.edgeVertexA) * scale,
+      mesh.vx(diagnostic.edgeVertexB) * scale, mesh.vy(diagnostic.edgeVertexB) * scale, mesh.vz(diagnostic.edgeVertexB) * scale);
+  }
+  if (diagnostic.triangleIndex >= 0) dcrteDrawDiagnosticTriangle(mesh, diagnostic.triangleIndex, scale);
+  if (diagnostic.secondaryTriangleIndex >= 0) dcrteDrawDiagnosticTriangle(mesh, diagnostic.secondaryTriangleIndex, scale);
+  if (diagnostic.voxelIndex >= 0 && dcrteImportedBoundary != null) {
+    strokeWeight(7); beginShape(POINTS); dcrteDiagnosticVoxelVertex(diagnostic.voxelIndex, dcrteImportedBoundary, scale); endShape();
+  }
+  if (diagnostic.hasLocation) {
+    pushMatrix();
+    translate(diagnostic.worldX * scale, diagnostic.worldY * scale, diagnostic.worldZ * scale);
+    noFill(); strokeWeight(2.2f); sphereDetail(8); sphere(max(0.012f, 0.025f * scale));
+    popMatrix();
+  }
+}
+
+void dcrteDrawDiagnosticTriangle(TriangleMeshData mesh, int triangleIndex, float scale) {
+  if (triangleIndex < 0 || triangleIndex >= mesh.triangleCount) return;
+  beginShape();
+  dcrtePreviewVertex(mesh, mesh.ia(triangleIndex), scale);
+  dcrtePreviewVertex(mesh, mesh.ib(triangleIndex), scale);
+  dcrtePreviewVertex(mesh, mesh.ic(triangleIndex), scale);
+  endShape(CLOSE);
+}
+
+void dcrteDiagnosticVoxelVertex(int index, VoxelBoundaryVolume boundary, float scale) {
+  if (index < 0 || index >= boundary.boundary.length) return;
+  int x = index % boundary.spec.nx;
+  int y = (index / boundary.spec.nx) % boundary.spec.ny;
+  int z = index / (boundary.spec.nx * boundary.spec.ny);
+  vertex((boundary.spec.bounds.minX + (x + 0.5f) * boundary.spec.spacingX()) * scale,
+    (boundary.spec.bounds.minY + (y + 0.5f) * boundary.spec.spacingY()) * scale,
+    (boundary.spec.bounds.minZ + (z + 0.5f) * boundary.spec.spacingZ()) * scale);
+}
+
+void dcrteDrawDiagnosticBounds(Bounds3D bounds, float scale, color c, float weight) {
+  if (bounds == null || !bounds.isValid()) return;
+  float x0 = bounds.minX * scale; float x1 = bounds.maxX * scale;
+  float y0 = bounds.minY * scale; float y1 = bounds.maxY * scale;
+  float z0 = bounds.minZ * scale; float z1 = bounds.maxZ * scale;
+  stroke(c); strokeWeight(weight); noFill();
+  line(x0,y0,z0,x1,y0,z0); line(x0,y1,z0,x1,y1,z0); line(x0,y0,z1,x1,y0,z1); line(x0,y1,z1,x1,y1,z1);
+  line(x0,y0,z0,x0,y1,z0); line(x1,y0,z0,x1,y1,z0); line(x0,y0,z1,x0,y1,z1); line(x1,y0,z1,x1,y1,z1);
+  line(x0,y0,z0,x0,y0,z1); line(x1,y0,z0,x1,y0,z1); line(x0,y1,z0,x0,y1,z1); line(x1,y1,z0,x1,y1,z1);
 }

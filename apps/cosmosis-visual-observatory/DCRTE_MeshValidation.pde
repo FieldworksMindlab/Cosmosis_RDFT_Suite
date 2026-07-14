@@ -20,9 +20,13 @@ class MeshDomainReport {
   int inputVertexCount;
   int outputVertexCount;
   int duplicateVerticesMerged;
+  int exactDuplicateVerticesMerged;
+  int nearDuplicateVerticesMerged;
+  int isolatedVerticesRemoved;
   int inputTriangleCount;
   int outputTriangleCount;
   int zeroAreaTrianglesRemoved;
+  int nearZeroAreaTrianglesRemoved;
   int invalidIndexTrianglesRemoved;
   int duplicateTrianglesRemoved;
   int uniqueEdgeCount;
@@ -83,9 +87,13 @@ class MeshDomainReport {
     json.setInt("input_vertex_count", inputVertexCount);
     json.setInt("output_vertex_count", outputVertexCount);
     json.setInt("duplicate_vertices_merged", duplicateVerticesMerged);
+    json.setInt("exact_duplicate_vertices_merged", exactDuplicateVerticesMerged);
+    json.setInt("near_duplicate_vertices_merged", nearDuplicateVerticesMerged);
+    json.setInt("isolated_vertices_removed", isolatedVerticesRemoved);
     json.setInt("input_triangle_count", inputTriangleCount);
     json.setInt("output_triangle_count", outputTriangleCount);
     json.setInt("zero_area_triangles_removed", zeroAreaTrianglesRemoved);
+    json.setInt("near_zero_area_triangles_removed", nearZeroAreaTrianglesRemoved);
     json.setInt("invalid_index_triangles_removed", invalidIndexTrianglesRemoved);
     json.setInt("duplicate_triangles_removed", duplicateTrianglesRemoved);
     json.setInt("unique_edge_count", uniqueEdgeCount);
@@ -169,6 +177,12 @@ class DCRTEMeshSanitizer {
       if (existing >= 0) {
         remap[i] = existing;
         report.duplicateVerticesMerged++;
+        int offset = existing * 3;
+        if (x == mergedVertices.values[offset] && y == mergedVertices.values[offset + 1] && z == mergedVertices.values[offset + 2]) {
+          report.exactDuplicateVerticesMerged++;
+        } else {
+          report.nearDuplicateVerticesMerged++;
+        }
       } else {
         int index = mergedVertices.size / 3;
         mergedVertices.add3(x, y, z);
@@ -195,8 +209,10 @@ class DCRTEMeshSanitizer {
         report.invalidIndexTrianglesRemoved++;
         continue;
       }
-      if (a == b || b == c || c == a || dcrteTriangleArea2(compactVertices, a, b, c) <= report.areaTolerance) {
-        report.zeroAreaTrianglesRemoved++;
+      double area2 = dcrteTriangleArea2(compactVertices, a, b, c);
+      if (a == b || b == c || c == a || area2 <= report.areaTolerance) {
+        if (area2 <= report.areaTolerance * 0.001) report.zeroAreaTrianglesRemoved++;
+        else report.nearZeroAreaTrianglesRemoved++;
         continue;
       }
       if (!triangleKeys.addIfAbsent(a, b, c)) {
@@ -207,7 +223,23 @@ class DCRTEMeshSanitizer {
     }
 
     int[] compactTriangles = keptTriangles.toArray();
-    TriangleMeshData output = new TriangleMeshData(compactVertices, compactTriangles);
+    boolean[] usedVertices = new boolean[compactVertices.length / 3];
+    for (int i = 0; i < compactTriangles.length; i++) {
+      if (compactTriangles[i] >= 0 && compactTriangles[i] < usedVertices.length) usedVertices[compactTriangles[i]] = true;
+    }
+    int[] isolatedRemap = new int[usedVertices.length];
+    java.util.Arrays.fill(isolatedRemap, -1);
+    FloatArrayBuilder finalVertices = new FloatArrayBuilder(compactVertices.length);
+    for (int i = 0; i < usedVertices.length; i++) {
+      if (!usedVertices[i]) {
+        report.isolatedVerticesRemoved++;
+        continue;
+      }
+      isolatedRemap[i] = finalVertices.size / 3;
+      finalVertices.add3(compactVertices[i * 3], compactVertices[i * 3 + 1], compactVertices[i * 3 + 2]);
+    }
+    for (int i = 0; i < compactTriangles.length; i++) compactTriangles[i] = isolatedRemap[compactTriangles[i]];
+    TriangleMeshData output = new TriangleMeshData(finalVertices.toArray(), compactTriangles);
     output.sourceName = input.sourceName;
     output.sourceFormat = input.sourceFormat;
     output.sourceHashSha256 = input.sourceHashSha256;
@@ -222,6 +254,8 @@ class DCRTEMeshSanitizer {
 
     if (report.duplicateVerticesMerged > 0) report.addWarning("MESH_DUPLICATE_VERTICES_MERGED");
     if (report.zeroAreaTrianglesRemoved > 0) report.addWarning("MESH_DEGENERATE_TRIANGLES_REMOVED");
+    if (report.nearZeroAreaTrianglesRemoved > 0) report.addWarning("MESH_NEAR_DEGENERATE_TRIANGLES_REMOVED");
+    if (report.isolatedVerticesRemoved > 0) report.addWarning("MESH_ISOLATED_VERTICES_REMOVED");
     if (output.triangleCount == 0 || output.vertexCount == 0) {
       report.addError("IMPORT_EMPTY_MESH");
       return new MeshValidationResult(output, report);

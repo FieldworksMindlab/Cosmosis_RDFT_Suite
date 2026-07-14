@@ -188,6 +188,8 @@ boolean loadDcrteImportedFile(File file, boolean fixture, JSONObject fixtureMeta
       ? "mesh inspected; rebuild SDF when ready"
       : "preview only - domain sign is unreliable";
     markDcrteImportedStale("imported source changed; rebuild SDF");
+    dcrteImportedAttemptPreflightReport = null;
+    runDcrteImportedPreflight();
     return true;
   }
   catch (MeshImportException error) {
@@ -202,6 +204,9 @@ boolean loadDcrteImportedFile(File file, boolean fixture, JSONObject fixtureMeta
     ? DCRTEImportedBuildState.MESH_INVALID : previousState;
   dcrteImportedStatus = "import failed: " + dcrteImportedErrorCode
     + (dcrteImportedSourceMesh == null ? "" : "; current domain retained");
+  dcrteImportedAttemptPreflightReport = createDcrteParseFailurePreflight(file,
+    dcrteImportedErrorCode, dcrteImportedErrorMessage);
+  dcrtePreflightPanelOpen = true;
   return false;
 }
 
@@ -227,12 +232,16 @@ void rebuildDcrteImportedTransform(boolean markStale) {
   dcrteImportedTransform = next;
   dcrteImportedWorldMesh = world;
   dcrteUpdateWorldReport(dcrteImportedMeshReport, world, next);
-  if (markStale) markDcrteImportedStale("transform changed; rebuild SDF");
+  if (markStale) {
+    markDcrteImportedStale("transform changed; rebuild SDF");
+    runDcrteImportedPreflight();
+  }
 }
 
 void markDcrteImportedStale(String reason) {
   dcrteImportedSdfDirty = true;
   dcrteImportedStale = true;
+  markDcrtePreflightStale();
   dcrteImportedLastBuildConfiguration = null;
   if (dcrteImportedSourceMesh != null) {
     boolean strictInvalid = dcrteImportedPolicy == InvalidDomainPolicy.STRICT
@@ -249,6 +258,7 @@ void markDcrteImportedStale(String reason) {
 
 void markDcrteImportedMaterialStale(String reason) {
   dcrteImportedStale = true;
+  markDcrtePreflightStale();
   dcrteImportedLastBuildConfiguration = null;
   if (!dcrteImportedSdfDirty && dcrteImportedDomain != null && dcrteImportedDomain.isValid()) {
     dcrteImportedBuildState = DCRTEImportedBuildState.SDF_READY;
@@ -264,10 +274,17 @@ boolean buildDcrteImportedSdf() {
     dcrteImportedStatus = "load a mesh before building SDF";
     return false;
   }
+  runDcrteImportedPreflight();
   boolean strict = dcrteImportedPolicy == InvalidDomainPolicy.STRICT;
   if (strict && !dcrteImportedMeshReport.strictValid()) {
     dcrteImportedBuildState = DCRTEImportedBuildState.MESH_INVALID;
     dcrteImportedStatus = "strict SDF disabled - invalid closed domain";
+    return false;
+  }
+  if (strict && !dcrtePreflightAllowsSdfBuild()) {
+    dcrteImportedBuildState = DCRTEImportedBuildState.MESH_INVALID;
+    dcrteImportedStatus = "strict SDF disabled - " + dcrteImportedPreflightReport.firstBlockingCode;
+    dcrtePreflightPanelOpen = true;
     return false;
   }
   VolumeSpec spec = createDcrteImportedVolumeSpec();
@@ -277,6 +294,7 @@ boolean buildDcrteImportedSdf() {
     dcrteImportedBoundary = nextBoundary;
     dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
     dcrteImportedStatus = "boundary voxelization failed";
+    runDcrteImportedPreflightWithDerived(true, false);
     return false;
   }
   InsideOutsideVolume nextClassification = null;
@@ -288,6 +306,7 @@ boolean buildDcrteImportedSdf() {
       dcrteImportedInsideOutside = nextClassification;
       dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
       dcrteImportedStatus = "inside/outside parity failed";
+      runDcrteImportedPreflightWithDerived(true, false);
       return false;
     }
   }
@@ -306,12 +325,14 @@ boolean buildDcrteImportedSdf() {
   if (strict && (nextSdf == null || nextSdf.quality == null || !nextSdf.quality.isValid() || !dcrteImportedDomain.isValid())) {
     dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
     dcrteImportedStatus = "SDF quality validation failed";
+    runDcrteImportedPreflightWithDerived(true, false);
     return false;
   }
   dcrteImportedSdfDirty = false;
   dcrteImportedStale = true;
   dcrteImportedBuildState = strict ? DCRTEImportedBuildState.SDF_READY : DCRTEImportedBuildState.MESH_INVALID;
   dcrteImportedStatus = strict ? "signed distance domain ready" : "preview only - unsigned distance ready";
+  runDcrteImportedPreflightWithDerived(true, false);
   return strict;
 }
 
@@ -330,6 +351,7 @@ void cycleDcrteImportedPolicy() {
     ? InvalidDomainPolicy.UNSIGNED_PREVIEW
     : InvalidDomainPolicy.STRICT;
   markDcrteImportedStale("invalid-domain policy changed; rebuild SDF");
+  runDcrteImportedPreflight();
 }
 
 void cycleDcrteImportedResolution() {
@@ -338,6 +360,7 @@ void cycleDcrteImportedResolution() {
   else dcrteImportedResolution = 32;
   dcrteImportedSliceIndex = dcrteImportedResolution / 2;
   markDcrteImportedStale("imported SDF resolution changed; rebuild");
+  runDcrteImportedPreflight();
 }
 
 void adjustDcrteImportedResolution(int direction) {
@@ -345,6 +368,7 @@ void adjustDcrteImportedResolution(int direction) {
   else dcrteImportedResolution = dcrteImportedResolution == 32 ? 64 : 128;
   dcrteImportedSliceIndex = dcrteImportedResolution / 2;
   markDcrteImportedStale("imported SDF resolution changed; rebuild");
+  runDcrteImportedPreflight();
 }
 
 void rotateDcrteImportedAxis(char axis) {
@@ -382,6 +406,9 @@ void adjustDcrteImportedSlice(int delta) {
 
 boolean dcrteImportedExportAllowed() {
   return dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH
-    || (!dcrteImportedStale && dcrteImportedDomain != null && dcrteImportedDomain.isValid()
-      && dcrteLastValidationReport != null && dcrteLastValidationReport.exportAllowed());
+    || (dcrteRawImportedExportReady()
+      && dcrteImportedPreflightReport != null
+      && !dcrteImportedPreflightReport.reportStale
+      && dcrteImportedPreflightReport.qualification == DomainQualification.MATERIALIZATION_READY
+      && dcrteImportedPreflightReport.exportEnabled);
 }

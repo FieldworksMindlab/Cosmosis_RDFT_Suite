@@ -209,6 +209,19 @@ void setup() {
   initializeDcrteMilestone0();
   initializeDcrteMilestone1();
   initializeDcrteMilestone2();
+  initializeDcrteMilestone25();
+  initializeDcrteMilestone25Tests();
+  String dcrteM25ReferencePath = dcrteCommandLineValue("--dcrte-m25-reference=");
+  if (dcrteM25ReferencePath != null) {
+    runDcrteMilestone25ExternalReferenceCase(dcrteM25ReferencePath);
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m25-acceptance")) {
+    runDcrteMilestone25AcceptanceMatrix();
+    exit();
+    return;
+  }
   if (dcrteCommandLineFlag("--dcrte-m2-acceptance")) {
     runDcrteMilestone2AcceptanceMatrix();
     exit();
@@ -1408,8 +1421,9 @@ void drawFoundryPreview(int x, int y, int w, int h) {
     drawDcrteCenterSlice(x, y, w, h);
   } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
     int importedPanelW = min(370, max(330, w - 24));
-    drawDcrteImportedPanel(x + w - importedPanelW - 12, y + 12, importedPanelW, 380);
+    drawDcrteImportedPanel(x + w - importedPanelW - 12, y + 12, importedPanelW, 410);
     drawDcrteImportedSdfSlice(x, y, w, h);
+    drawDcrtePreflightPanel(x, y, w, h);
   } else {
     drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);
   }
@@ -6199,6 +6213,7 @@ void mousePressed() {
     int cx = rightX + 16;
     int cy = py + 42;
     if (handleDcrtePrimitivePanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
+    if (handleDcrtePreflightPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
     if (handleDcrteImportedPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
     if (over(cx, cy, 132, 26)) generateSelectedSurfaceFoundryMesh();
     if (over(cx + 142, cy, 102, 26)) generateFoundryCallSheets();

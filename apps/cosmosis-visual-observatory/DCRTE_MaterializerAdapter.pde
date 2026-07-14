@@ -208,6 +208,15 @@ void generateDcrteImportedSurfaceMesh() {
       return;
     }
   }
+  runDcrteImportedPreflightWithDerived(true, false);
+  if (!dcrtePreflightAllowsMaterialization()) {
+    dcrteImportedStatus = "materialization disabled - "
+      + (dcrteImportedPreflightReport.firstBlockingCode.length() == 0
+        ? "preflight unresolved" : dcrteImportedPreflightReport.firstBlockingCode);
+    foundryStatus = dcrteImportedStatus;
+    dcrtePreflightPanelOpen = true;
+    return;
+  }
 
   dcrteImportedBuildState = DCRTEImportedBuildState.MATERIALIZING;
   VolumeSpec spec = createDcrteImportedVolumeSpec();
@@ -220,6 +229,7 @@ void generateDcrteImportedSurfaceMesh() {
     dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
     dcrteImportedStatus = "imported configuration invalid";
     foundryStatus = dcrteImportedStatus;
+    runDcrteImportedPreflightWithDerived(true, false);
     return;
   }
 
@@ -233,6 +243,7 @@ void generateDcrteImportedSurfaceMesh() {
     dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
     dcrteImportedStatus = "imported field volume allocation failed";
     foundryStatus = dcrteImportedStatus;
+    runDcrteImportedPreflightWithDerived(true, false);
     return;
   }
 
@@ -311,6 +322,7 @@ void generateDcrteImportedSurfaceMesh() {
       : "imported material ready";
     foundryStatus = dcrteImportedStatus + " " + foundryMesh.tris.size() + " tris";
   }
+  runDcrteImportedPreflightWithDerived(true, true);
 }
 
 void generateDcrtePrimitiveSurfaceMesh() {
