@@ -6142,13 +6142,18 @@ void metricLine(int x, int y, String label, String value) {
 }
 
 void drawButton(int x, int y, int w, int h, String label, color bg) {
-  noStroke();
-  fill(bg);
-  rect(x, y, w, h, 5);
-  fill(230);
+  boolean held = this.mousePressed && over(x, y, w, h);
+  color buttonColor = held ? lerpColor(bg, color(255, 214, 78), 0.48f) : bg;
+  if (held) {
+    stroke(255, 232, 126);
+    strokeWeight(1.5f);
+  } else noStroke();
+  fill(buttonColor);
+  rect(x + (held ? 1 : 0), y + (held ? 1 : 0), w - (held ? 2 : 0), h - (held ? 2 : 0), 5);
+  fill(held ? color(4, 12, 15) : color(230));
   textSize(9);
   textAlign(CENTER, CENTER);
-  text(label, x + w / 2, y + h / 2);
+  text(label, x + w / 2, y + h / 2 + (held ? 1 : 0));
 }
 
 void drawHelpOverlay() {

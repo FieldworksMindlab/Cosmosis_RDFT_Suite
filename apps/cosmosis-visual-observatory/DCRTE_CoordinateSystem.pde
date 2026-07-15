@@ -211,6 +211,7 @@ CartesianCoordinateSystem dcrteCartesianCoordinateSystem = new CartesianCoordina
 IntrinsicAxialCoordinateSystem dcrteIntrinsicCoordinateSystem = null;
 IntrinsicBuildResult dcrteIntrinsicBuildResult = null;
 DCRTECoordinateComparisonReport dcrteCoordinateComparisonReport = null;
+String dcrteLastIntrinsicReportPath = "";
 
 void initializeDcrteMilestone3() {
   dcrteCartesianCoordinateSystem = new CartesianCoordinateSystem();
@@ -326,12 +327,39 @@ boolean buildDcrteImportedIntrinsicCoordinates() {
 }
 
 void exportDcrteIntrinsicReportJSON() {
-  if (dcrteIntrinsicBuildResult == null || dcrteIntrinsicBuildResult.validation == null) return;
+  if (dcrteIntrinsicBuildResult == null || dcrteIntrinsicBuildResult.validation == null) {
+    dcrteLastIntrinsicReportPath = "";
+    dcrteImportedStatus = "intrinsic report unavailable: build coordinates first";
+    return;
+  }
   String stamp = nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "_"
     + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2);
   String path = "logs/dcrte_intrinsic_reports/dcrte_intrinsic_" + stamp + ".json";
   saveJSONObject(dcrteIntrinsicBuildResult.toJSON(), path);
+  dcrteLastIntrinsicReportPath = sketchPath(path);
   dcrteImportedStatus = "intrinsic report exported: " + path;
+}
+
+void revealDcrteIntrinsicReport() {
+  exportDcrteIntrinsicReportJSON();
+  if (dcrteLastIntrinsicReportPath.length() == 0) return;
+  File report = new File(dcrteLastIntrinsicReportPath);
+  if (!report.exists()) {
+    dcrteImportedStatus = "intrinsic report not found: " + dcrteLastIntrinsicReportPath;
+    return;
+  }
+  try {
+    if (java.awt.Desktop.isDesktopSupported()) {
+      java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
+      java.lang.reflect.Method openMethod = java.awt.Desktop.class.getMethod("open", File.class);
+      openMethod.invoke(desktop, report);
+      dcrteImportedStatus = "opened intrinsic report: " + report.getAbsolutePath();
+    } else dcrteImportedStatus = "intrinsic report: " + report.getAbsolutePath();
+  }
+  catch (Exception error) {
+    dcrteImportedStatus = "intrinsic report: " + report.getAbsolutePath();
+    println("DCRTE-ET could not open intrinsic report: " + error.getMessage());
+  }
 }
 
 JSONObject dcrteCoordinateMetadataJSON() {

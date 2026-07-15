@@ -1,5 +1,5 @@
 {
-  "total_cases": 10,
+  "total_cases": 12,
   "cases": [
     {
       "fixture": "cylinder",
@@ -113,9 +113,9 @@
           "valid_fraction": 1,
           "timings": {
             "pca_millis": 0,
-            "mapping_millis": 1,
-            "slice_millis": 2,
-            "total_millis": 4,
+            "mapping_millis": 2,
+            "slice_millis": 1,
+            "total_millis": 3,
             "centerline_millis": 0,
             "frame_millis": 0
           },
@@ -310,12 +310,12 @@
           "applied_fallback_voxels": 0,
           "valid_fraction": 1,
           "timings": {
-            "pca_millis": 0,
+            "pca_millis": 1,
             "mapping_millis": 1,
-            "slice_millis": 2,
-            "total_millis": 3,
+            "slice_millis": 0,
+            "total_millis": 4,
             "centerline_millis": 0,
-            "frame_millis": 0
+            "frame_millis": 1
           },
           "applied_fallback_fraction": 0,
           "nonfinite_voxels": 0,
@@ -495,9 +495,9 @@
           "valid_fraction": 1,
           "timings": {
             "pca_millis": 1,
-            "mapping_millis": 4,
-            "slice_millis": 1,
-            "total_millis": 6,
+            "mapping_millis": 2,
+            "slice_millis": 0,
+            "total_millis": 3,
             "centerline_millis": 0,
             "frame_millis": 0
           },
@@ -678,9 +678,9 @@
           "applied_fallback_voxels": 0,
           "valid_fraction": 1,
           "timings": {
-            "pca_millis": 0,
+            "pca_millis": 1,
             "mapping_millis": 1,
-            "slice_millis": 1,
+            "slice_millis": 0,
             "total_millis": 3,
             "centerline_millis": 1,
             "frame_millis": 0
@@ -862,10 +862,10 @@
           "applied_fallback_voxels": 0,
           "valid_fraction": 1,
           "timings": {
-            "pca_millis": 0,
+            "pca_millis": 1,
             "mapping_millis": 3,
-            "slice_millis": 2,
-            "total_millis": 5,
+            "slice_millis": 0,
+            "total_millis": 4,
             "centerline_millis": 0,
             "frame_millis": 0
           },
@@ -1008,8 +1008,8 @@
           "timings": {
             "pca_millis": 0,
             "mapping_millis": 0,
-            "slice_millis": 1,
-            "total_millis": 1,
+            "slice_millis": 0,
+            "total_millis": 0,
             "centerline_millis": 0,
             "frame_millis": 0
           },
@@ -1133,8 +1133,8 @@
           "timings": {
             "pca_millis": 1,
             "mapping_millis": 0,
-            "slice_millis": 1,
-            "total_millis": 2,
+            "slice_millis": 0,
+            "total_millis": 1,
             "centerline_millis": 0,
             "frame_millis": 0
           },
@@ -1297,13 +1297,381 @@
           "status": "fail"
         }
       }
+    },
+    {
+      "fixture": "canonical_imported_egg_64",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-K",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 51132,
+          "spec": {
+            "sample_volume": 3.0517578125E-5,
+            "spacing_x": 0.03125,
+            "spacing_y": 0.03125,
+            "spacing_z": 0.03125,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              64,
+              64,
+              64
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 1,
+          "slice_count": 64,
+          "interpolated_count": 4,
+          "maximum_gap_fraction": 0.015625,
+          "valid_fraction": 1,
+          "raw_valid_count": 60,
+          "axial_max": 0.848694920539856,
+          "raw_valid_fraction": 0.9375,
+          "long_gap": false,
+          "axial_min": -0.995055079460144
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.02777785062789917,
+          "endpoint_inset": 0.046875,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 64,
+          "length": 1.75,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.037722088396549225,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 1,
+          "sample_count": 64,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 0,
+          "cumulative_rotation": 0,
+          "max_rotation": 0
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 51132,
+          "total_inside_voxels": 51132,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 2,
+            "mapping_millis": 12,
+            "slice_millis": 2,
+            "total_millis": 20,
+            "centerline_millis": 1,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": true,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 1,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0.015625,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 2.614889621734619,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 2.614889621734619,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.11974349617958069,
+            "principal_eigenvalue_2": 0.045792944729328156,
+            "principal_eigenvalue_3": 0.045792944729328156,
+            "suitable": true,
+            "blockers": [],
+            "valid_slice_fraction": 1,
+            "status": "pass_with_warnings"
+          },
+          "mean_frame_rotation": 0,
+          "total_inside_voxels": 51132,
+          "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 51132,
+          "max_frame_rotation": 0,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.75,
+          "mean_confidence": 0.7940443158149719,
+          "p05_confidence": 0.6249994039535522,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.02777785062789917,
+          "minimum_centerline_sdf_margin": 0.037722088396549225,
+          "errors": [],
+          "status": "pass_with_warnings"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            -0,
+            -1,
+            -0
+          ],
+          "eigenvalues": [
+            0.11974349617958069,
+            0.045792944729328156,
+            0.045792944729328156
+          ],
+          "axis_2": [
+            1,
+            -0,
+            0
+          ],
+          "s0_end_radius": 0.23394513130187988,
+          "center": [
+            0,
+            -0.07318004965782166,
+            0
+          ],
+          "axis_3": [
+            -0,
+            -0,
+            1
+          ],
+          "sign_policy": "smaller_end_radius_is_s_zero",
+          "s1_end_radius": 0.3129553198814392,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "canonical_imported_egg_128",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-L",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 385576,
+          "spec": {
+            "sample_volume": 3.814697265625E-6,
+            "spacing_x": 0.015625,
+            "spacing_y": 0.015625,
+            "spacing_z": 0.015625,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              128,
+              128,
+              128
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 1,
+          "slice_count": 128,
+          "interpolated_count": 8,
+          "maximum_gap_fraction": 0.0078125,
+          "valid_fraction": 1,
+          "raw_valid_count": 120,
+          "axial_max": 0.8564355969429016,
+          "raw_valid_fraction": 0.9375,
+          "long_gap": false,
+          "axial_min": -1.0029393434524536
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.014271855354309082,
+          "endpoint_inset": 0.0234375,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 128,
+          "length": 1.8125,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.0078125,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 1,
+          "sample_count": 128,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 0,
+          "cumulative_rotation": 0,
+          "max_rotation": 0
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 385576,
+          "total_inside_voxels": 385576,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 15,
+            "mapping_millis": 87,
+            "slice_millis": 17,
+            "total_millis": 125,
+            "centerline_millis": 1,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": true,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 1,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0.0078125,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 2.6059539318084717,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 2.6059539318084717,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.11985427141189575,
+            "principal_eigenvalue_2": 0.045992475003004074,
+            "principal_eigenvalue_3": 0.045992475003004074,
+            "suitable": true,
+            "blockers": [],
+            "valid_slice_fraction": 1,
+            "status": "pass_with_warnings"
+          },
+          "mean_frame_rotation": 0,
+          "total_inside_voxels": 385576,
+          "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 385576,
+          "max_frame_rotation": 0,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.8125,
+          "mean_confidence": 0.8036976456642151,
+          "p05_confidence": 0.779742419719696,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.014271855354309082,
+          "minimum_centerline_sdf_margin": 0.0078125,
+          "errors": [],
+          "status": "pass_with_warnings"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            -0,
+            -1,
+            -0
+          ],
+          "eigenvalues": [
+            0.11985427141189575,
+            0.045992475003004074,
+            0.045992475003004074
+          ],
+          "axis_2": [
+            0,
+            0,
+            1
+          ],
+          "s0_end_radius": 0.2061941772699356,
+          "center": [
+            0,
+            -0.07325189560651779,
+            0
+          ],
+          "axis_3": [
+            -1,
+            -0,
+            -0
+          ],
+          "sign_policy": "smaller_end_radius_is_s_zero",
+          "s1_end_radius": 0.2812129557132721,
+          "weighting": "distance_weighted"
+        }
+      }
     }
   ],
   "milestone": "DCRTE-ET M3",
-  "passed_cases": 10,
+  "passed_cases": 12,
   "deterministic_tests": {
     "failures": [],
-    "passed": 18,
+    "passed": 20,
     "failed": 0,
     "status": "pass"
   },

@@ -7,8 +7,8 @@ dominant, non-branching imported domain. It is inserted between the existing
 observer and the unchanged recursive field engine. Cartesian imported-domain
 sampling remains the default and retains the Milestone 2 behavior.
 
-The final deterministic run passed 18/18 Milestone 3 checks and the canonical
-acceptance matrix passed 10/10 cases. The retained Milestone 1, 2, and 2.5
+The final deterministic run passed 20/20 Milestone 3 checks and the canonical
+acceptance matrix passed 12/12 cases. The retained Milestone 1, 2, and 2.5
 deterministic suites also pass at application startup.
 
 ## Architecture Boundary
@@ -100,6 +100,13 @@ fraction, PCA elongation, valid slices, centerline sample count and length,
 frame continuity, ambiguity, mapping and applied fallback, confidence, radial
 model, scales, build time, and paired solid fractions.
 
+M3.1 adds a persistent operator gate band between the preflight toolbar and
+the model workspace. It states whether export is ready, stale, awaiting
+materialization, preflight-blocked, or intrinsic-blocked; selecting the band
+routes to the relevant Issues or Intrinsic inspector. Every existing button
+also receives a visible held state without adding audio to the visual-only app.
+The Intrinsic inspector can export and reveal its current JSON report directly.
+
 Available overlays include centerline, transported frames, axial slice rings,
 `s`, radial distance, `rho`, periodic `theta`, confidence, ambiguity, fallback,
 and retained Cartesian/intrinsic comparison masks.
@@ -152,6 +159,8 @@ The measured `36^3` acceptance run produced:
 | M3-H | Torus / intrinsic | Block | `IC_CLOSED_LOOP_SUSPECTED` |
 | M3-I | Y-branch / intrinsic | Block | `IC_BRANCHING_SUSPECTED` |
 | M3-J | Two bodies / intrinsic | Block | `IC_MULTIPLE_DOMINANT_COMPONENTS` |
+| M3-K | Production M2 egg / intrinsic / `64^3` | Pass with warning | imported-mesh SDF path; no false self-approach |
+| M3-L | Production M2 egg / intrinsic / `128^3` | Pass with warning | high-resolution imported-mesh SDF path |
 
 At this fixture size, complete intrinsic builds measured approximately `3-6
 ms` on the development machine. Timing is reported rather than treated as a

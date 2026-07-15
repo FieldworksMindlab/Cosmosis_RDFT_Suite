@@ -532,6 +532,8 @@ materialization. Open the full-size `PREFLIGHT` workspace and select the
   confidence, ambiguity, fallback, and paired result masks;
 - run a Cartesian/intrinsic comparison from one frozen field configuration;
 - export the intrinsic qualification report as JSON.
+- reveal the current intrinsic report directly; reports are stored under
+  `logs/dcrte_intrinsic_reports/`.
 
 The initial intrinsic system is intentionally limited to one dominant,
 non-branching, non-looping closed domain. Cylinder, egg, rotated egg, and bent
@@ -552,6 +554,11 @@ Run the deterministic matrix with:
 The run writes `logs/dcrte_m3_acceptance_latest.json`. Architecture, thresholds,
 measured results, metadata, known limits, and future insertion points are in
 `DCRTE_MILESTONE_3_IMPLEMENTATION_REPORT.md`.
+
+The M3.1 stabilization matrix also runs the production canonical M2 egg through
+the imported-mesh SDF path at `64^3` and `128^3`. Self-approach is evaluated by
+comparing spatial distance with centerline arc distance, so adjacent samples on
+one thick axis are not mistaken for a closed loop.
 
 Milestone 3 does not repair invalid source meshes. Non-manifold, open,
 self-intersecting, or otherwise unqualified STLs remain blocked by preflight.

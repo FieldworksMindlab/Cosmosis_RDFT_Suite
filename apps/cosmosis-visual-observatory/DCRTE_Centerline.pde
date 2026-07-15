@@ -225,7 +225,26 @@ class DCRTECenterlineBuilder {
     model.selfApproachSuspected=detectSelfApproach(model,sdf.spec.minSpacing());model.valid=!model.leavesDomain&&!model.selfApproachSuspected&&model.length>0&&model.minimumSdfMargin>=-0.25f*sdf.spec.minSpacing();return model;
   }
   void smooth(float[] x,float[] y,float[] z){float[] nx=java.util.Arrays.copyOf(x,x.length),ny=java.util.Arrays.copyOf(y,y.length),nz=java.util.Arrays.copyOf(z,z.length);for(int i=1;i<x.length-1;i++){nx[i]=(x[i-1]+2*x[i]+x[i+1])*0.25f;ny[i]=(y[i-1]+2*y[i]+y[i+1])*0.25f;nz[i]=(z[i-1]+2*z[i]+z[i+1])*0.25f;}System.arraycopy(nx,0,x,0,x.length);System.arraycopy(ny,0,y,0,y.length);System.arraycopy(nz,0,z,0,z.length);}
-  boolean detectSelfApproach(CenterlineModel model,float spacing){if(model.points==null)return false;for(int i=0;i<model.points.length;i++)for(int j=i+8;j<model.points.length;j++){CenterlinePoint a=model.points[i],b=model.points[j];float d=dcrteMagnitude(a.x-b.x,a.y-b.y,a.z-b.z);float local=max(spacing*2,0.45f*min(a.equivalentRadius,b.equivalentRadius));if(d<local)return true;}return false;}
+  boolean detectSelfApproach(CenterlineModel model, float spacing) {
+    if (model.points == null || model.points.length < 8) return false;
+    for (int i = 0; i < model.points.length; i++) {
+      CenterlinePoint a = model.points[i];
+      for (int j = i + 1; j < model.points.length; j++) {
+        CenterlinePoint b = model.points[j];
+        float arcSeparation = abs(b.arcLength - a.arcLength);
+        float localRadius = max(spacing, min(a.equivalentRadius, b.equivalentRadius));
+
+        // Nearby samples on one thick centerline are expected to be close in space.
+        // A loop risk must be nonlocal along the curve and form a real shortcut.
+        if (arcSeparation <= max(spacing * 6.0f, localRadius * 1.75f)) continue;
+        float spatialSeparation = dcrteMagnitude(a.x-b.x, a.y-b.y, a.z-b.z);
+        float proximityThreshold = max(spacing * 2.0f, localRadius * 0.45f);
+        float shortcutRatio = spatialSeparation / max(spacing, arcSeparation);
+        if (spatialSeparation < proximityThreshold && shortcutRatio < 0.42f) return true;
+      }
+    }
+    return false;
+  }
 }
 
 void dcrteResolvePcaSign(PCAFrame pca, AxialSliceSet slices) {

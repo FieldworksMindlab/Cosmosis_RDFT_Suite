@@ -42,6 +42,12 @@ DCRTEM3TestReport runDcrteMilestone3Tests() {
     tests.check(dcrteM3Accepted(rotatedEgg), "rotated egg intrinsic build passes");
     tests.check(dcrteM3Comparable(egg, rotatedEgg, 0.22f), "rotated egg domain-relative metrics remain comparable");
 
+    IntrinsicBuildResult importedEgg = dcrteBuildM3CanonicalImportedEgg(64);
+    tests.check(dcrteM3Accepted(importedEgg), "production canonical egg 64^3 intrinsic build passes");
+    tests.check(importedEgg != null && importedEgg.centerline != null
+      && !importedEgg.centerline.selfApproachSuspected,
+      "production canonical egg centerline is not misclassified as a closed loop");
+
     IntrinsicBuildResult ellipticalCylinder = dcrteBuildM3FixtureWithRadialModel(
       DCRTEM3FixtureKind.CYLINDER, 30, DCRTERadialModel.ELLIPTICAL);
     tests.check(dcrteM3Accepted(ellipticalCylinder) && dcrteM3NoNonFinite(ellipticalCylinder),
@@ -79,6 +85,12 @@ DCRTEM3TestReport runDcrteMilestone3Tests() {
 IntrinsicBuildResult dcrteBuildM3Fixture(DCRTEM3FixtureKind kind, int resolution) {
   SignedDistanceVolume sdf = dcrteCreateM3AnalyticSdf(kind, resolution);
   return new DCRTEIntrinsicCoordinateBuilder().build(sdf, null, true);
+}
+
+IntrinsicBuildResult dcrteBuildM3CanonicalImportedEgg(int resolution) {
+  DCRTEM2FixtureSdf fixture = dcrteBuildFixtureSdf(createDcrteEggFixtureMesh(), resolution);
+  if (fixture == null || fixture.sdf == null || !fixture.sdf.isValid()) return null;
+  return new DCRTEIntrinsicCoordinateBuilder().build(fixture.sdf, null, true);
 }
 
 IntrinsicBuildResult dcrteBuildM3FixtureWithRadialModel(DCRTEM3FixtureKind kind,
@@ -215,21 +227,24 @@ float dcrteM3PointSegmentDistance(float px, float py, float pz,
 
 void runDcrteMilestone3AcceptanceMatrix() {
   println("DCRTE-ET Milestone 3 acceptance matrix starting...");
-  String[] ids = {"M3-A", "M3-B", "M3-C", "M3-D", "M3-E", "M3-F", "M3-G", "M3-H", "M3-I", "M3-J"};
+  String[] ids = {"M3-A", "M3-B", "M3-C", "M3-D", "M3-E", "M3-F", "M3-G", "M3-H", "M3-I", "M3-J", "M3-K", "M3-L"};
   DCRTEM3FixtureKind[] fixtures = {
     DCRTEM3FixtureKind.CYLINDER, DCRTEM3FixtureKind.CYLINDER,
     DCRTEM3FixtureKind.EGG, DCRTEM3FixtureKind.EGG, DCRTEM3FixtureKind.ROTATED_EGG,
     DCRTEM3FixtureKind.BENT_CAPSULE, DCRTEM3FixtureKind.SPHERE,
-    DCRTEM3FixtureKind.TORUS, DCRTEM3FixtureKind.Y_BRANCH, DCRTEM3FixtureKind.TWO_BODIES
+    DCRTEM3FixtureKind.TORUS, DCRTEM3FixtureKind.Y_BRANCH, DCRTEM3FixtureKind.TWO_BODIES,
+    DCRTEM3FixtureKind.EGG, DCRTEM3FixtureKind.EGG
   };
-  boolean[] cartesian = {true, false, true, false, false, false, false, false, false, false};
-  boolean[] expectPass = {true, true, true, true, true, true, true, false, false, false};
+  boolean[] cartesian = {true, false, true, false, false, false, false, false, false, false, false, false};
+  boolean[] expectPass = {true, true, true, true, true, true, true, false, false, false, true, true};
   JSONArray cases = new JSONArray();
   int passed = 0;
   for (int i = 0; i < ids.length; i++) {
     JSONObject entry = new JSONObject();
     entry.setString("id", ids[i]);
-    entry.setString("fixture", fixtures[i].name().toLowerCase());
+    boolean productionEgg = i >= 10;
+    int productionResolution = i == 11 ? 128 : 64;
+    entry.setString("fixture", productionEgg ? "canonical_imported_egg_" + productionResolution : fixtures[i].name().toLowerCase());
     entry.setString("coordinate_mode", cartesian[i] ? "cartesian" : "intrinsic_axial");
     boolean actual;
     if (cartesian[i]) {
@@ -239,7 +254,9 @@ void runDcrteMilestone3AcceptanceMatrix() {
       actual = sdf.isValid() && sample.valid && sample.fieldX == 0.21f && sample.fieldY == -0.17f && sample.fieldZ == 0.43f;
       entry.setJSONObject("coordinates", system.toJSON());
     } else {
-      IntrinsicBuildResult result = dcrteBuildM3Fixture(fixtures[i], 36);
+      IntrinsicBuildResult result = productionEgg
+        ? dcrteBuildM3CanonicalImportedEgg(productionResolution)
+        : dcrteBuildM3Fixture(fixtures[i], 36);
       actual = dcrteM3Accepted(result);
       if (fixtures[i] == DCRTEM3FixtureKind.SPHERE) actual = result != null && result.validation != null
         && result.validation.status != ValidationStatus.PASS;

@@ -492,14 +492,78 @@ void drawDcrtePreflightPanel(int previewX, int previewY, int previewW, int previ
     "OVERLAY " + overlayNames[dcrtePreflightOverlayMode], color(46, 66, 78));
   drawButton(toolbarX + (buttonW + gap) * 3, by, buttonW, 21, "EXPORT REPORT JSON", color(48, 72, 77));
 
-  int bodyY = y + 82;
-  int bodyH = h - 94;
+  int gateY = y + 78;
+  dcrteDrawOperatorGateBand(toolbarX, gateY, toolbarW, 20, report);
+  int bodyY = y + 105;
+  int bodyH = h - 117;
   int inspectorW = constrain(round(w * 0.40f), 300, 390);
   int modelX = x + pad;
   int modelW = w - inspectorW - pad * 2 - gap;
   int inspectorX = modelX + modelW + gap;
   dcrteDrawPreflightViewport(modelX, bodyY, modelW, bodyH, report, accent);
   dcrteDrawPreflightInspector(inspectorX, bodyY, inspectorW, bodyH, report, accent);
+}
+
+int dcrteOperatorGateSeverity(DomainPreflightReport report) {
+  IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult == null ? null : dcrteIntrinsicBuildResult.validation;
+  boolean intrinsicActive = dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL;
+  if (intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) return 2;
+  if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL && intrinsic == null) return 2;
+  if (report == null || report.qualification == DomainQualification.NOT_LOADED) return 1;
+  if (report.status == ValidationStatus.FAIL || report.reportStale) return 2;
+  if (!intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) return 1;
+  if (intrinsic != null && intrinsic.status == ValidationStatus.PASS_WITH_WARNINGS) return 1;
+  if (report.status == ValidationStatus.PASS_WITH_WARNINGS || !report.exportEnabled) return 1;
+  return 0;
+}
+
+String dcrteOperatorGateMessage(DomainPreflightReport report) {
+  IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult == null ? null : dcrteIntrinsicBuildResult.validation;
+  boolean intrinsicActive = dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL;
+  if (intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) {
+    return "EXPORT LOCKED  |  INTRINSIC  |  " + intrinsic.primaryIssue() + "  |  OPEN INTRINSIC TAB";
+  }
+  if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL && intrinsic == null) {
+    return "EXPORT LOCKED  |  INTRINSIC COORDINATES NOT BUILT  |  OPEN INTRINSIC TAB";
+  }
+  if (report == null || report.qualification == DomainQualification.NOT_LOADED) {
+    return "DOMAIN NOT LOADED  |  LOAD STL OR EGG FIXTURE";
+  }
+  if (report.reportStale) return "EXPORT LOCKED  |  PREFLIGHT REPORT STALE  |  RUN PREFLIGHT";
+  if (report.status == ValidationStatus.FAIL) {
+    String blocker = report.firstBlockingCode.length() == 0 ? "PREFLIGHT FAILED" : report.firstBlockingCode;
+    return "EXPORT LOCKED  |  PREFLIGHT  |  " + blocker + "  |  OPEN ISSUES TAB";
+  }
+  if (!intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) {
+    return "INTRINSIC BLOCKED (INACTIVE)  |  " + intrinsic.primaryIssue() + "  |  CARTESIAN PATH RETAINED";
+  }
+  if (!report.exportEnabled) return "DOMAIN QUALIFIED  |  GENERATE MATERIAL TO ENABLE EXPORT";
+  if (intrinsic != null && intrinsic.status == ValidationStatus.PASS_WITH_WARNINGS) {
+    return "EXPORT READY WITH INTRINSIC WARNINGS  |  OPEN INTRINSIC TAB";
+  }
+  return "DOMAIN QUALIFIED  |  EXPORT READY";
+}
+
+void dcrteDrawOperatorGateBand(int x, int y, int w, int h, DomainPreflightReport report) {
+  int severity = dcrteOperatorGateSeverity(report);
+  color accent = severity == 2 ? color(255, 82, 104) : severity == 1 ? color(255, 196, 68) : color(82, 226, 164);
+  color background = severity == 2 ? color(54, 18, 25) : severity == 1 ? color(48, 40, 18) : color(15, 47, 38);
+  float pulse = severity == 2 ? 0.5f + 0.5f * sin(millis() * TWO_PI / 1500.0f) : 0;
+  fill(background); stroke(accent); strokeWeight(1 + pulse);
+  rect(x, y, w, h, 3);
+  stroke(accent); strokeWeight(1);
+  for (int sx = x + 5; sx < x + 45; sx += 8) line(sx, y + h - 2, sx + 8, y + 2);
+  for (int sx = x + w - 45; sx < x + w - 5; sx += 8) line(sx, y + h - 2, sx + 8, y + 2);
+  noStroke(); fill(accent); textAlign(CENTER, CENTER); textSize(8);
+  text(shortText(dcrteOperatorGateMessage(report), max(48, w / 6)), x + w / 2, y + h / 2);
+}
+
+void dcrteActivateOperatorGate(DomainPreflightReport report) {
+  IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult == null ? null : dcrteIntrinsicBuildResult.validation;
+  if (intrinsic != null && !intrinsic.exportAllowed()
+      || dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL && intrinsic == null) {
+    dcrtePreflightInspectorTab = 4;
+  } else if (report != null && report.status == ValidationStatus.FAIL) dcrtePreflightInspectorTab = 2;
 }
 
 void dcrteDrawPreflightViewport(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
@@ -585,8 +649,9 @@ void dcrteDrawIntrinsicInspector(int x, int y, int w, int h, DomainPreflightRepo
   drawButton(x + (thirdW + gap) * 2, y + 100, thirdW, 20, dcrteIntrinsicShowConfidence ? "CONF ON" : "CONF OFF", color(48, 72, 77));
   drawButton(x, y + 125, halfW, 20, "COMPARE " + (dcrteCoordinateComparisonMode == CoordinateComparisonMode.SINGLE ? "SINGLE" : "PAIRED"), color(50, 72, 82));
   drawButton(x + halfW + gap, y + 125, halfW, 20, "EXPORT INTRINSIC JSON", color(48, 72, 77));
+  drawButton(x, y + 150, w, 20, "REVEAL CURRENT INTRINSIC REPORT", color(54, 78, 84));
 
-  int lineY = y + 157;
+  int lineY = y + 182;
   fill(112, 178, 188); textAlign(LEFT, TOP); textSize(8); text("INTRINSIC COORDINATE QUALIFICATION", x, lineY); lineY += 15;
   IntrinsicBuildResult result = dcrteIntrinsicBuildResult;
   IntrinsicValidationReport validation = result == null ? null : result.validation;
@@ -611,6 +676,7 @@ void dcrteDrawIntrinsicInspector(int x, int y, int w, int h, DomainPreflightRepo
   lineY = dcrteInspectorPair(x, lineY, w, "RADIAL MODEL", dcrteIntrinsicRadialModel.label());
   lineY = dcrteInspectorPair(x, lineY, w, "SCALES L / R", nf(dcrteIntrinsicLongitudinalScale, 1, 2) + " / " + nf(dcrteIntrinsicRadialScale, 1, 2));
   lineY = dcrteInspectorPair(x, lineY, w, "BUILD TIME", dcrteIntrinsicLastBuildMillis + " ms");
+  lineY = dcrteInspectorPair(x, lineY, w, "REPORT DIRECTORY", "logs/dcrte_intrinsic_reports");
   if (dcrteCoordinateComparisonReport != null) {
     lineY = dcrteInspectorPair(x, lineY, w, "PAIR SOLID CART / INTR",
       nf(dcrteCoordinateComparisonReport.cartesianSolidFraction, 1, 3) + " / "
@@ -810,7 +876,9 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
   if (over(toolbarX + (buttonW + gap) * 2, by, buttonW, 21)) { dcrtePreflightOverlayMode = (dcrtePreflightOverlayMode + 1) % 5; return true; }
   if (over(toolbarX + (buttonW + gap) * 3, by, buttonW, 21)) { exportDcrtePreflightReportJSON(); return true; }
 
-  int bodyY = y + 82;
+  DomainPreflightReport report = dcrteDisplayedPreflightReport();
+  if (over(toolbarX, y + 78, toolbarW, 20)) { dcrteActivateOperatorGate(report); return true; }
+  int bodyY = y + 105;
   int inspectorW = constrain(round(w * 0.40f), 300, 390);
   int modelW = w - inspectorW - pad * 2 - gap;
   int inspectorX = x + pad + modelW + gap;
@@ -866,6 +934,7 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
     if (over(contentX + (thirdW + controlGap) * 2, contentY + 100, thirdW, 20)) { dcrteIntrinsicShowConfidence = !dcrteIntrinsicShowConfidence; if (dcrteIntrinsicShowConfidence) dcrteIntrinsicVisualizationMode = IntrinsicVisualizationMode.INTRINSIC_CONFIDENCE; return true; }
     if (over(contentX, contentY + 125, halfW, 20)) { cycleDcrteCoordinateComparisonMode(); return true; }
     if (over(contentX + halfW + controlGap, contentY + 125, halfW, 20)) { exportDcrteIntrinsicReportJSON(); return true; }
+    if (over(contentX, contentY + 150, contentW, 20)) { revealDcrteIntrinsicReport(); return true; }
   }
   return false;
 }
