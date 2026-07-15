@@ -511,6 +511,53 @@ The commands write `logs/dcrte_m25_acceptance_latest.json` and
 and measured results are recorded in
 `DCRTE_MILESTONE_2_5_IMPLEMENTATION_REPORT.md`.
 
+## DCRTE-ET Milestone 3: Intrinsic Axial Coordinates
+
+Milestone 3 adds an optional coordinate layer between a qualified imported
+domain and the unchanged recursive field engine. `CARTESIAN` remains the
+default and preserves the Milestone 2 world-coordinate path. `INTRINSIC AXIAL`
+uses a domain-derived centerline and transported frame so the same field can be
+sampled by longitudinal position, normalized radius, and local polar angle.
+
+Intrinsic construction is available only after Milestone 2.5 preflight permits
+materialization. Open the full-size `PREFLIGHT` workspace and select the
+`INTRINSIC` inspector tab to:
+
+- build or reset the intrinsic coordinate volume;
+- select Cartesian or intrinsic field coordinates;
+- select equivalent-circular or elliptical radial normalization;
+- adjust longitudinal and radial field scales;
+- select the explicit fallback policy;
+- display centerline, parallel-transport frames, axial slices, scalar fields,
+  confidence, ambiguity, fallback, and paired result masks;
+- run a Cartesian/intrinsic comparison from one frozen field configuration;
+- export the intrinsic qualification report as JSON.
+
+The initial intrinsic system is intentionally limited to one dominant,
+non-branching, non-looping closed domain. Cylinder, egg, rotated egg, and bent
+capsule fixtures pass. Sphere receives low-elongation diagnostics and may be
+policy-blocked for mapping ambiguity. Torus, Y-branch, and disconnected paired
+bodies are blocked from intrinsic axial mode while remaining available in
+Cartesian mode.
+
+Run the deterministic matrix with:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="$PWD" \
+  --output=/tmp/cosmosis_m3_acceptance \
+  --force --run --dcrte-m3-acceptance
+```
+
+The run writes `logs/dcrte_m3_acceptance_latest.json`. Architecture, thresholds,
+measured results, metadata, known limits, and future insertion points are in
+`DCRTE_MILESTONE_3_IMPLEMENTATION_REPORT.md`.
+
+Milestone 3 does not repair invalid source meshes. Non-manifold, open,
+self-intersecting, or otherwise unqualified STLs remain blocked by preflight.
+Any future repair path will derive a separately identified candidate and rerun
+the full qualification report rather than weakening the current gate.
+
 ## Floquet Shaper Influence
 
 Floquet Forge includes an optional Shaper layer. When off, the sketch behaves as

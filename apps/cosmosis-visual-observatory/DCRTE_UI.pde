@@ -219,6 +219,10 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
   drawButton(innerX, by, halfW, 20, dcrtePreflightPanelOpen ? "PREFLIGHT OPEN" : "PREFLIGHT CLOSED",
     dcrtePreflightPanelOpen ? color(70, 78, 42) : color(48, 72, 77));
   drawButton(innerX + halfW + gap, by, halfW, 20, "RUN PREFLIGHT", color(60, 82, 66));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, "COORD " + (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN ? "CARTESIAN" : "INTRINSIC"),
+    dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL ? color(48, 92, 86) : color(48, 72, 77));
+  drawButton(innerX + halfW + gap, by, halfW, 20, "BUILD INTRINSIC", color(62, 82, 60));
 
   int metricsY = by + 28;
   MeshDomainReport report = dcrteImportedMeshReport;
@@ -244,15 +248,16 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
   text("SDF " + sdfStatus + " " + dcrteImportedResolution + "^3   observation " + dcrteObservationMode.id()
     + "   build " + nf(dcrteLastBuildMillis / 1000.0f, 1, 2) + "s"
     + (report == null ? "" : "   import/san " + report.importParseMillis + "/" + report.sanitationMillis + "ms"), innerX, metricsY + 60);
+  text("coord " + dcrteCoordinateMode.id() + "   intrinsic " + shortText(dcrteIntrinsicBuildStatus, 28), innerX, metricsY + 72);
   if (dcrteImportedPolicy == InvalidDomainPolicy.UNSIGNED_PREVIEW || (report != null && !report.strictValid())) {
     fill(255, 104, 116);
-    text("PREVIEW ONLY - DOMAIN SIGN IS UNRELIABLE", innerX, metricsY + 72);
+    text("PREVIEW ONLY - DOMAIN SIGN IS UNRELIABLE", innerX, metricsY + 84);
   }
   if (dcrteImportedWorldMesh != null) {
     int previewStride = max(1, dcrteImportedWorldMesh.triangleCount / 20000);
     if (previewStride > 1) {
       fill(150, 184, 190);
-      text("preview stride " + previewStride + " only; SDF uses every accepted face", innerX, metricsY + 84);
+      text("preview stride " + previewStride + " only; SDF uses every accepted face", innerX, metricsY + 96);
     }
   }
 }
@@ -301,6 +306,9 @@ boolean handleDcrteImportedPanelMouse(int previewX, int previewY, int previewW, 
   by += 24;
   if (over(innerX, by, halfW, 20)) { dcrtePreflightPanelOpen = !dcrtePreflightPanelOpen; return true; }
   if (over(innerX + halfW + gap, by, halfW, 20)) { runDcrteImportedPreflight(); dcrtePreflightPanelOpen = true; return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { cycleDcrteCoordinateMode(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { buildDcrteImportedIntrinsicCoordinates(); dcrtePreflightPanelOpen = true; dcrtePreflightInspectorTab = 4; return true; }
   return false;
 }
 
@@ -346,6 +354,7 @@ void drawDcrteImportedDomainPreview(float previewScale) {
     }
     endShape();
   }
+  drawDcrteIntrinsicVisualization(previewScale);
   drawDcrtePreflightDiagnosticGeometry(previewScale);
 }
 
@@ -536,9 +545,9 @@ void dcrteDrawPreflightInspector(int x, int y, int w, int h, DomainPreflightRepo
   stroke(34, 68, 76);
   strokeWeight(1);
   rect(x, y, w, h, 4);
-  String[] tabs = {"SUMMARY", "STAGES", "ISSUES", "VOLUME"};
+  String[] tabs = {"SUMMARY", "STAGES", "ISSUES", "VOLUME", "INTRINSIC"};
   int tabGap = 4;
-  int tabW = (w - 16 - tabGap * 3) / 4;
+  int tabW = (w - 16 - tabGap * 4) / 5;
   for (int i = 0; i < tabs.length; i++) {
     drawButton(x + 8 + i * (tabW + tabGap), y + 8, tabW, 21, tabs[i],
       i == dcrtePreflightInspectorTab ? color(54, 94, 92) : color(35, 54, 61));
@@ -550,7 +559,67 @@ void dcrteDrawPreflightInspector(int x, int y, int w, int h, DomainPreflightRepo
   if (dcrtePreflightInspectorTab == 1) dcrteDrawPreflightStages(contentX, contentY, contentW, contentH, report);
   else if (dcrtePreflightInspectorTab == 2) dcrteDrawPreflightIssues(contentX, contentY, contentW, contentH, report);
   else if (dcrtePreflightInspectorTab == 3) dcrteDrawPreflightVolume(contentX, contentY, contentW, contentH, report);
+  else if (dcrtePreflightInspectorTab == 4) dcrteDrawIntrinsicInspector(contentX, contentY, contentW, contentH, report);
   else dcrteDrawPreflightSummary(contentX, contentY, contentW, contentH, report, accent);
+}
+
+void dcrteDrawIntrinsicInspector(int x, int y, int w, int h, DomainPreflightReport report) {
+  int gap = 5;
+  int halfW = (w - gap) / 2;
+  int quarterW = (w - gap * 3) / 4;
+  int thirdW = (w - gap * 2) / 3;
+  String fallbackLabel = dcrteIntrinsicFallbackPolicy == IntrinsicFallbackPolicy.BLOCK ? "BLOCK"
+    : dcrteIntrinsicFallbackPolicy == IntrinsicFallbackPolicy.CARTESIAN_LOCAL_FALLBACK ? "CART LOCAL" : "CLAMP LOCAL";
+  drawButton(x, y, halfW, 20, "MODE " + (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN ? "CARTESIAN" : "INTRINSIC"), color(48, 76, 78));
+  drawButton(x + halfW + gap, y, halfW, 20, "BUILD INTRINSIC", color(54, 88, 68));
+  drawButton(x, y + 25, halfW, 20, "RESET INTRINSIC", color(68, 54, 58));
+  drawButton(x + halfW + gap, y + 25, halfW, 20, "RADIAL " + dcrteIntrinsicRadialModel.label(), color(50, 70, 82));
+  drawButton(x, y + 50, quarterW, 20, "L -", color(48, 72, 77));
+  drawButton(x + quarterW + gap, y + 50, quarterW, 20, "L +", color(48, 72, 77));
+  drawButton(x + (quarterW + gap) * 2, y + 50, quarterW, 20, "R -", color(48, 72, 77));
+  drawButton(x + (quarterW + gap) * 3, y + 50, quarterW, 20, "R +", color(48, 72, 77));
+  drawButton(x, y + 75, halfW, 20, "FALLBACK " + fallbackLabel, color(70, 66, 48));
+  drawButton(x + halfW + gap, y + 75, halfW, 20, "VIEW " + dcrteIntrinsicVisualizationMode.label(), color(46, 66, 78));
+  drawButton(x, y + 100, thirdW, 20, dcrteIntrinsicShowCenterline ? "CENTER ON" : "CENTER OFF", color(48, 72, 77));
+  drawButton(x + thirdW + gap, y + 100, thirdW, 20, dcrteIntrinsicShowFrames ? "FRAMES ON" : "FRAMES OFF", color(48, 72, 77));
+  drawButton(x + (thirdW + gap) * 2, y + 100, thirdW, 20, dcrteIntrinsicShowConfidence ? "CONF ON" : "CONF OFF", color(48, 72, 77));
+  drawButton(x, y + 125, halfW, 20, "COMPARE " + (dcrteCoordinateComparisonMode == CoordinateComparisonMode.SINGLE ? "SINGLE" : "PAIRED"), color(50, 72, 82));
+  drawButton(x + halfW + gap, y + 125, halfW, 20, "EXPORT INTRINSIC JSON", color(48, 72, 77));
+
+  int lineY = y + 157;
+  fill(112, 178, 188); textAlign(LEFT, TOP); textSize(8); text("INTRINSIC COORDINATE QUALIFICATION", x, lineY); lineY += 15;
+  IntrinsicBuildResult result = dcrteIntrinsicBuildResult;
+  IntrinsicValidationReport validation = result == null ? null : result.validation;
+  IntrinsicSuitabilityReport suitability = validation == null ? null : validation.suitability;
+  AxialSliceSet slices = result == null ? null : result.slices;
+  CenterlineModel centerline = result == null ? null : result.centerline;
+  int validSlices = slices == null || slices.slices == null ? 0 : round(slices.validFraction * slices.slices.length);
+  lineY = dcrteInspectorPair(x, lineY, w, "COORDINATE MODE", dcrteCoordinateMode.label());
+  lineY = dcrteInspectorPair(x, lineY, w, "BUILD STATUS", dcrteIntrinsicBuildStatus);
+  lineY = dcrteInspectorPair(x, lineY, w, "PREFLIGHT", report != null && report.materializationEnabled ? "QUALIFIED" : "BLOCKED");
+  lineY = dcrteInspectorPair(x, lineY, w, "SUITABILITY", suitability == null ? "NOT BUILT" : suitability.status.id().toUpperCase());
+  lineY = dcrteInspectorPair(x, lineY, w, "DOMINANT COMPONENT", result == null || result.component == null ? "-" : nf(result.component.dominantFraction, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "PCA ELONGATION", suitability == null ? "-" : nf(suitability.elongationRatio12, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "SLICE COVERAGE", suitability == null ? "-" : nf(suitability.centerlineCoverage, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "VALID SLICES", slices == null || slices.slices == null ? "-" : validSlices + " / " + slices.slices.length);
+  lineY = dcrteInspectorPair(x, lineY, w, "CENTERLINE SAMPLES", centerline == null || centerline.points == null ? "-" : str(centerline.points.length));
+  lineY = dcrteInspectorPair(x, lineY, w, "CENTERLINE", validation == null ? "-" : nf(validation.centerlineLength, 1, 3) + " / " + nf(validation.centerlineCoverage, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "FRAME CONTINUITY", suitability == null ? "-" : nf(suitability.frameContinuityScore, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "AMBIGUOUS VOXELS", validation == null ? "-" : nf(100 * validation.ambiguityFraction, 1, 2) + "%");
+  lineY = dcrteInspectorPair(x, lineY, w, "FALLBACK VOXELS", validation == null ? "-" : nf(100 * validation.fallbackFraction, 1, 2) + "% map / " + nf(100 * validation.appliedFallbackFraction, 1, 2) + "% used");
+  lineY = dcrteInspectorPair(x, lineY, w, "CONFIDENCE", validation == null ? "-" : nf(validation.meanConfidence, 1, 3) + " mean");
+  lineY = dcrteInspectorPair(x, lineY, w, "RADIAL MODEL", dcrteIntrinsicRadialModel.label());
+  lineY = dcrteInspectorPair(x, lineY, w, "SCALES L / R", nf(dcrteIntrinsicLongitudinalScale, 1, 2) + " / " + nf(dcrteIntrinsicRadialScale, 1, 2));
+  lineY = dcrteInspectorPair(x, lineY, w, "BUILD TIME", dcrteIntrinsicLastBuildMillis + " ms");
+  if (dcrteCoordinateComparisonReport != null) {
+    lineY = dcrteInspectorPair(x, lineY, w, "PAIR SOLID CART / INTR",
+      nf(dcrteCoordinateComparisonReport.cartesianSolidFraction, 1, 3) + " / "
+      + nf(dcrteCoordinateComparisonReport.intrinsicSolidFraction, 1, 3));
+  }
+  if (result != null && lineY + 80 < y + h) {
+    int sliceSize = min(w, y + h - lineY - 4);
+    dcrteDrawIntrinsicScalarSlice(x, lineY + 3, sliceSize, sliceSize);
+  }
 }
 
 void dcrteDrawPreflightSummary(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
@@ -746,8 +815,8 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
   int modelW = w - inspectorW - pad * 2 - gap;
   int inspectorX = x + pad + modelW + gap;
   int tabGap = 4;
-  int tabW = (inspectorW - 16 - tabGap * 3) / 4;
-  for (int i = 0; i < 4; i++) {
+  int tabW = (inspectorW - 16 - tabGap * 4) / 5;
+  for (int i = 0; i < 5; i++) {
     if (over(inspectorX + 8 + i * (tabW + tabGap), bodyY + 8, tabW, 21)) {
       dcrtePreflightInspectorTab = i;
       return true;
@@ -777,6 +846,26 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
     if (over(contentX + quarterW + controlGap, contentY + 25, quarterW, 20)) { dcrteImportedShowBoundary = !dcrteImportedShowBoundary; return true; }
     if (over(contentX + (quarterW + controlGap) * 2, contentY + 25, quarterW, 20)) { dcrteImportedShowSdf = !dcrteImportedShowSdf; return true; }
     if (over(contentX + (quarterW + controlGap) * 3, contentY + 25, quarterW, 20)) { dcrteImportedShowMaterial = !dcrteImportedShowMaterial; return true; }
+  } else if (dcrtePreflightInspectorTab == 4) {
+    int controlGap = 5;
+    int halfW = (contentW - controlGap) / 2;
+    int quarterW = (contentW - controlGap * 3) / 4;
+    int thirdW = (contentW - controlGap * 2) / 3;
+    if (over(contentX, contentY, halfW, 20)) { cycleDcrteCoordinateMode(); return true; }
+    if (over(contentX + halfW + controlGap, contentY, halfW, 20)) { buildDcrteImportedIntrinsicCoordinates(); return true; }
+    if (over(contentX, contentY + 25, halfW, 20)) { resetDcrteIntrinsic(); return true; }
+    if (over(contentX + halfW + controlGap, contentY + 25, halfW, 20)) { cycleDcrteIntrinsicRadialModel(); return true; }
+    if (over(contentX, contentY + 50, quarterW, 20)) { adjustDcrteIntrinsicLongitudinalScale(-0.10f); return true; }
+    if (over(contentX + quarterW + controlGap, contentY + 50, quarterW, 20)) { adjustDcrteIntrinsicLongitudinalScale(0.10f); return true; }
+    if (over(contentX + (quarterW + controlGap) * 2, contentY + 50, quarterW, 20)) { adjustDcrteIntrinsicRadialScale(-0.10f); return true; }
+    if (over(contentX + (quarterW + controlGap) * 3, contentY + 50, quarterW, 20)) { adjustDcrteIntrinsicRadialScale(0.10f); return true; }
+    if (over(contentX, contentY + 75, halfW, 20)) { cycleDcrteIntrinsicFallbackPolicy(); return true; }
+    if (over(contentX + halfW + controlGap, contentY + 75, halfW, 20)) { cycleDcrteIntrinsicVisualizationMode(); return true; }
+    if (over(contentX, contentY + 100, thirdW, 20)) { dcrteIntrinsicShowCenterline = !dcrteIntrinsicShowCenterline; return true; }
+    if (over(contentX + thirdW + controlGap, contentY + 100, thirdW, 20)) { dcrteIntrinsicShowFrames = !dcrteIntrinsicShowFrames; return true; }
+    if (over(contentX + (thirdW + controlGap) * 2, contentY + 100, thirdW, 20)) { dcrteIntrinsicShowConfidence = !dcrteIntrinsicShowConfidence; if (dcrteIntrinsicShowConfidence) dcrteIntrinsicVisualizationMode = IntrinsicVisualizationMode.INTRINSIC_CONFIDENCE; return true; }
+    if (over(contentX, contentY + 125, halfW, 20)) { cycleDcrteCoordinateComparisonMode(); return true; }
+    if (over(contentX + halfW + controlGap, contentY + 125, halfW, 20)) { exportDcrteIntrinsicReportJSON(); return true; }
   }
   return false;
 }

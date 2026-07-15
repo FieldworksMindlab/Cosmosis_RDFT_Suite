@@ -218,6 +218,27 @@ void generateDcrteImportedSurfaceMesh() {
     return;
   }
 
+  boolean intrinsicRequired = dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL
+    || dcrteCoordinateComparisonMode == CoordinateComparisonMode.CARTESIAN_AND_INTRINSIC;
+  if (intrinsicRequired && (dcrteIntrinsicCoordinateSystem == null || !dcrteIntrinsicCoordinateSystem.isValid())) {
+    if (!buildDcrteImportedIntrinsicCoordinates()) {
+      dcrteImportedStatus = "intrinsic materialization blocked - " + dcrteIntrinsicBuildStatus;
+      foundryStatus = dcrteImportedStatus;
+      dcrtePreflightPanelOpen = true;
+      dcrtePreflightInspectorTab = 4;
+      return;
+    }
+  }
+  FieldCoordinateSystem coordinateSystem = dcrteSelectedCoordinateSystem();
+  if (coordinateSystem == null || !coordinateSystem.isValid()) {
+    dcrteImportedStatus = "coordinate system invalid - " + (coordinateSystem == null
+      ? "not built" : coordinateSystem.validationMessage());
+    foundryStatus = dcrteImportedStatus;
+    dcrtePreflightPanelOpen = true;
+    dcrtePreflightInspectorTab = 4;
+    return;
+  }
+
   dcrteImportedBuildState = DCRTEImportedBuildState.MATERIALIZING;
   VolumeSpec spec = createDcrteImportedVolumeSpec();
   UniformGridObserver observer = new UniformGridObserver();
@@ -255,6 +276,14 @@ void generateDcrteImportedSurfaceMesh() {
   ObservationSample observationSample = new ObservationSample();
   long domainNanos = 0;
   long fieldNanos = 0;
+  boolean pairedComparison = dcrteCoordinateComparisonMode == CoordinateComparisonMode.CARTESIAN_AND_INTRINSIC;
+  boolean[] comparisonCartesian = pairedComparison ? new boolean[spec.voxelCount()] : null;
+  boolean[] comparisonIntrinsic = pairedComparison ? new boolean[spec.voxelCount()] : null;
+  DCRTECoordinateComparisonReport comparison = pairedComparison ? new DCRTECoordinateComparisonReport() : null;
+  long comparisonCartesianNanos = 0;
+  long comparisonIntrinsicNanos = 0;
+  long comparisonMappingNanos = 0;
+  int selectedFallbackCount = 0;
   for (int z = 0; z < spec.nz; z++) {
     float wz = observer.worldZ(z);
     for (int y = 0; y < spec.ny; y++) {
@@ -271,7 +300,18 @@ void generateDcrteImportedSurfaceMesh() {
         domainNanos += System.nanoTime() - domainTick;
 
         long fieldTick = System.nanoTime();
-        float scalarValue = dcrteSampleFoundryField(wx, wy, wz, scores);
+        FieldCoordinateSample coordinate = coordinateSystem.mapAtIndex(x, y, z, wx, wy, wz);
+        float scalarValue = 0;
+        if (observationSample.admitted) {
+          if (!coordinate.valid) scalarValue = Float.NaN;
+          else {
+            scalarValue = dcrteSampleFoundryField(coordinate.fieldX, coordinate.fieldY, coordinate.fieldZ, scores);
+            if (coordinate.fallbackUsed) selectedFallbackCount++;
+          }
+        } else if (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN) {
+          // Preserve the exact Milestone 2 Cartesian sampling baseline outside the admitted mask.
+          scalarValue = dcrteSampleFoundryField(wx, wy, wz, scores);
+        }
         volume.scalar[idx] = scalarValue;
         if (!dcrteFinite(scalarValue)) {
           volume.nonFiniteScalarCount++;
@@ -289,11 +329,74 @@ void generateDcrteImportedSurfaceMesh() {
         volume.active[idx] = active;
         volume.finalSolid[idx] = active;
         fieldNanos += System.nanoTime() - fieldTick;
+
+        if (pairedComparison && observationSample.admitted) {
+          long cartTick = System.nanoTime();
+          float cartScalar = dcrteSampleFoundryField(wx, wy, wz, scores);
+          comparisonCartesianNanos += System.nanoTime() - cartTick;
+          boolean cartCandidate = dcrteFinite(cartScalar) && legacyCandidateSolid(cartScalar);
+          comparisonCartesian[idx] = cartCandidate;
+          if (cartCandidate) { comparison.cartesianCandidateCount++; comparison.cartesianFinalCount++; }
+
+          long mappingTick = System.nanoTime();
+          FieldCoordinateSample intrinsicCoordinate = dcrteIntrinsicCoordinateSystem.mapAtIndex(x, y, z, wx, wy, wz);
+          comparisonMappingNanos += System.nanoTime() - mappingTick;
+          long intrinsicTick = System.nanoTime();
+          float intrinsicScalar = intrinsicCoordinate.valid
+            ? dcrteSampleFoundryField(intrinsicCoordinate.fieldX, intrinsicCoordinate.fieldY, intrinsicCoordinate.fieldZ, scores)
+            : Float.NaN;
+          comparisonIntrinsicNanos += System.nanoTime() - intrinsicTick;
+          boolean intrinsicCandidate = dcrteFinite(intrinsicScalar) && legacyCandidateSolid(intrinsicScalar);
+          comparisonIntrinsic[idx] = intrinsicCandidate;
+          if (intrinsicCandidate) { comparison.intrinsicCandidateCount++; comparison.intrinsicFinalCount++; }
+          comparison.admittedVoxelCount++;
+        }
       }
     }
   }
   report.domainBuildMillis = domainNanos / 1000000L;
   report.fieldSampleMillis = fieldNanos / 1000000L;
+  if (pairedComparison) {
+    comparison.cartesianFieldMillis = comparisonCartesianNanos / 1000000L;
+    comparison.intrinsicFieldMillis = comparisonIntrinsicNanos / 1000000L;
+    comparison.mappingMillis = comparisonMappingNanos / 1000000L;
+    int[] cartStats = dcrteBooleanVolumeComponentStats(comparisonCartesian, spec);
+    int[] intrinsicStats = dcrteBooleanVolumeComponentStats(comparisonIntrinsic, spec);
+    comparison.cartesianComponents = cartStats[0];
+    comparison.intrinsicComponents = intrinsicStats[0];
+    comparison.cartesianLargestComponentFraction = cartStats[2] == 0 ? 0 : cartStats[1] / (float)cartStats[2];
+    comparison.intrinsicLargestComponentFraction = intrinsicStats[2] == 0 ? 0 : intrinsicStats[1] / (float)intrinsicStats[2];
+    comparison.cartesianSolidFraction = comparison.admittedVoxelCount == 0 ? 0
+      : comparison.cartesianFinalCount / (float)comparison.admittedVoxelCount;
+    comparison.intrinsicSolidFraction = comparison.admittedVoxelCount == 0 ? 0
+      : comparison.intrinsicFinalCount / (float)comparison.admittedVoxelCount;
+    comparison.cartesianFinalMask = comparisonCartesian;
+    comparison.intrinsicFinalMask = comparisonIntrinsic;
+    comparison.intrinsicBuildMillis = dcrteIntrinsicLastBuildMillis;
+    if (dcrteIntrinsicBuildResult != null && dcrteIntrinsicBuildResult.validation != null) {
+      comparison.ambiguityFraction = dcrteIntrinsicBuildResult.validation.ambiguityFraction;
+      comparison.fallbackFraction = dcrteIntrinsicBuildResult.validation.fallbackFraction;
+      comparison.meanConfidence = dcrteIntrinsicBuildResult.validation.meanConfidence;
+    }
+    dcrteCoordinateComparisonReport = comparison;
+  } else dcrteCoordinateComparisonReport = null;
+  if (dcrteIntrinsicBuildResult != null && dcrteIntrinsicBuildResult.validation != null) {
+    IntrinsicValidationReport intrinsicValidation = dcrteIntrinsicBuildResult.validation;
+    intrinsicValidation.appliedFallbackVoxels = selectedFallbackCount;
+    intrinsicValidation.appliedFallbackFraction = volume.admittedCount == 0
+      ? 0 : selectedFallbackCount / (float)volume.admittedCount;
+    if (intrinsicValidation.appliedFallbackFraction > 0.01f) {
+      intrinsicValidation.error(DCRTEIntrinsicCodes.IC_FALLBACK_FRACTION_HIGH);
+      intrinsicValidation.finalizeStatus();
+      report.addError(DCRTEIntrinsicCodes.IC_FALLBACK_FRACTION_HIGH);
+      dcrteLastValidationReport = report;
+      dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
+      dcrteImportedStatus = "intrinsic materialization blocked - fallback threshold exceeded";
+      foundryStatus = dcrteImportedStatus;
+      runDcrteImportedPreflightWithDerived(true, false);
+      return;
+    }
+  }
   volume.recountFinal();
   long materializeStart = millis();
   boolean materializerSucceeded = dcrteLegacyMaterializer.materialize(volume);

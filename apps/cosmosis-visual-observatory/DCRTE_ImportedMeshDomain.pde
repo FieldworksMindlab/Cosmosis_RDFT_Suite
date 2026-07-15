@@ -216,6 +216,7 @@ void clearDcrteImportedDerivedState() {
   dcrteImportedSdf = null;
   dcrteImportedDomain = null;
   dcrteImportedVolume = null;
+  invalidateDcrteIntrinsic("imported derived state cleared");
 }
 
 void rebuildDcrteImportedTransform(boolean markStale) {
@@ -241,6 +242,7 @@ void rebuildDcrteImportedTransform(boolean markStale) {
 void markDcrteImportedStale(String reason) {
   dcrteImportedSdfDirty = true;
   dcrteImportedStale = true;
+  invalidateDcrteIntrinsic(reason);
   markDcrtePreflightStale();
   dcrteImportedLastBuildConfiguration = null;
   if (dcrteImportedSourceMesh != null) {
@@ -321,6 +323,7 @@ boolean buildDcrteImportedSdf() {
   dcrteImportedSdf = nextSdf;
   dcrteImportedDomain = new ImportedMeshDomain(dcrteImportedSourceMesh, dcrteImportedWorldMesh,
     dcrteImportedMeshReport, dcrteImportedTransform, nextSdf, dcrteImportedPolicy);
+  invalidateDcrteIntrinsic("signed distance volume rebuilt");
   dcrteImportedSliceIndex = constrain(dcrteImportedSliceIndex, 0, dcrteImportedResolution - 1);
   if (strict && (nextSdf == null || nextSdf.quality == null || !nextSdf.quality.isValid() || !dcrteImportedDomain.isValid())) {
     dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;

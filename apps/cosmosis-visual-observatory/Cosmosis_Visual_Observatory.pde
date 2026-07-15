@@ -212,6 +212,7 @@ void setup() {
   initializeDcrteMilestone2();
   initializeDcrteMilestone25();
   initializeDcrteMilestone25Tests();
+  initializeDcrteMilestone3();
   String dcrteM25ReferencePath = dcrteCommandLineValue("--dcrte-m25-reference=");
   if (dcrteM25ReferencePath != null) {
     runDcrteMilestone25ExternalReferenceCase(dcrteM25ReferencePath);
@@ -220,6 +221,11 @@ void setup() {
   }
   if (dcrteCommandLineFlag("--dcrte-m25-acceptance")) {
     runDcrteMilestone25AcceptanceMatrix();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m3-acceptance")) {
+    runDcrteMilestone3AcceptanceMatrix();
     exit();
     return;
   }
@@ -1428,7 +1434,7 @@ void drawFoundryPreview(int x, int y, int w, int h) {
     drawDcrteCenterSlice(x, y, w, h);
   } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
     int importedPanelW = min(370, max(330, w - 24));
-    drawDcrteImportedPanel(x + w - importedPanelW - 12, y + 12, importedPanelW, 410);
+    drawDcrteImportedPanel(x + w - importedPanelW - 12, y + 12, importedPanelW, 442);
     drawDcrteImportedSdfSlice(x, y, w, h);
   } else {
     drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);

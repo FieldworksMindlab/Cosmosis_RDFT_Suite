@@ -1,0 +1,1311 @@
+{
+  "total_cases": 10,
+  "cases": [
+    {
+      "fixture": "cylinder",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "cartesian",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "coordinates": {
+        "valid": true,
+        "mapping": "observer_world_identity",
+        "type": "cartesian",
+        "version": "1.0-m3"
+      },
+      "id": "M3-A"
+    },
+    {
+      "fixture": "cylinder",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-B",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 2080,
+          "spec": {
+            "sample_volume": 1.7146776372101158E-4,
+            "spacing_x": 0.0555555559694767,
+            "spacing_y": 0.0555555559694767,
+            "spacing_z": 0.0555555559694767,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 1,
+          "slice_count": 36,
+          "interpolated_count": 10,
+          "maximum_gap_fraction": 0.02777777798473835,
+          "valid_fraction": 1,
+          "raw_valid_count": 26,
+          "axial_max": 0.6944444179534912,
+          "raw_valid_fraction": 0.7222222089767456,
+          "long_gap": false,
+          "axial_min": -0.6944444179534912
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.034920692443847656,
+          "endpoint_inset": 0.0833333358168602,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 36,
+          "length": 1.222222089767456,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.10888886451721191,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 1,
+          "sample_count": 36,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 4.367661343707141E-9,
+          "cumulative_rotation": 1.5286815369108808E-7,
+          "max_rotation": 2.389152164994357E-8
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 2080,
+          "total_inside_voxels": 2080,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 0,
+            "mapping_millis": 1,
+            "slice_millis": 2,
+            "total_millis": 4,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": true,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 1,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0.02777777798473835,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 11.692907333374023,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 11.692907333374023,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.14499565958976746,
+            "principal_eigenvalue_2": 0.01240030862390995,
+            "principal_eigenvalue_3": 0.01240030862390995,
+            "suitable": true,
+            "blockers": [],
+            "valid_slice_fraction": 1,
+            "status": "pass_with_warnings"
+          },
+          "mean_frame_rotation": 4.367661343707141E-9,
+          "total_inside_voxels": 2080,
+          "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 2080,
+          "max_frame_rotation": 2.389152164994357E-8,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.222222089767456,
+          "mean_confidence": 0.7009090185165405,
+          "p05_confidence": 0.3499999940395355,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.034920692443847656,
+          "minimum_centerline_sdf_margin": 0.10888886451721191,
+          "errors": [],
+          "status": "pass_with_warnings"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            1,
+            0,
+            0
+          ],
+          "eigenvalues": [
+            0.14499565958976746,
+            0.01240030862390995,
+            0.01240030862390995
+          ],
+          "axis_2": [
+            0,
+            -0.707105278968811,
+            0.7071083188056946
+          ],
+          "s0_end_radius": 0.2803480625152588,
+          "center": [
+            -2.604862991972823E-10,
+            5.522525547974055E-9,
+            5.522525547974055E-9
+          ],
+          "axis_3": [
+            0,
+            -0.7071083188056946,
+            -0.707105278968811
+          ],
+          "sign_policy": "positive_dominant_world_axis",
+          "s1_end_radius": 0.2803480625152588,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "egg",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "cartesian",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "coordinates": {
+        "valid": true,
+        "mapping": "observer_world_identity",
+        "type": "cartesian",
+        "version": "1.0-m3"
+      },
+      "id": "M3-C"
+    },
+    {
+      "fixture": "egg",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-D",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 2828,
+          "spec": {
+            "sample_volume": 1.7146776372101158E-4,
+            "spacing_x": 0.0555555559694767,
+            "spacing_y": 0.0555555559694767,
+            "spacing_z": 0.0555555559694767,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 1,
+          "slice_count": 36,
+          "interpolated_count": 8,
+          "maximum_gap_fraction": 0.02777777798473835,
+          "valid_fraction": 1,
+          "raw_valid_count": 28,
+          "axial_max": 0.7039121389389038,
+          "raw_valid_fraction": 0.7777777910232544,
+          "long_gap": false,
+          "axial_min": -0.7960878610610962
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.038095295429229736,
+          "endpoint_inset": 0.0833333358168602,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 36,
+          "length": 1.333333134651184,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.09333330392837524,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 1,
+          "sample_count": 36,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 1.308033326097302E-8,
+          "cumulative_rotation": 4.5781166591041256E-7,
+          "max_rotation": 4.233848471812962E-8
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 2828,
+          "total_inside_voxels": 2828,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 0,
+            "mapping_millis": 1,
+            "slice_millis": 2,
+            "total_millis": 3,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": true,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 1,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0.02777777798473835,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 4.770417213439941,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 4.770417213439941,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.09325460344552994,
+            "principal_eigenvalue_2": 0.01954852230846882,
+            "principal_eigenvalue_3": 0.01954852230846882,
+            "suitable": true,
+            "blockers": [],
+            "valid_slice_fraction": 1,
+            "status": "pass_with_warnings"
+          },
+          "mean_frame_rotation": 1.308033326097302E-8,
+          "total_inside_voxels": 2828,
+          "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 2828,
+          "max_frame_rotation": 4.233848471812962E-8,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.333333134651184,
+          "mean_confidence": 0.7871270775794983,
+          "p05_confidence": 0.6249988079071045,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.038095295429229736,
+          "minimum_centerline_sdf_margin": 0.09333330392837524,
+          "errors": [],
+          "status": "pass_with_warnings"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            1,
+            8.800933870567462E-10,
+            8.800933870567462E-10
+          ],
+          "eigenvalues": [
+            0.09325460344552994,
+            0.01954852230846882,
+            0.01954852230846882
+          ],
+          "axis_2": [
+            -2.609024107869118E-15,
+            0.7071082592010498,
+            -0.707105278968811
+          ],
+          "s0_end_radius": 0.12179028987884521,
+          "center": [
+            0.04608786478638649,
+            1.2287915129860494E-9,
+            1.228791401963747E-9
+          ],
+          "axis_3": [
+            -1.2446399466625735E-9,
+            0.707105278968811,
+            0.7071082592010498
+          ],
+          "sign_policy": "smaller_end_radius_is_s_zero",
+          "s1_end_radius": 0.15533974766731262,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "rotated_egg",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-E",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 2849,
+          "spec": {
+            "sample_volume": 1.7146776372101158E-4,
+            "spacing_x": 0.0555555559694767,
+            "spacing_y": 0.0555555559694767,
+            "spacing_z": 0.0555555559694767,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 0,
+          "slice_count": 36,
+          "interpolated_count": 0,
+          "maximum_gap_fraction": 0,
+          "valid_fraction": 1,
+          "raw_valid_count": 36,
+          "axial_max": 0.7011667490005493,
+          "raw_valid_fraction": 1,
+          "long_gap": false,
+          "axial_min": -0.7848370671272278
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.03618628531694412,
+          "endpoint_inset": 0.0833333358168602,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 36,
+          "length": 1.2665172815322876,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.12277213484048843,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 0.9974673390388489,
+          "sample_count": 36,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 0.006198654416948557,
+          "cumulative_rotation": 0.21695290505886078,
+          "max_rotation": 0.015913331881165504
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 2849,
+          "total_inside_voxels": 2849,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 1,
+            "mapping_millis": 4,
+            "slice_millis": 1,
+            "total_millis": 6,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": true,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 0.9974673390388489,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 4.781992435455322,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 4.789987564086914,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.09355996549129486,
+            "principal_eigenvalue_2": 0.01956505887210369,
+            "principal_eigenvalue_3": 0.019532402977347374,
+            "suitable": true,
+            "blockers": [],
+            "valid_slice_fraction": 1,
+            "status": "pass_with_warnings"
+          },
+          "mean_frame_rotation": 0.006198654416948557,
+          "total_inside_voxels": 2849,
+          "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 2849,
+          "max_frame_rotation": 0.015913331881165504,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.2665172815322876,
+          "mean_confidence": 0.7747049927711487,
+          "p05_confidence": 0.3499999940395355,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.03618628531694412,
+          "minimum_centerline_sdf_margin": 0.12277213484048843,
+          "errors": [],
+          "status": "pass_with_warnings"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            0.7157135009765625,
+            0.5669758319854736,
+            0.4077899158000946
+          ],
+          "eigenvalues": [
+            0.09355996549129486,
+            0.01956505887210369,
+            0.019532402977347374
+          ],
+          "axis_2": [
+            0.6587504148483276,
+            -0.7419798970222473,
+            -0.12455415725708008
+          ],
+          "s0_end_radius": 0.1336164027452469,
+          "center": [
+            0.03304273635149002,
+            0.02629302628338337,
+            0.018883131444454193
+          ],
+          "axis_3": [
+            0.2319527268409729,
+            0.3577768802642822,
+            -0.9045406579971313
+          ],
+          "sign_policy": "smaller_end_radius_is_s_zero",
+          "s1_end_radius": 0.15926654636859894,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "bent_capsule",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-F",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 1852,
+          "spec": {
+            "sample_volume": 1.7146776372101158E-4,
+            "spacing_x": 0.0555555559694767,
+            "spacing_y": 0.0555555559694767,
+            "spacing_z": 0.0555555559694767,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 0,
+          "slice_count": 36,
+          "interpolated_count": 0,
+          "maximum_gap_fraction": 0,
+          "valid_fraction": 1,
+          "raw_valid_count": 36,
+          "axial_max": 0.8601316809654236,
+          "raw_valid_fraction": 1,
+          "long_gap": false,
+          "axial_min": -0.8601316213607788
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.0512460432946682,
+          "endpoint_inset": 0.0833333358168602,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 36,
+          "length": 1.7936064004898071,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.11721145361661911,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 0.9592863917350769,
+          "sample_count": 36,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 0.12088801711797714,
+          "cumulative_rotation": 4.231080532073975,
+          "max_rotation": 0.2558111548423767
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 1852,
+          "total_inside_voxels": 1852,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 0,
+            "mapping_millis": 1,
+            "slice_millis": 1,
+            "total_millis": 3,
+            "centerline_millis": 1,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": true,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 0.9592863917350769,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 9.83082103729248,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 23.070255279541016,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.21283675730228424,
+            "principal_eigenvalue_2": 0.02164994738996029,
+            "principal_eigenvalue_3": 0.009225592017173767,
+            "suitable": true,
+            "blockers": [],
+            "valid_slice_fraction": 1,
+            "status": "pass_with_warnings"
+          },
+          "mean_frame_rotation": 0.12088801711797714,
+          "total_inside_voxels": 1852,
+          "warnings": ["IC_RADIAL_NORMALIZATION_APPROXIMATE"],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 1852,
+          "max_frame_rotation": 0.2558111548423767,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.7936064004898071,
+          "mean_confidence": 0.7337095141410828,
+          "p05_confidence": 0.3499999940395355,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.0512460432946682,
+          "minimum_centerline_sdf_margin": 0.11721145361661911,
+          "errors": [],
+          "status": "pass_with_warnings"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            0.9745912551879883,
+            0.2221510112285614,
+            -0.028652017936110497
+          ],
+          "eigenvalues": [
+            0.21283675730228424,
+            0.02164994738996029,
+            0.009225592017173767
+          ],
+          "axis_2": [
+            -0.2178327888250351,
+            0.9697986841201782,
+            0.10972460359334946
+          ],
+          "s0_end_radius": 0.17131395637989044,
+          "center": [
+            4.732179981203899E-9,
+            4.714690859941584E-9,
+            9.268415479546377E-10
+          ],
+          "axis_3": [
+            0.05216211825609207,
+            -0.10069528222084045,
+            0.9935489892959595
+          ],
+          "sign_policy": "positive_dominant_world_axis",
+          "s1_end_radius": 0.17131394147872925,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "sphere",
+      "actual": "pass_or_warning",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "pass_or_warning",
+      "id": "M3-G",
+      "intrinsic": {
+        "intrinsic_volume": {
+          "valid": true,
+          "fallback_voxels": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 571,
+          "nonfinite_voxels": 0,
+          "storage": "flat_primitive_arrays",
+          "valid_voxels": 5832,
+          "spec": {
+            "sample_volume": 1.7146776372101158E-4,
+            "spacing_x": 0.0555555559694767,
+            "spacing_y": 0.0555555559694767,
+            "spacing_z": 0.0555555559694767,
+            "bounds": {
+              "volume": 8,
+              "min": [
+                -1,
+                -1,
+                -1
+              ],
+              "max": [
+                1,
+                1,
+                1
+              ]
+            },
+            "resolution": [
+              36,
+              36,
+              36
+            ]
+          }
+        },
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 0,
+          "slice_count": 36,
+          "interpolated_count": 0,
+          "maximum_gap_fraction": 0,
+          "valid_fraction": 1,
+          "raw_valid_count": 36,
+          "axial_max": 0.615248441696167,
+          "raw_valid_fraction": 1,
+          "long_gap": false,
+          "axial_min": -0.615248441696167
+        },
+        "centerline": {
+          "coverage": 1,
+          "valid": true,
+          "self_approach_suspected": false,
+          "max_step": 0.029242821037769318,
+          "endpoint_inset": 0.0833333358168602,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 36,
+          "length": 1.0234971046447754,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0.10748173296451569,
+          "leaves_domain": false
+        },
+        "frames": {
+          "valid": true,
+          "initial_normal_policy": "pca_second_axis",
+          "method": "parallel_transport",
+          "sign_flips": 0,
+          "continuity_score": 0.9929982423782349,
+          "sample_count": 36,
+          "discontinuities": 0,
+          "elevated_rotation_count": 0,
+          "mean_rotation": 0.01734868623316288,
+          "cumulative_rotation": 0.607204020023346,
+          "max_rotation": 0.043993156403303146
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 5832,
+          "total_inside_voxels": 5832,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0.09790809452533722,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 1,
+          "timings": {
+            "pca_millis": 0,
+            "mapping_millis": 3,
+            "slice_millis": 2,
+            "total_millis": 5,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": false,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 0.9929982423782349,
+            "nearest_point_ambiguity_fraction": 0.09790809452533722,
+            "radial_normalization_confidence": 0.8199999928474426,
+            "closed_loop_suspected": false,
+            "warnings": [
+              "IC_LOW_ELONGATION",
+              "IC_RADIAL_NORMALIZATION_APPROXIMATE"
+            ],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 1,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 1,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.051481831818819046,
+            "principal_eigenvalue_2": 0.051481831818819046,
+            "principal_eigenvalue_3": 0.051481831818819046,
+            "suitable": false,
+            "blockers": ["IC_MAPPING_AMBIGUITY_HIGH"],
+            "valid_slice_fraction": 1,
+            "status": "fail"
+          },
+          "mean_frame_rotation": 0.01734868623316288,
+          "total_inside_voxels": 5832,
+          "warnings": [
+            "IC_LOW_ELONGATION",
+            "IC_RADIAL_NORMALIZATION_APPROXIMATE"
+          ],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 5832,
+          "max_frame_rotation": 0.043993156403303146,
+          "minimum_confidence": 0.3499999940395355,
+          "centerline_coverage": 1,
+          "centerline_length": 1.0234971046447754,
+          "mean_confidence": 0.7361145615577698,
+          "p05_confidence": 0.3499999940395355,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 571,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0.029242821037769318,
+          "minimum_centerline_sdf_margin": 0.10748173296451569,
+          "errors": ["IC_MAPPING_AMBIGUITY_HIGH"],
+          "status": "fail"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            -0.2452516257762909,
+            -0.24525171518325806,
+            0.9379249811172485
+          ],
+          "eigenvalues": [
+            0.051481831818819046,
+            0.051481831818819046,
+            0.051481831818819046
+          ],
+          "axis_2": [
+            -0.7056441307067871,
+            0.7085660696029663,
+            7.640868425369263E-4
+          ],
+          "s0_end_radius": 0.19369782507419586,
+          "center": [
+            8.188627553806782E-9,
+            8.188627553806782E-9,
+            8.682493835010519E-9
+          ],
+          "axis_3": [
+            -0.664769172668457,
+            -0.6616538763046265,
+            -0.3468374013900757
+          ],
+          "sign_policy": "positive_dominant_world_axis",
+          "s1_end_radius": 0.19369782507419586,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "torus",
+      "actual": "blocked",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "blocked",
+      "id": "M3-H",
+      "intrinsic": {
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 0,
+          "slice_count": 36,
+          "interpolated_count": 0,
+          "maximum_gap_fraction": 0,
+          "valid_fraction": 1,
+          "raw_valid_count": 36,
+          "axial_max": 0.6678231954574585,
+          "raw_valid_fraction": 1,
+          "long_gap": false,
+          "axial_min": -0.6678231358528137
+        },
+        "centerline": {
+          "coverage": 0,
+          "valid": false,
+          "self_approach_suspected": false,
+          "max_step": 0,
+          "endpoint_inset": 0,
+          "smoothing_method": "weighted_moving_average",
+          "sample_count": 0,
+          "length": 0,
+          "smoothing_passes": 3,
+          "minimum_sdf_margin": 0,
+          "leaves_domain": true
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 2056,
+          "total_inside_voxels": 2056,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 0,
+          "timings": {
+            "pca_millis": 0,
+            "mapping_millis": 0,
+            "slice_millis": 1,
+            "total_millis": 1,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": false,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 0,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0,
+            "closed_loop_suspected": true,
+            "warnings": ["IC_LOW_ELONGATION"],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 1,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 26.435562133789062,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.1434018611907959,
+            "principal_eigenvalue_2": 0.1434018611907959,
+            "principal_eigenvalue_3": 0.005424581468105316,
+            "suitable": false,
+            "blockers": ["IC_CLOSED_LOOP_SUSPECTED"],
+            "valid_slice_fraction": 1,
+            "status": "fail"
+          },
+          "mean_frame_rotation": 0,
+          "total_inside_voxels": 2056,
+          "warnings": [],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 0,
+          "max_frame_rotation": 0,
+          "minimum_confidence": 0,
+          "centerline_coverage": 0,
+          "centerline_length": 0,
+          "mean_confidence": 0,
+          "p05_confidence": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0,
+          "minimum_centerline_sdf_margin": 0,
+          "errors": ["IC_CLOSED_LOOP_SUSPECTED"],
+          "status": "fail"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            0.7071070075035095,
+            0.7071065902709961,
+            4.792236052431065E-10
+          ],
+          "eigenvalues": [
+            0.1434018611907959,
+            0.1434018611907959,
+            0.005424581468105316
+          ],
+          "axis_2": [
+            0.7071065902709961,
+            -0.7071070075035095,
+            2.7755575615628914E-17
+          ],
+          "s0_end_radius": 0.18668155372142792,
+          "center": [
+            -4.308909673511607E-9,
+            -4.308910117600817E-9,
+            -6.483492409614655E-9
+          ],
+          "axis_3": [
+            3.3886238259839274E-10,
+            3.388621605537878E-10,
+            -1
+          ],
+          "sign_policy": "positive_dominant_world_axis",
+          "s1_end_radius": 0.18668155372142792,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "y_branch",
+      "actual": "blocked",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "blocked",
+      "id": "M3-I",
+      "intrinsic": {
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "axial_slices": {
+          "coverage": 1,
+          "maximum_gap_slices": 1,
+          "slice_count": 36,
+          "interpolated_count": 3,
+          "maximum_gap_fraction": 0.02777777798473835,
+          "valid_fraction": 1,
+          "raw_valid_count": 33,
+          "axial_max": 0.7331223487854004,
+          "raw_valid_fraction": 0.9166666865348816,
+          "long_gap": false,
+          "axial_min": -1.044655442237854
+        },
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 1592,
+          "total_inside_voxels": 1592,
+          "dominant_fraction": 1,
+          "secondary_voxels": 0,
+          "component_count": 1
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 0,
+          "timings": {
+            "pca_millis": 1,
+            "mapping_millis": 0,
+            "slice_millis": 1,
+            "total_millis": 2,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": false,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": true,
+            "frame_continuity_score": 0,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0,
+            "closed_loop_suspected": false,
+            "warnings": [],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 1,
+            "maximum_slice_gap_fraction": 0.02777777798473835,
+            "single_dominant_component": true,
+            "elongation_ratio_12": 3.1889679431915283,
+            "centerline_coverage": 1,
+            "elongation_ratio_13": 43.03249740600586,
+            "dominant_component_fraction": 1,
+            "principal_eigenvalue_1": 0.22045943140983582,
+            "principal_eigenvalue_2": 0.06913190335035324,
+            "principal_eigenvalue_3": 0.005123091861605644,
+            "suitable": false,
+            "blockers": ["IC_BRANCHING_SUSPECTED"],
+            "valid_slice_fraction": 1,
+            "status": "fail"
+          },
+          "mean_frame_rotation": 0,
+          "total_inside_voxels": 1592,
+          "warnings": [],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 0,
+          "max_frame_rotation": 0,
+          "minimum_confidence": 0,
+          "centerline_coverage": 0,
+          "centerline_length": 0,
+          "mean_confidence": 0,
+          "p05_confidence": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0,
+          "minimum_centerline_sdf_margin": 0,
+          "errors": ["IC_BRANCHING_SUSPECTED"],
+          "status": "fail"
+        },
+        "pca": {
+          "valid": true,
+          "axis_1": [
+            1,
+            2.3578529351198085E-8,
+            -1.9821573271627813E-9
+          ],
+          "eigenvalues": [
+            0.22045943140983582,
+            0.06913190335035324,
+            0.005123091861605644
+          ],
+          "axis_2": [
+            -2.3578529351198085E-8,
+            1,
+            1.5481044224330276E-10
+          ],
+          "s0_end_radius": 0.14647965133190155,
+          "center": [
+            0.127988800406456,
+            4.865580383039969E-9,
+            -8.132302831143079E-9
+          ],
+          "axis_3": [
+            1.9821573271627813E-9,
+            -1.5481040060993934E-10,
+            1
+          ],
+          "sign_policy": "smaller_end_radius_is_s_zero",
+          "s1_end_radius": 0.2259417325258255,
+          "weighting": "distance_weighted"
+        }
+      }
+    },
+    {
+      "fixture": "two_bodies",
+      "actual": "blocked",
+      "coordinate_mode": "intrinsic_axial",
+      "pass": true,
+      "expected": "blocked",
+      "id": "M3-J",
+      "intrinsic": {
+        "radial_model": "equivalent_circular",
+        "mapping": "INTRINSIC_CYLINDRICAL_EMBEDDING",
+        "coordinate_system": "intrinsic_axial",
+        "dominant_component": {
+          "valid": true,
+          "dominant_voxels": 1096,
+          "total_inside_voxels": 2192,
+          "dominant_fraction": 0.5,
+          "secondary_voxels": 1096,
+          "component_count": 2
+        },
+        "version": "1.0-m3",
+        "validation": {
+          "ambiguity_fraction": 0,
+          "applied_fallback_voxels": 0,
+          "valid_fraction": 0,
+          "timings": {
+            "pca_millis": 0,
+            "mapping_millis": 0,
+            "slice_millis": 0,
+            "total_millis": 0,
+            "centerline_millis": 0,
+            "frame_millis": 0
+          },
+          "applied_fallback_fraction": 0,
+          "nonfinite_voxels": 0,
+          "export_allowed": false,
+          "frame_discontinuity_count": 0,
+          "suitability": {
+            "branching_suspected": false,
+            "frame_continuity_score": 0,
+            "nearest_point_ambiguity_fraction": 0,
+            "radial_normalization_confidence": 0,
+            "closed_loop_suspected": false,
+            "warnings": [],
+            "centerline_self_approach_risk": 0,
+            "inside_component_count": 2,
+            "maximum_slice_gap_fraction": 0,
+            "single_dominant_component": false,
+            "elongation_ratio_12": 0,
+            "centerline_coverage": 0,
+            "elongation_ratio_13": 0,
+            "dominant_component_fraction": 0.5,
+            "principal_eigenvalue_1": 0,
+            "principal_eigenvalue_2": 0,
+            "principal_eigenvalue_3": 0,
+            "suitable": false,
+            "blockers": ["IC_MULTIPLE_DOMINANT_COMPONENTS"],
+            "valid_slice_fraction": 0,
+            "status": "fail"
+          },
+          "mean_frame_rotation": 0,
+          "total_inside_voxels": 2192,
+          "warnings": [],
+          "fallback_voxels": 0,
+          "valid_intrinsic_voxels": 0,
+          "max_frame_rotation": 0,
+          "minimum_confidence": 0,
+          "centerline_coverage": 0,
+          "centerline_length": 0,
+          "mean_confidence": 0,
+          "p05_confidence": 0,
+          "pole_clamped_voxels": 0,
+          "ambiguous_voxels": 0,
+          "fallback_fraction": 0,
+          "max_centerline_step": 0,
+          "minimum_centerline_sdf_margin": 0,
+          "errors": ["IC_MULTIPLE_DOMINANT_COMPONENTS"],
+          "status": "fail"
+        }
+      }
+    }
+  ],
+  "milestone": "DCRTE-ET M3",
+  "passed_cases": 10,
+  "deterministic_tests": {
+    "failures": [],
+    "passed": 18,
+    "failed": 0,
+    "status": "pass"
+  },
+  "status": "pass"
+}

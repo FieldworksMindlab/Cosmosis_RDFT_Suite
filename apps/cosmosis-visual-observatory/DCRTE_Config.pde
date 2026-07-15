@@ -103,6 +103,19 @@ class DCRTEConfig {
   int importedInsideVoxelsValue;
   int importedFailedScanlinesValue;
   double importedVolumeErrorValue;
+  String coordinateModeValue = "cartesian";
+  String coordinateVersionValue = "1.0-m3";
+  String coordinateMappingValue = "observer_world_identity";
+  String coordinateRadialModelValue = "equivalent_circular";
+  String coordinateFallbackPolicyValue = "block";
+  String coordinateComparisonModeValue = "single";
+  float coordinateLongitudinalScaleValue = 1.0f;
+  float coordinateRadialScaleValue = 1.0f;
+  String coordinateBuildStatusValue = "not_built";
+  float coordinateValidFractionValue;
+  float coordinateAmbiguityFractionValue;
+  float coordinateFallbackFractionValue;
+  float coordinateMeanConfidenceValue;
 
   float[] topologyBlendCopy() {
     float[] copy = new float[topologyBlend.length];
@@ -215,6 +228,19 @@ class DCRTEConfig {
       dcrteCanonical(out, "scheduler_id", schedulerIdValue);
       dcrteCanonical(out, "materializer_id", materializerIdValue);
       dcrteCanonical(out, "raised_veins_policy", raisedVeinsPolicyValue);
+      dcrteCanonical(out, "coordinate_mode", coordinateModeValue);
+      dcrteCanonical(out, "coordinate_version", coordinateVersionValue);
+      dcrteCanonical(out, "coordinate_mapping", coordinateMappingValue);
+      dcrteCanonical(out, "coordinate_radial_model", coordinateRadialModelValue);
+      dcrteCanonical(out, "coordinate_fallback_policy", coordinateFallbackPolicyValue);
+      dcrteCanonical(out, "coordinate_comparison_mode", coordinateComparisonModeValue);
+      dcrteCanonical(out, "coordinate_longitudinal_scale", coordinateLongitudinalScaleValue);
+      dcrteCanonical(out, "coordinate_radial_scale", coordinateRadialScaleValue);
+      dcrteCanonical(out, "coordinate_build_status", coordinateBuildStatusValue);
+      dcrteCanonical(out, "coordinate_valid_fraction", coordinateValidFractionValue);
+      dcrteCanonical(out, "coordinate_ambiguity_fraction", coordinateAmbiguityFractionValue);
+      dcrteCanonical(out, "coordinate_fallback_fraction", coordinateFallbackFractionValue);
+      dcrteCanonical(out, "coordinate_mean_confidence", coordinateMeanConfidenceValue);
     }
     return out.toString();
   }
@@ -225,7 +251,8 @@ class DCRTEConfig {
     root.setInt("dcrte_milestone", dcrteMilestone);
     root.setString("configuration_id", configurationId);
     root.setString("architecture_version", "DCRTE-ET v0.3");
-    root.setString("application_version", dcrteMilestone >= 2 ? "Cosmosis Visual Observatory M2" : "Cosmosis Visual Observatory M1");
+    root.setString("application_version", dcrteMilestone >= 3 ? "Cosmosis Visual Observatory M3"
+      : dcrteMilestone >= 2 ? "Cosmosis Visual Observatory M2" : "Cosmosis Visual Observatory M1");
 
     JSONObject pipeline = new JSONObject();
     pipeline.setString("mode", pipelineMode);
@@ -349,9 +376,21 @@ class DCRTEConfig {
       root.setJSONObject("scheduler", dcrteImmediateScheduler.toJSON());
       root.setJSONObject("materializer", dcrteLegacyMaterializer.toJSON());
       JSONObject coordinates = new JSONObject();
-      coordinates.setString("type", "cartesian");
+      coordinates.setString("type", coordinateModeValue);
+      coordinates.setString("version", coordinateVersionValue);
+      coordinates.setString("mapping", coordinateMappingValue);
       coordinates.setString("source", "uniform_grid_observer");
       coordinates.setString("source_to_observation", "fit_centered_uniform");
+      coordinates.setString("radial_model", coordinateRadialModelValue);
+      coordinates.setString("fallback_policy", coordinateFallbackPolicyValue);
+      coordinates.setString("comparison_mode", coordinateComparisonModeValue);
+      coordinates.setFloat("longitudinal_scale", coordinateLongitudinalScaleValue);
+      coordinates.setFloat("radial_scale", coordinateRadialScaleValue);
+      coordinates.setString("build_status", coordinateBuildStatusValue);
+      coordinates.setFloat("valid_fraction", coordinateValidFractionValue);
+      coordinates.setFloat("ambiguity_fraction", coordinateAmbiguityFractionValue);
+      coordinates.setFloat("fallback_fraction", coordinateFallbackFractionValue);
+      coordinates.setFloat("mean_confidence", coordinateMeanConfidenceValue);
       root.setJSONObject("coordinates", coordinates);
       JSONObject raisedVeins = new JSONObject();
       raisedVeins.setBoolean("requested", foundryRaisedVeinsValue);
@@ -370,8 +409,8 @@ DCRTEConfig captureDcrteConfig() {
   DCRTEConfig config = new DCRTEConfig();
   config.pipelineMode = dcrtePipelineMode.id();
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
-    config.schemaVersion = "0.5-m2";
-    config.dcrteMilestone = 2;
+    config.schemaVersion = "0.6-m3";
+    config.dcrteMilestone = 3;
   }
   config.fieldEngineId = dcrteGenerationFieldEngineId();
   config.fieldEngineVersion = dcrteGenerationFieldEngineVersion();
@@ -465,6 +504,24 @@ DCRTEConfig captureDcrteConfig() {
     config.importedInsideVoxelsValue = dcrteImportedInsideOutside == null ? 0 : dcrteImportedInsideOutside.insideCount;
     config.importedFailedScanlinesValue = dcrteImportedInsideOutside == null ? 0 : dcrteImportedInsideOutside.failedScanlineCount;
     config.importedVolumeErrorValue = dcrteImportedSdf == null || dcrteImportedSdf.quality == null ? Double.NaN : dcrteImportedSdf.quality.volumeRelativeError;
+    config.coordinateModeValue = dcrteCoordinateMode.id();
+    config.coordinateVersionValue = dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN
+      ? dcrteCartesianCoordinateSystem.getVersion() : "1.0-m3";
+    config.coordinateMappingValue = dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN
+      ? "observer_world_identity" : "INTRINSIC_CYLINDRICAL_EMBEDDING";
+    config.coordinateRadialModelValue = dcrteIntrinsicRadialModel.id();
+    config.coordinateFallbackPolicyValue = dcrteIntrinsicFallbackPolicy.id();
+    config.coordinateComparisonModeValue = dcrteCoordinateComparisonMode.id();
+    config.coordinateLongitudinalScaleValue = dcrteIntrinsicLongitudinalScale;
+    config.coordinateRadialScaleValue = dcrteIntrinsicRadialScale;
+    config.coordinateBuildStatusValue = dcrteIntrinsicBuildStatus;
+    if (dcrteIntrinsicBuildResult != null && dcrteIntrinsicBuildResult.validation != null) {
+      IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult.validation;
+      config.coordinateValidFractionValue = intrinsic.validFraction;
+      config.coordinateAmbiguityFractionValue = intrinsic.ambiguityFraction;
+      config.coordinateFallbackFractionValue = intrinsic.fallbackFraction;
+      config.coordinateMeanConfidenceValue = intrinsic.meanConfidence;
+    }
   }
   config.finalizeIdentity();
   return config;
@@ -494,7 +551,12 @@ void appendDcrteMetadata(JSONObject metadata) {
   } else if (imported) {
     if (dcrteLastValidationReport != null) configuration.setJSONObject("validation", dcrteLastValidationReport.toJSON());
     if (dcrteImportedVolume != null) configuration.setJSONObject("volume", dcrteImportedVolume.toJSON());
-    configuration.setJSONObject("deterministic_tests", dcrteM2Tests.toJSON());
+    JSONObject tests = new JSONObject();
+    tests.setJSONObject("milestone_2", dcrteM2Tests.toJSON());
+    tests.setJSONObject("milestone_2_5", dcrteM25Tests.toJSON());
+    tests.setJSONObject("milestone_3", dcrteM3Tests.toJSON());
+    configuration.setJSONObject("deterministic_tests", tests);
+    configuration.setJSONObject("coordinate_system", dcrteCoordinateMetadataJSON());
   }
   metadata.setJSONObject("dcrte_configuration", configuration);
 }
