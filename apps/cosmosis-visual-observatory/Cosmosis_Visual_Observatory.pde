@@ -189,12 +189,13 @@ int shaperLastPoll = -999;
 String shaperSourceStatus = "SIM";
 
 void settings() {
-  size(1440, 900, P3D);
+  size(1600, 1000, P3D);
   smooth(4);
 }
 
 void setup() {
   surface.setTitle("Cosmosis Visual Observatory");
+  if (args == null || args.length == 0) surface.setResizable(true);
   colorMode(RGB, 255);
   mono = createFont("Monospaced", 12);
   textFont(mono);
@@ -1384,12 +1385,17 @@ void drawSurfaceFoundry(int x, int y, int w, int h) {
 
   drawReadoutPanel(rightX, py + 540, rightW, max(120, h - 592), "STOCHASTIC CAD");
   drawStochasticCadPanel(rightX + 16, py + 578, rightW - 32, max(70, h - 634));
+  hint(ENABLE_DEPTH_TEST);
 }
 
 void drawFoundryPreview(int x, int y, int w, int h) {
   fill(3, 7, 11);
   stroke(36, 62, 70);
   rect(x, y, w, h, 6);
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH && dcrtePreflightPanelOpen) {
+    drawDcrtePreflightPanel(x, y, w, h);
+    return;
+  }
   pushMatrix();
   translate(x + w * 0.50, y + h * 0.52, -120);
   rotateX(0.82);
@@ -1414,6 +1420,7 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   drawDcrtePrimitiveWireframe(previewScale);
   drawDcrteImportedDomainPreview(previewScale);
   popMatrix();
+  hint(DISABLE_DEPTH_TEST);
 
   if (cadPreviewEnabled) drawStochasticCadPreview(x, y, w, h);
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
@@ -1423,7 +1430,6 @@ void drawFoundryPreview(int x, int y, int w, int h) {
     int importedPanelW = min(370, max(330, w - 24));
     drawDcrteImportedPanel(x + w - importedPanelW - 12, y + 12, importedPanelW, 410);
     drawDcrteImportedSdfSlice(x, y, w, h);
-    drawDcrtePreflightPanel(x, y, w, h);
   } else {
     drawDcrteDiagnosticsOverlay(x + w - 238, y + 12, 226, 88);
   }
@@ -2642,7 +2648,7 @@ void renderFoundryCallSheet(PGraphics pg, String style) {
   pg.strokeWeight(1.25);
   pg.rect(rightX, rightY, rightW, rightH);
   drawCallSheetRasterHeader(pg, rightX + 18, rightY + 18, rightW - 36, style);
-  drawCallSheetRasterPanel(pg, rightX + 30, rightY + 270, rightW - 60, rightH - 290, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
+  drawCallSheetRasterPanel(pg, rightX + 30, rightY + 370, rightW - 60, rightH - 390, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
   drawCallSheetRasterTitleBlock(pg, smallX, titleBlockY, rightX + rightW - smallX, 72, style);
 }
 
@@ -3341,14 +3347,19 @@ void drawCallSheetRasterHeader(PGraphics pg, int x, int y, int w, String style) 
   pg.text(shortText(callSheetDraftLabel(style), 102), x, y + 32);
   pg.textSize(11.0);
   pg.text("CONFIGURATION SNAPSHOT", x, y + 50);
-  pg.textSize(10.0);
-  String[] lines = callSheetConfigurationLines(style);
+  pg.textSize(8.8);
+  String[] lines = callSheetWrappedConfigurationLines(style, 48);
   int split = (lines.length + 1) / 2;
-  int columnW = w / 2;
+  int gutter = 18;
+  int columnW = (w - gutter) / 2;
+  pg.stroke(0, 72);
+  pg.strokeWeight(0.65);
+  pg.line(x, y + 65, x + w, y + 65);
+  pg.line(x + columnW + gutter / 2, y + 65, x + columnW + gutter / 2, y + 344);
   for (int i = 0; i < lines.length; i++) {
     int col = i / split;
     int row = i % split;
-    pg.text(lines[i], x + col * columnW, y + 67 + row * 13);
+    pg.text(lines[i], x + col * (columnW + gutter), y + 71 + row * 10.4);
   }
 }
 
@@ -3463,7 +3474,7 @@ void writeFoundryCallSheetSvg(String filename, String style) {
   }
   svgRect(out, rightX, rightY, rightW, rightH, "none", "#000000", 1.0, 1.25);
   writeCallSheetSvgHeader(out, rightX + 18, rightY + 18, rightW - 36, style);
-  writeCallSheetSvgPanel(out, rightX + 30, rightY + 270, rightW - 60, rightH - 290, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
+  writeCallSheetSvgPanel(out, rightX + 30, rightY + 370, rightW - 60, rightH - 390, 45, 35.26438968, "LARGE STANDARD ISOMETRIC VIEW", style, true);
   writeCallSheetSvgTitleBlock(out, smallX, titleBlockY, rightX + rightW - smallX, 72, style);
   out.println("</svg>");
   out.flush();
@@ -3996,13 +4007,16 @@ void writeCallSheetSvgHeader(PrintWriter out, int x, int y, int w, String style)
   svgTextStyled(out, x, y + 20, 22, "SURFACE FOUNDRY - ISOMETRIC DRAWING CALL SHEET", "700", "start", "auto");
   svgTextStyled(out, x, y + 43, 10.4, shortText(callSheetDraftLabel(style), 102), "400", "start", "auto");
   svgTextStyled(out, x, y + 61, 11.0, "CONFIGURATION SNAPSHOT", "700", "start", "auto");
-  String[] lines = callSheetConfigurationLines(style);
+  String[] lines = callSheetWrappedConfigurationLines(style, 48);
   int split = (lines.length + 1) / 2;
-  int columnW = w / 2;
+  int gutter = 18;
+  int columnW = (w - gutter) / 2;
+  svgLine(out, x, y + 65, x + w, y + 65, 0.35, 0.65);
+  svgLine(out, x + columnW + gutter / 2, y + 65, x + columnW + gutter / 2, y + 344, 0.35, 0.65);
   for (int i = 0; i < lines.length; i++) {
     int col = i / split;
     int row = i % split;
-    svgTextStyled(out, x + col * columnW, y + 78 + row * 13, 10.0, lines[i], "400", "start", "auto");
+    svgTextStyled(out, x + col * (columnW + gutter), y + 80 + row * 10.4, 8.8, lines[i], "400", "start", "auto");
   }
 }
 
@@ -4256,6 +4270,34 @@ String[] callSheetConfigurationLines(String style) {
     + " quarter-turns | SDF " + (dcrteImportedSdf == null ? "not built" : dcrteImportedSdf.signed ? "signed" : "unsigned");
   System.arraycopy(base, 6, expanded, 9, base.length - 6);
   return expanded;
+}
+
+String[] callSheetWrappedConfigurationLines(String style, int maxChars) {
+  String[] source = callSheetConfigurationLines(style);
+  ArrayList<String> wrapped = new ArrayList<String>();
+  for (int i = 0; i < source.length; i++) {
+    String[] segments = callSheetWrapConfigurationLine(source[i], maxChars);
+    for (int j = 0; j < segments.length; j++) wrapped.add(segments[j]);
+  }
+  return wrapped.toArray(new String[wrapped.size()]);
+}
+
+String[] callSheetWrapConfigurationLine(String value, int maxChars) {
+  ArrayList<String> lines = new ArrayList<String>();
+  String[] words = splitTokens(value == null ? "" : value, " \t\r\n");
+  String line = "";
+  for (int i = 0; i < words.length; i++) {
+    String candidate = line.length() == 0 ? words[i] : line + " " + words[i];
+    if (candidate.length() <= maxChars || line.length() == 0) {
+      line = candidate;
+    } else {
+      lines.add(line);
+      line = "  " + words[i];
+    }
+  }
+  if (line.length() > 0) lines.add(line);
+  if (lines.size() == 0) lines.add("-");
+  return lines.toArray(new String[lines.size()]);
 }
 
 String onOff(boolean value) {
@@ -6213,8 +6255,9 @@ void mousePressed() {
     int cx = rightX + 16;
     int cy = py + 42;
     if (handleDcrtePrimitivePanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
-    if (handleDcrtePreflightPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
-    if (handleDcrteImportedPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
+    if (dcrtePreflightPanelOpen) {
+      if (handleDcrtePreflightPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
+    } else if (handleDcrteImportedPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
     if (over(cx, cy, 132, 26)) generateSelectedSurfaceFoundryMesh();
     if (over(cx + 142, cy, 102, 26)) generateFoundryCallSheets();
     if (over(cx + 252, cy, 78, 26)) pullFoundryCallSheetSvgs();

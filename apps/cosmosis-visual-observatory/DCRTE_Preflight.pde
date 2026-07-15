@@ -10,6 +10,7 @@ boolean dcrtePreflightShowWarnings = true;
 boolean dcrtePreflightShowInformation = false;
 int dcrtePreflightIssueIndex = 0;
 int dcrtePreflightOverlayMode = 0;
+int dcrtePreflightInspectorTab = 0;
 String dcrtePreflightLastReportPath = "";
 
 void initializeDcrteMilestone25() {

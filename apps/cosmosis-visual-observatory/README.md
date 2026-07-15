@@ -460,16 +460,24 @@ Qualification advances from `NOT_LOADED` or `PARSE_FAILED` through
 ### Operator workflow
 
 1. Load an STL in `PIPE DCRTE IMPORTED`.
-2. Open `PREFLIGHT`, then click `RUN PREFLIGHT` after changing the source,
-   transform, resolution, or invalid-domain policy.
-3. Use `SHOW BLOCKERS`, `SHOW WARNINGS`, `PREVIOUS ISSUE`, and `NEXT ISSUE` to
-   inspect the staged findings.
-4. Cycle `OVERLAY` through selected issue, boundary loops, components,
-   intersections, and sign-disagreement voxels.
-5. Use `EXPORT REPORT JSON` for the complete machine-readable record or
-   `COPY SUMMARY` for the compact operator report.
-6. Use `UNSIGNED PREVIEW` only for research inspection. It never enables
+2. Open `PREFLIGHT`. The docked workspace replaces the normal preview while it
+   is active, keeping the diagnostic model separate from the inspector. Use
+   `CLOSE PREFLIGHT` to return to the standard imported-domain controls.
+3. Click `RUN PREFLIGHT` after changing the source, transform, resolution, or
+   invalid-domain policy.
+4. Use the `SUMMARY`, `STAGES`, `ISSUES`, and `VOLUME` tabs to inspect the
+   qualification handoff, all fourteen stages, filtered diagnostics, and SDF
+   slices without stacking readouts over the model.
+5. Cycle `OVERLAY` through selected issue, boundary loops, components,
+   intersections, and sign-disagreement voxels. The Issues tab provides
+   blocker, warning, and information filters plus previous/next navigation.
+6. Use `EXPORT REPORT JSON` for the complete machine-readable record or
+   `COPY SUMMARY` from the Issues tab for the compact operator report.
+7. Use `UNSIGNED PREVIEW` only for research inspection. It never enables
    materialization or export for an untrusted domain.
+
+The interactive sketch opens at `1600x1000` and the main Processing surface is
+resizable. Command-line acceptance runs retain their noninteractive lifecycle.
 
 Safe sanitation is reported separately and is limited to exact and
 near-duplicate vertex merging at the established tolerance, degenerate and

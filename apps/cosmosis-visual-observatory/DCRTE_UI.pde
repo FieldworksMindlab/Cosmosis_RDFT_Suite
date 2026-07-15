@@ -435,101 +435,273 @@ void drawDcrteImportedSdfSlice(int previewX, int previewY, int previewW, int pre
 
 void drawDcrtePreflightPanel(int previewX, int previewY, int previewW, int previewH) {
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH || !dcrtePreflightPanelOpen) return;
-  int w = max(250, min(360, previewW - 400));
-  int h = min(510, previewH - 24);
-  int x = previewX + 12;
-  int y = previewY + 12;
+  hint(DISABLE_DEPTH_TEST);
   DomainPreflightReport report = dcrteDisplayedPreflightReport();
   color accent = report == null || report.qualification == DomainQualification.NOT_LOADED ? color(112, 164, 176)
     : report.status == ValidationStatus.FAIL ? color(255, 96, 112)
     : report.status == ValidationStatus.PASS_WITH_WARNINGS ? color(255, 198, 82) : color(98, 232, 168);
-  fill(3, 9, 13, 248);
+
+  int x = previewX;
+  int y = previewY;
+  int w = previewW;
+  int h = previewH;
+  fill(2, 7, 11);
+  noStroke();
+  rect(x, y, w, h, 6);
   stroke(accent);
   strokeWeight(1);
-  rect(x, y, w, h, 5);
+  noFill();
+  rect(x + 1, y + 1, w - 2, h - 2, 6);
+
+  int pad = 12;
+  int gap = 7;
+  int toolbarX = x + pad;
+  int toolbarW = w - pad * 2;
+  int buttonW = (toolbarW - gap * 3) / 4;
   fill(accent);
   textAlign(LEFT, TOP);
-  textSize(9);
-  text("DCRTE-ET DOMAIN PREFLIGHT", x + 10, y + 8);
+  textSize(10);
+  text("DCRTE-ET DOMAIN PREFLIGHT", toolbarX, y + 9);
   fill(160, 192, 198);
   textSize(8);
   String qualification = report == null ? "NOT LOADED" : report.qualification.label();
-  text("qualification  " + qualification, x + 10, y + 24);
-  text("source         " + shortText(report == null ? "NONE" : report.sourceName, 34), x + 10, y + 36);
-  text("first blocker  " + (report == null || report.firstBlockingCode.length() == 0 ? "NONE" : report.firstBlockingCode), x + 10, y + 48);
-  text("permissions    preview " + dcrtePermissionWord(report != null && report.previewEnabled)
-    + "  sdf " + dcrtePermissionWord(report != null && report.sdfBuildEnabled)
-    + "  mat " + dcrtePermissionWord(report != null && report.materializationEnabled)
-    + "  export " + dcrtePermissionWord(report != null && report.exportEnabled), x + 10, y + 60);
+  textAlign(RIGHT, TOP);
+  text("qualification " + qualification + "  |  " + (report != null && report.reportStale ? "REPORT STALE" : "REPORT CURRENT"), x + w - pad, y + 10);
 
-  int innerX = x + 10;
-  int innerW = w - 20;
-  int gap = 6;
-  int halfW = (innerW - gap) / 2;
-  int by = y + 76;
-  drawButton(innerX, by, halfW, 20, "RUN PREFLIGHT", color(55, 82, 68));
-  drawButton(innerX + halfW + gap, by, halfW, 20,
-    dcrteImportedPolicy == InvalidDomainPolicy.UNSIGNED_PREVIEW ? "UNSIGNED ACTIVE" : "USE UNSIGNED PREVIEW", color(72, 62, 42));
-  by += 24;
-  drawButton(innerX, by, halfW, 20, dcrtePreflightShowBlockers ? "BLOCKERS SHOWN" : "SHOW BLOCKERS",
-    dcrtePreflightShowBlockers ? color(90, 47, 53) : color(48, 61, 66));
-  drawButton(innerX + halfW + gap, by, halfW, 20, dcrtePreflightShowWarnings ? "WARNINGS SHOWN" : "SHOW WARNINGS",
-    dcrtePreflightShowWarnings ? color(86, 72, 39) : color(48, 61, 66));
-  by += 24;
-  drawButton(innerX, by, halfW, 20, "PREVIOUS ISSUE", color(48, 72, 77));
-  drawButton(innerX + halfW + gap, by, halfW, 20, "NEXT ISSUE", color(48, 72, 77));
-  by += 24;
-  drawButton(innerX, by, halfW, 20, "EXPORT REPORT JSON", color(48, 72, 77));
-  drawButton(innerX + halfW + gap, by, halfW, 20, "COPY SUMMARY", color(48, 72, 77));
-  by += 24;
+  int by = y + 25;
+  drawButton(toolbarX, by, buttonW, 21, "CLOSE PREFLIGHT", color(70, 54, 60));
+  drawButton(toolbarX + (buttonW + gap), by, buttonW, 21, "LOAD STL", color(48, 72, 77));
+  drawButton(toolbarX + (buttonW + gap) * 2, by, buttonW, 21, "LOAD EGG FIXTURE", color(58, 78, 65));
+  drawButton(toolbarX + (buttonW + gap) * 3, by, buttonW, 21, "RUN PREFLIGHT", color(55, 82, 68));
+  by += 25;
   String[] overlayNames = {"ISSUE", "LOOPS", "COMPONENTS", "INTERSECTIONS", "SIGN VOXELS"};
-  drawButton(innerX, by, innerW, 20, "OVERLAY " + overlayNames[dcrtePreflightOverlayMode], color(46, 66, 78));
+  drawButton(toolbarX, by, buttonW, 21,
+    dcrteImportedResolution == 128 && millis() - dcrteImported128BuildArmedAt <= 10000 ? "CONFIRM 128 BUILD" : "REBUILD SDF", color(45, 86, 72));
+  drawButton(toolbarX + (buttonW + gap), by, buttonW, 21,
+    "POLICY " + (dcrteImportedPolicy == InvalidDomainPolicy.STRICT ? "STRICT" : "UNSIGNED"), color(70, 66, 48));
+  drawButton(toolbarX + (buttonW + gap) * 2, by, buttonW, 21,
+    "OVERLAY " + overlayNames[dcrtePreflightOverlayMode], color(46, 66, 78));
+  drawButton(toolbarX + (buttonW + gap) * 3, by, buttonW, 21, "EXPORT REPORT JSON", color(48, 72, 77));
 
-  int stageY = by + 30;
+  int bodyY = y + 82;
+  int bodyH = h - 94;
+  int inspectorW = constrain(round(w * 0.40f), 300, 390);
+  int modelX = x + pad;
+  int modelW = w - inspectorW - pad * 2 - gap;
+  int inspectorX = modelX + modelW + gap;
+  dcrteDrawPreflightViewport(modelX, bodyY, modelW, bodyH, report, accent);
+  dcrteDrawPreflightInspector(inspectorX, bodyY, inspectorW, bodyH, report, accent);
+}
+
+void dcrteDrawPreflightViewport(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
+  fill(2, 8, 12);
+  stroke(34, 68, 76);
+  strokeWeight(1);
+  rect(x, y, w, h, 4);
   fill(112, 178, 188);
+  textAlign(LEFT, TOP);
   textSize(8);
-  text("STAGE QUALIFICATION", innerX, stageY);
-  int stageCellW = (innerW - 6) / 2;
-  String[] stages = dcrtePreflightStageNames();
-  for (int i = 0; i < stages.length; i++) {
-    int sx = innerX + (i % 2) * (stageCellW + 6);
-    int sy = stageY + 13 + (i / 2) * 14;
-    DCRTEPreflightStageRecord stage = report == null ? null : report.stageRecord(stages[i]);
-    color stageColor = dcrteStageColor(stage == null ? DCRTEPreflightStageState.NOT_RUN : stage.state);
-    noStroke(); fill(stageColor); rect(sx, sy + 2, 5, 5);
-    fill(142, 174, 180); textSize(7); text(stages[i] + "  " + (stage == null ? "not_run" : stage.state.id()), sx + 9, sy);
-  }
+  text("QUALIFIED DOMAIN VIEW", x + 10, y + 9);
+  fill(142, 174, 180);
+  textAlign(RIGHT, TOP);
+  text("overlay " + dcrtePreflightOverlayMode + "  |  model + diagnostics", x + w - 10, y + 9);
 
-  int detailY = stageY + 116;
-  ArrayList<DomainDiagnostic> issues = dcrteVisiblePreflightIssues();
-  dcrtePreflightClampIssueIndex();
-  DomainDiagnostic issue = issues.size() == 0 ? null : issues.get(dcrtePreflightIssueIndex);
-  fill(112, 178, 188); textSize(8);
+  hint(ENABLE_DEPTH_TEST);
+  pushMatrix();
+  translate(x + w * 0.50f, y + h * 0.52f, -80);
+  rotateX(0.82f);
+  rotateY(-0.55f + simT * 0.08f);
+  rotateZ(0.18f);
+  float previewScale = min(w, h) * 0.40f;
+  drawDcrteImportedDomainPreview(previewScale);
+  popMatrix();
+  hint(DISABLE_DEPTH_TEST);
+
+  noStroke();
+  fill(2, 8, 12, 238);
+  rect(x + 1, y + h - 40, w - 2, 39);
+  fill(accent);
+  textAlign(LEFT, TOP);
+  textSize(8);
+  text(report == null ? "NO REPORT" : report.qualification.label(), x + 10, y + h - 32);
+  fill(142, 174, 180);
+  String source = report == null ? "no source loaded" : shortText(report.sourceName, max(20, w / 8));
+  text(source, x + 10, y + h - 19);
+  textAlign(RIGHT, TOP);
+  text("res " + dcrteImportedResolution + "^3  |  " + (report != null && report.exportEnabled ? "EXPORT READY" : "EXPORT LOCKED"), x + w - 10, y + h - 19);
+}
+
+void dcrteDrawPreflightInspector(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
+  fill(3, 10, 14);
+  stroke(34, 68, 76);
+  strokeWeight(1);
+  rect(x, y, w, h, 4);
+  String[] tabs = {"SUMMARY", "STAGES", "ISSUES", "VOLUME"};
+  int tabGap = 4;
+  int tabW = (w - 16 - tabGap * 3) / 4;
+  for (int i = 0; i < tabs.length; i++) {
+    drawButton(x + 8 + i * (tabW + tabGap), y + 8, tabW, 21, tabs[i],
+      i == dcrtePreflightInspectorTab ? color(54, 94, 92) : color(35, 54, 61));
+  }
+  int contentX = x + 10;
+  int contentY = y + 39;
+  int contentW = w - 20;
+  int contentH = h - 49;
+  if (dcrtePreflightInspectorTab == 1) dcrteDrawPreflightStages(contentX, contentY, contentW, contentH, report);
+  else if (dcrtePreflightInspectorTab == 2) dcrteDrawPreflightIssues(contentX, contentY, contentW, contentH, report);
+  else if (dcrtePreflightInspectorTab == 3) dcrteDrawPreflightVolume(contentX, contentY, contentW, contentH, report);
+  else dcrteDrawPreflightSummary(contentX, contentY, contentW, contentH, report, accent);
+}
+
+void dcrteDrawPreflightSummary(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
   int boundaryEdges = report == null || report.meshReport == null ? 0 : report.meshReport.boundaryEdgeCount;
   int nonmanifold = report == null || report.meshReport == null ? 0 : report.meshReport.nonManifoldEdgeCount;
   int intersections = report == null || report.selfIntersectionReport == null ? 0 : report.selfIntersectionReport.confirmedIntersectionCount;
-  text("NUMERICAL LEGEND", innerX, detailY);
+  fill(accent); textAlign(LEFT, TOP); textSize(9);
+  text(report == null ? "NOT LOADED" : report.qualification.label(), x, y);
+  fill(150, 184, 190); textSize(8);
+  int lineY = y + 17;
+  lineY = dcrteInspectorPair(x, lineY, w, "SOURCE", report == null ? "NONE" : shortText(report.sourceName, 38));
+  lineY = dcrteInspectorPair(x, lineY, w, "FIRST BLOCKER", report == null || report.firstBlockingCode.length() == 0 ? "NONE" : report.firstBlockingCode);
+  lineY = dcrteInspectorPair(x, lineY, w, "BOUNDARY EDGES", str(boundaryEdges));
+  lineY = dcrteInspectorPair(x, lineY, w, "BOUNDARY LOOPS", str(report == null ? 0 : report.boundaryLoops.size()));
+  lineY = dcrteInspectorPair(x, lineY, w, "NONMANIFOLD", str(nonmanifold));
+  lineY = dcrteInspectorPair(x, lineY, w, "COMPONENTS", str(report == null ? 0 : report.componentCount));
+  lineY = dcrteInspectorPair(x, lineY, w, "INTERSECTIONS", str(intersections));
+  lineY = dcrteInspectorPair(x, lineY, w, "DOMINANT SURFACE", report == null ? "-" : nf(report.dominantComponentFraction, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "INSIDE CONNECTIVITY", report == null ? "-" : report.insideMaskComponentCount + " / " + nf(report.insideMaskDominantFraction, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "SDF CONFIDENCE", report == null ? "-" : nf(report.sdfResolutionConfidence, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "THIN FEATURE RISK", report != null && report.thinFeatureRisk ? "YES" : "NO");
+  lineY += 5;
+  fill(112, 178, 188); text("PERMISSIONS", x, lineY); lineY += 14;
   fill(150, 184, 190);
-  text("boundary edges " + boundaryEdges + "   loops " + (report == null ? 0 : report.boundaryLoops.size())
-    + "   nonmanifold " + nonmanifold, innerX, detailY + 13);
-  text("components " + (report == null ? 0 : report.componentCount) + "   intersections " + intersections
-    + "   resolution " + dcrteImportedResolution + "^3", innerX, detailY + 25);
-  text("issue " + (issues.size() == 0 ? "0/0" : (dcrtePreflightIssueIndex + 1) + "/" + issues.size()), innerX, detailY + 37);
-  if (issue != null) {
-    fill(dcrteSeverityColor(issue.severity));
-    text(issue.code + "  [" + issue.stage + "]", innerX, detailY + 51);
-    fill(190, 204, 206);
-    text(shortText(issue.title, 46), innerX, detailY + 63);
-    fill(142, 174, 180);
-    text(shortText(issue.message, 50), innerX, detailY + 75);
-    text("count " + (issue.count < 0 ? "-" : str(issue.count))
-      + "  value " + (!dcrteFinite(issue.value) ? "-" : nf(issue.value, 1, 4))
-      + "  threshold " + (!dcrteFinite(issue.threshold) ? "-" : nf(issue.threshold, 1, 4)), innerX, detailY + 87);
-    text("action  " + shortText(issue.recommendedAction, 42), innerX, detailY + 99);
-  } else {
-    fill(98, 232, 168);
-    text("No diagnostics match the active filters.", innerX, detailY + 53);
+  text("preview " + dcrtePermissionWord(report != null && report.previewEnabled)
+    + "  sdf " + dcrtePermissionWord(report != null && report.sdfBuildEnabled)
+    + "  material " + dcrtePermissionWord(report != null && report.materializationEnabled)
+    + "  export " + dcrtePermissionWord(report != null && report.exportEnabled), x, lineY);
+  lineY += 22;
+  fill(112, 178, 188); text("RECOMMENDED NEXT ACTION", x, lineY); lineY += 14;
+  fill(185, 204, 205);
+  String nextAction = report == null ? "Load an STL or the canonical egg fixture." : report.recommendedNextAction;
+  if (report != null && nextAction.length() == 0) {
+    nextAction = report.sdfBuildEnabled ? "Rebuild the SDF to continue volume qualification." : "Review the active blockers in the Issues tab.";
   }
+  dcrteDrawWrappedText(nextAction,
+    x, lineY, w, 11, max(2, (h - (lineY - y)) / 11));
+}
+
+void dcrteDrawPreflightStages(int x, int y, int w, int h, DomainPreflightReport report) {
+  fill(112, 178, 188); textAlign(LEFT, TOP); textSize(8); text("QUALIFICATION PIPELINE", x, y);
+  String[] stages = dcrtePreflightStageNames();
+  int gap = 8;
+  int cellW = (w - gap) / 2;
+  int cellH = max(48, (h - 24) / 7);
+  for (int i = 0; i < stages.length; i++) {
+    int sx = x + (i % 2) * (cellW + gap);
+    int sy = y + 18 + (i / 2) * cellH;
+    DCRTEPreflightStageRecord stage = report == null ? null : report.stageRecord(stages[i]);
+    DCRTEPreflightStageState state = stage == null ? DCRTEPreflightStageState.NOT_RUN : stage.state;
+    stroke(35, 58, 65); noFill(); rect(sx, sy, cellW, cellH - 6, 3);
+    noStroke(); fill(dcrteStageColor(state)); rect(sx + 7, sy + 8, 6, 6);
+    fill(180, 204, 205); textSize(7.5f); text(stages[i], sx + 18, sy + 5);
+    fill(118, 158, 166); text(state.id() + (stage == null ? "" : "  " + stage.elapsedMillis + "ms"), sx + 7, sy + 18);
+    fill(145, 174, 180);
+    dcrteDrawWrappedText(stage == null ? "not run" : stage.reason, sx + 7, sy + 30, cellW - 14, 9, 2);
+  }
+}
+
+void dcrteDrawPreflightIssues(int x, int y, int w, int h, DomainPreflightReport report) {
+  int gap = 5;
+  int thirdW = (w - gap * 2) / 3;
+  drawButton(x, y, thirdW, 20, dcrtePreflightShowBlockers ? "BLOCKERS ON" : "BLOCKERS OFF",
+    dcrtePreflightShowBlockers ? color(90, 47, 53) : color(48, 61, 66));
+  drawButton(x + thirdW + gap, y, thirdW, 20, dcrtePreflightShowWarnings ? "WARNINGS ON" : "WARNINGS OFF",
+    dcrtePreflightShowWarnings ? color(86, 72, 39) : color(48, 61, 66));
+  drawButton(x + (thirdW + gap) * 2, y, thirdW, 20, dcrtePreflightShowInformation ? "INFO ON" : "INFO OFF",
+    dcrtePreflightShowInformation ? color(38, 74, 90) : color(48, 61, 66));
+  int halfW = (w - gap) / 2;
+  drawButton(x, y + 25, halfW, 20, "PREVIOUS ISSUE", color(48, 72, 77));
+  drawButton(x + halfW + gap, y + 25, halfW, 20, "NEXT ISSUE", color(48, 72, 77));
+  drawButton(x, y + 50, w, 20, "COPY SUMMARY", color(48, 72, 77));
+
+  ArrayList<DomainDiagnostic> issues = dcrteVisiblePreflightIssues();
+  dcrtePreflightClampIssueIndex();
+  DomainDiagnostic issue = issues.size() == 0 ? null : issues.get(dcrtePreflightIssueIndex);
+  int detailY = y + 82;
+  fill(112, 178, 188); textAlign(LEFT, TOP); textSize(8);
+  text("DIAGNOSTIC " + (issues.size() == 0 ? "0 / 0" : (dcrtePreflightIssueIndex + 1) + " / " + issues.size()), x, detailY);
+  if (issue == null) {
+    fill(98, 232, 168);
+    text("No diagnostics match the active filters.", x, detailY + 20);
+    return;
+  }
+  fill(dcrteSeverityColor(issue.severity)); textSize(9); text(issue.code + "  [" + issue.stage + "]", x, detailY + 17);
+  fill(205, 218, 218); textSize(8); text(issue.title, x, detailY + 34);
+  fill(148, 178, 184);
+  int nextY = dcrteDrawWrappedText(issue.message, x, detailY + 51, w, 11, 7);
+  nextY += 5;
+  text("count " + (issue.count < 0 ? "-" : str(issue.count))
+    + "  value " + (!dcrteFinite(issue.value) ? "-" : nf(issue.value, 1, 4))
+    + "  threshold " + (!dcrteFinite(issue.threshold) ? "-" : nf(issue.threshold, 1, 4)), x, nextY);
+  nextY += 19;
+  fill(112, 178, 188); text("RECOMMENDED ACTION", x, nextY); nextY += 14;
+  fill(185, 204, 205);
+  dcrteDrawWrappedText(issue.recommendedAction, x, nextY, w, 11, max(2, (h - (nextY - y)) / 11));
+}
+
+void dcrteDrawPreflightVolume(int x, int y, int w, int h, DomainPreflightReport report) {
+  int gap = 5;
+  int quarterW = (w - gap * 3) / 4;
+  drawButton(x, y, quarterW, 20, "AXIS " + dcrteImportedSliceAxis.name(), color(48, 72, 77));
+  drawButton(x + quarterW + gap, y, quarterW, 20, "SLICE -", color(48, 72, 77));
+  drawButton(x + (quarterW + gap) * 2, y, quarterW, 20, "SLICE +", color(48, 72, 77));
+  drawButton(x + (quarterW + gap) * 3, y, quarterW, 20, "RES " + dcrteImportedResolution, color(48, 72, 77));
+  drawButton(x, y + 25, quarterW, 20, dcrteObservationMode == DCRTEObservationMode.HARD_INTERIOR ? "OBS HARD" : "OBS SHELL", color(52, 78, 72));
+  drawButton(x + quarterW + gap, y + 25, quarterW, 20, dcrteImportedShowBoundary ? "BOUND ON" : "BOUND OFF", color(48, 72, 77));
+  drawButton(x + (quarterW + gap) * 2, y + 25, quarterW, 20, dcrteImportedShowSdf ? "SDF ON" : "SDF OFF", color(48, 72, 77));
+  drawButton(x + (quarterW + gap) * 3, y + 25, quarterW, 20, dcrteImportedShowMaterial ? "MAT ON" : "MAT OFF", color(48, 72, 77));
+
+  fill(112, 178, 188); textAlign(LEFT, TOP); textSize(8); text("VOLUME QUALIFICATION", x, y + 57);
+  int lineY = y + 73;
+  lineY = dcrteInspectorPair(x, lineY, w, "SDF", dcrteImportedSdf == null ? "NOT BUILT" : (dcrteImportedSdf.signed ? "SIGNED" : "UNSIGNED"));
+  lineY = dcrteInspectorPair(x, lineY, w, "INSIDE COMPONENTS", report == null ? "-" : str(report.insideMaskComponentCount));
+  lineY = dcrteInspectorPair(x, lineY, w, "DOMINANT INSIDE", report == null ? "-" : nf(report.insideMaskDominantFraction, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "RES CONFIDENCE", report == null ? "-" : nf(report.sdfResolutionConfidence, 1, 3));
+  if (dcrteImportedShowSdf) {
+    int sliceY = lineY + 5;
+    drawDcrteImportedSdfSlice(x - 2, sliceY, w + 4, max(150, h - (sliceY - y)));
+  } else {
+    fill(142, 174, 180);
+    text("Enable SDF to inspect the orthogonal signed-distance slice.", x, lineY + 13);
+  }
+}
+
+int dcrteInspectorPair(int x, int y, int w, String label, String value) {
+  fill(112, 150, 158); textAlign(LEFT, TOP); textSize(8); text(label, x, y);
+  fill(192, 210, 211); textAlign(RIGHT, TOP); text(shortText(value == null ? "-" : value, max(12, w / 7)), x + w, y);
+  return y + 14;
+}
+
+int dcrteDrawWrappedText(String value, float x, float y, float maxWidth, float lineHeight, int maxLines) {
+  String safe = value == null || value.length() == 0 ? "-" : value;
+  String[] words = splitTokens(safe, " \t\n\r");
+  String line = "";
+  int lineCount = 0;
+  for (int i = 0; i < words.length && lineCount < maxLines; i++) {
+    String candidate = line.length() == 0 ? words[i] : line + " " + words[i];
+    if (textWidth(candidate) <= maxWidth || line.length() == 0) {
+      line = candidate;
+    } else {
+      text(line, x, y + lineCount * lineHeight);
+      lineCount++;
+      line = words[i];
+    }
+  }
+  if (line.length() > 0 && lineCount < maxLines) {
+    text(line, x, y + lineCount * lineHeight);
+    lineCount++;
+  }
+  return round(y + lineCount * lineHeight);
 }
 
 String dcrtePermissionWord(boolean enabled) { return enabled ? "ON" : "OFF"; }
@@ -550,27 +722,62 @@ color dcrteSeverityColor(DiagnosticSeverity severity) {
 
 boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW, int previewH) {
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH || !dcrtePreflightPanelOpen) return false;
-  int w = max(250, min(360, previewW - 400));
-  int x = previewX + 12;
-  int y = previewY + 12;
-  int innerX = x + 10;
-  int innerW = w - 20;
-  int gap = 6;
-  int halfW = (innerW - gap) / 2;
-  int by = y + 76;
-  if (over(innerX, by, halfW, 20)) { dcrteImportedAttemptPreflightReport = null; runDcrteImportedPreflight(); return true; }
-  if (over(innerX + halfW + gap, by, halfW, 20)) { useDcrteUnsignedPreview(); return true; }
-  by += 24;
-  if (over(innerX, by, halfW, 20)) { dcrtePreflightShowBlockers = !dcrtePreflightShowBlockers; dcrtePreflightClampIssueIndex(); return true; }
-  if (over(innerX + halfW + gap, by, halfW, 20)) { dcrtePreflightShowWarnings = !dcrtePreflightShowWarnings; dcrtePreflightClampIssueIndex(); return true; }
-  by += 24;
-  if (over(innerX, by, halfW, 20)) { stepDcrtePreflightIssue(-1); return true; }
-  if (over(innerX + halfW + gap, by, halfW, 20)) { stepDcrtePreflightIssue(1); return true; }
-  by += 24;
-  if (over(innerX, by, halfW, 20)) { exportDcrtePreflightReportJSON(); return true; }
-  if (over(innerX + halfW + gap, by, halfW, 20)) { copyDcrtePreflightSummary(); return true; }
-  by += 24;
-  if (over(innerX, by, innerW, 20)) { dcrtePreflightOverlayMode = (dcrtePreflightOverlayMode + 1) % 5; return true; }
+  int x = previewX;
+  int y = previewY;
+  int w = previewW;
+  int pad = 12;
+  int gap = 7;
+  int toolbarX = x + pad;
+  int toolbarW = w - pad * 2;
+  int buttonW = (toolbarW - gap * 3) / 4;
+  int by = y + 25;
+  if (over(toolbarX, by, buttonW, 21)) { dcrtePreflightPanelOpen = false; return true; }
+  if (over(toolbarX + buttonW + gap, by, buttonW, 21)) { selectDcrteImportedStl(); return true; }
+  if (over(toolbarX + (buttonW + gap) * 2, by, buttonW, 21)) { loadDcrteEggFixture(); return true; }
+  if (over(toolbarX + (buttonW + gap) * 3, by, buttonW, 21)) { dcrteImportedAttemptPreflightReport = null; runDcrteImportedPreflight(); return true; }
+  by += 25;
+  if (over(toolbarX, by, buttonW, 21)) { requestDcrteImportedSdfBuild(); return true; }
+  if (over(toolbarX + buttonW + gap, by, buttonW, 21)) { cycleDcrteImportedPolicy(); return true; }
+  if (over(toolbarX + (buttonW + gap) * 2, by, buttonW, 21)) { dcrtePreflightOverlayMode = (dcrtePreflightOverlayMode + 1) % 5; return true; }
+  if (over(toolbarX + (buttonW + gap) * 3, by, buttonW, 21)) { exportDcrtePreflightReportJSON(); return true; }
+
+  int bodyY = y + 82;
+  int inspectorW = constrain(round(w * 0.40f), 300, 390);
+  int modelW = w - inspectorW - pad * 2 - gap;
+  int inspectorX = x + pad + modelW + gap;
+  int tabGap = 4;
+  int tabW = (inspectorW - 16 - tabGap * 3) / 4;
+  for (int i = 0; i < 4; i++) {
+    if (over(inspectorX + 8 + i * (tabW + tabGap), bodyY + 8, tabW, 21)) {
+      dcrtePreflightInspectorTab = i;
+      return true;
+    }
+  }
+  int contentX = inspectorX + 10;
+  int contentY = bodyY + 39;
+  int contentW = inspectorW - 20;
+  if (dcrtePreflightInspectorTab == 2) {
+    int controlGap = 5;
+    int thirdW = (contentW - controlGap * 2) / 3;
+    if (over(contentX, contentY, thirdW, 20)) { dcrtePreflightShowBlockers = !dcrtePreflightShowBlockers; dcrtePreflightClampIssueIndex(); return true; }
+    if (over(contentX + thirdW + controlGap, contentY, thirdW, 20)) { dcrtePreflightShowWarnings = !dcrtePreflightShowWarnings; dcrtePreflightClampIssueIndex(); return true; }
+    if (over(contentX + (thirdW + controlGap) * 2, contentY, thirdW, 20)) { dcrtePreflightShowInformation = !dcrtePreflightShowInformation; dcrtePreflightClampIssueIndex(); return true; }
+    int halfW = (contentW - controlGap) / 2;
+    if (over(contentX, contentY + 25, halfW, 20)) { stepDcrtePreflightIssue(-1); return true; }
+    if (over(contentX + halfW + controlGap, contentY + 25, halfW, 20)) { stepDcrtePreflightIssue(1); return true; }
+    if (over(contentX, contentY + 50, contentW, 20)) { copyDcrtePreflightSummary(); return true; }
+  } else if (dcrtePreflightInspectorTab == 3) {
+    int controlGap = 5;
+    int quarterW = (contentW - controlGap * 3) / 4;
+    if (over(contentX, contentY, quarterW, 20)) { cycleDcrteImportedSliceAxis(); return true; }
+    if (over(contentX + quarterW + controlGap, contentY, quarterW, 20)) { adjustDcrteImportedSlice(-1); return true; }
+    if (over(contentX + (quarterW + controlGap) * 2, contentY, quarterW, 20)) { adjustDcrteImportedSlice(1); return true; }
+    if (over(contentX + (quarterW + controlGap) * 3, contentY, quarterW, 20)) { cycleDcrteImportedResolution(); return true; }
+    if (over(contentX, contentY + 25, quarterW, 20)) { cycleDcrteObservationMode(); return true; }
+    if (over(contentX + quarterW + controlGap, contentY + 25, quarterW, 20)) { dcrteImportedShowBoundary = !dcrteImportedShowBoundary; return true; }
+    if (over(contentX + (quarterW + controlGap) * 2, contentY + 25, quarterW, 20)) { dcrteImportedShowSdf = !dcrteImportedShowSdf; return true; }
+    if (over(contentX + (quarterW + controlGap) * 3, contentY + 25, quarterW, 20)) { dcrteImportedShowMaterial = !dcrteImportedShowMaterial; return true; }
+  }
   return false;
 }
 
