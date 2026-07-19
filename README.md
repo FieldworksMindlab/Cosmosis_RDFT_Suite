@@ -58,6 +58,13 @@ This repo intentionally keeps source and curated samples, not every local output
 
 BasinNET is intentionally deferred for a later public cleanup pass. See `docs/roadmap/basinnet.md`.
 
+## Research Prospectus
+
+The [Fieldworks MindLAB prospectus package](docs/fieldworks-mindlab/README.md)
+collects the foundational organizational prospectus, technical appendices,
+combined omnibus edition, editable source document, and public-safe source
+register.
+
 ## Status
 
 This is an active experimental research suite. Expect sharp edges, Mac-oriented launch scripts, and systems that mix formal modeling with creative instrumentation. The code is shared to preserve the work and make the conceptual machinery available for exploration.
