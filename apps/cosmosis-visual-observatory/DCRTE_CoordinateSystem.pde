@@ -222,8 +222,93 @@ void initializeDcrteMilestone3() {
 }
 
 FieldCoordinateSystem dcrteSelectedCoordinateSystem() {
-  if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL) return dcrteIntrinsicCoordinateSystem;
+  if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL) {
+    return dcrteIntrinsicStateCurrent() ? dcrteIntrinsicCoordinateSystem : null;
+  }
   return dcrteCartesianCoordinateSystem;
+}
+
+String dcrteCurrentIntrinsicDomainSignature() {
+  String source = dcrteImportedSourceMesh == null || dcrteImportedSourceMesh.sourceHashSha256 == null
+    ? "none" : dcrteImportedSourceMesh.sourceHashSha256;
+  Bounds3D bounds = dcrteObserverBounds;
+  return source + "|res=" + dcrteImportedResolution
+    + "|rot=" + dcrteImportedRotateX + "," + dcrteImportedRotateY + "," + dcrteImportedRotateZ
+    + "|fit=" + Float.floatToIntBits(dcrteImportedFitMargin)
+    + "|scale=" + Float.floatToIntBits(dcrteImportedScaleMultiplier)
+    + "|bounds=" + Float.floatToIntBits(bounds.minX) + "," + Float.floatToIntBits(bounds.minY) + "," + Float.floatToIntBits(bounds.minZ)
+    + "," + Float.floatToIntBits(bounds.maxX) + "," + Float.floatToIntBits(bounds.maxY) + "," + Float.floatToIntBits(bounds.maxZ);
+}
+
+boolean dcrteVolumeSpecsMatch(VolumeSpec a, VolumeSpec b, float tolerance) {
+  if (a == null || b == null || !a.isValid() || !b.isValid()) return false;
+  if (a.nx != b.nx || a.ny != b.ny || a.nz != b.nz) return false;
+  return abs(a.bounds.minX-b.bounds.minX)<=tolerance&&abs(a.bounds.minY-b.bounds.minY)<=tolerance
+    &&abs(a.bounds.minZ-b.bounds.minZ)<=tolerance&&abs(a.bounds.maxX-b.bounds.maxX)<=tolerance
+    &&abs(a.bounds.maxY-b.bounds.maxY)<=tolerance&&abs(a.bounds.maxZ-b.bounds.maxZ)<=tolerance;
+}
+
+boolean dcrteIntrinsicHasIssue(String code) {
+  if (code == null || dcrteIntrinsicBuildResult == null || dcrteIntrinsicBuildResult.validation == null) return false;
+  IntrinsicValidationReport validation = dcrteIntrinsicBuildResult.validation;
+  if (validation.errors.contains(code)) return true;
+  return validation.suitability != null && validation.suitability.blockers.contains(code);
+}
+
+boolean dcrteIntrinsicClosedLoopBlocked() {
+  return dcrteIntrinsicHasIssue(DCRTEIntrinsicCodes.IC_CLOSED_LOOP_SUSPECTED);
+}
+
+String dcrteIntrinsicStateIssue(IntrinsicBuildResult result) {
+  if (result == null) return "INTRINSIC_NOT_BUILT";
+  if (result.validation == null || !result.validation.exportAllowed()) {
+    return result.validation == null ? "INTRINSIC_VALIDATION_MISSING" : result.validation.primaryIssue();
+  }
+  if (dcrteImportedSdf == null || !dcrteImportedSdf.isValid()) return "INTRINSIC_SOURCE_SDF_MISSING";
+  if (result.sourceDomainSignature == null || result.sourceDomainSignature.length() == 0
+      || !result.sourceDomainSignature.equals(dcrteCurrentIntrinsicDomainSignature())) return "INTRINSIC_SOURCE_STALE";
+  if (result.volume == null || !result.volume.isValid()) return "INTRINSIC_VOLUME_INVALID";
+  if (!dcrteVolumeSpecsMatch(result.volume.spec, dcrteImportedSdf.spec, 0.000001f)) return "INTRINSIC_GRID_MISMATCH";
+  if (result.centerline == null || result.centerline.points == null || result.centerline.points.length < 2) return "INTRINSIC_CENTERLINE_MISSING";
+  Bounds3D bounds = dcrteImportedWorldMesh != null && dcrteImportedWorldMesh.worldBounds != null
+    ? dcrteImportedWorldMesh.worldBounds : dcrteObserverBounds;
+  float extent = max(bounds.sizeX(), max(bounds.sizeY(), bounds.sizeZ()));
+  float padding = max(dcrteImportedSdf.spec.minSpacing() * 3.0f, extent * 0.20f);
+  float maximumRadius = max(dcrteImportedSdf.spec.minSpacing() * 2.0f, extent * 1.25f);
+  for (int i = 0; i < result.centerline.points.length; i++) {
+    CenterlinePoint point = result.centerline.points[i];
+    if (point == null || !dcrteFinite(point.x) || !dcrteFinite(point.y) || !dcrteFinite(point.z)
+        || !dcrteFinite(point.equivalentRadius) || point.equivalentRadius <= 0 || point.equivalentRadius > maximumRadius) {
+      return "INTRINSIC_CENTERLINE_NONFINITE";
+    }
+    if (point.x < bounds.minX-padding || point.x > bounds.maxX+padding
+        || point.y < bounds.minY-padding || point.y > bounds.maxY+padding
+        || point.z < bounds.minZ-padding || point.z > bounds.maxZ+padding) return "INTRINSIC_CENTERLINE_OUT_OF_BOUNDS";
+  }
+  if (result.frames == null || result.frames.frames == null
+      || result.frames.frames.length != result.centerline.points.length) return "INTRINSIC_FRAME_MISMATCH";
+  for (int i = 0; i < result.frames.frames.length; i++) {
+    TransportFrame frame = result.frames.frames[i];
+    if (frame == null || !dcrteFinite(frame.tx) || !dcrteFinite(frame.ty) || !dcrteFinite(frame.tz)
+        || !dcrteFinite(frame.nx) || !dcrteFinite(frame.ny) || !dcrteFinite(frame.nz)
+        || !dcrteFinite(frame.bx) || !dcrteFinite(frame.by) || !dcrteFinite(frame.bz)) return "INTRINSIC_FRAME_NONFINITE";
+    float tangentLength=dcrteMagnitude(frame.tx,frame.ty,frame.tz), normalLength=dcrteMagnitude(frame.nx,frame.ny,frame.nz), binormalLength=dcrteMagnitude(frame.bx,frame.by,frame.bz);
+    if (tangentLength<0.75f||tangentLength>1.25f||normalLength<0.75f||normalLength>1.25f
+        ||binormalLength<0.75f||binormalLength>1.25f) return "INTRINSIC_FRAME_SCALE_INVALID";
+  }
+  return "";
+}
+
+boolean dcrteIntrinsicStateCurrent() {
+  return dcrteIntrinsicCoordinateSystem != null && dcrteIntrinsicStateIssue(dcrteIntrinsicBuildResult).length() == 0;
+}
+
+float dcrteIntrinsicVisualizationRadiusCap() {
+  Bounds3D bounds = dcrteImportedWorldMesh != null && dcrteImportedWorldMesh.worldBounds != null
+    ? dcrteImportedWorldMesh.worldBounds : dcrteObserverBounds;
+  float extent = max(bounds.sizeX(), max(bounds.sizeY(), bounds.sizeZ()));
+  float spacing = dcrteImportedSdf == null || dcrteImportedSdf.spec == null ? 0.01f : dcrteImportedSdf.spec.minSpacing();
+  return max(spacing * 2.0f, extent * 0.55f);
 }
 
 void cycleDcrteCoordinateMode() {
@@ -274,6 +359,7 @@ void refreshDcrteIntrinsicCoordinateSystem() {
     dcrteIntrinsicBuildResult.volume, dcrteIntrinsicBuildResult.validation,
     dcrteIntrinsicLongitudinalScale, dcrteIntrinsicRadialScale,
     dcrteIntrinsicFallbackPolicy);
+  if (dcrteIntrinsicStateIssue(dcrteIntrinsicBuildResult).length() > 0) dcrteIntrinsicCoordinateSystem = null;
 }
 
 void invalidateDcrteIntrinsic(String reason) {
@@ -307,9 +393,23 @@ boolean buildDcrteImportedIntrinsicCoordinates() {
   }
   dcrteIntrinsicBuildStatus = "BUILDING";
   long buildStart = millis();
-  IntrinsicBuildResult result = new DCRTEIntrinsicCoordinateBuilder().build(
-    dcrteImportedSdf, dcrteImportedPreflightReport, false);
+  IntrinsicBuildResult result = null;
+  try {
+    result = new DCRTEIntrinsicCoordinateBuilder().build(
+      dcrteImportedSdf, dcrteImportedPreflightReport, false);
+  }
+  catch (Exception error) {
+    dcrteIntrinsicLastBuildMillis = millis() - buildStart;
+    invalidateDcrteIntrinsic("build failed");
+    dcrteIntrinsicBuildStatus = "BLOCKED - BUILD FAILED";
+    dcrteImportedStatus = "intrinsic build blocked: " + dcrteImportedExceptionMessage(error);
+    println("DCRTE intrinsic-coordinate build failed safely: "
+      + error.getClass().getSimpleName() + " " + dcrteImportedExceptionMessage(error));
+    error.printStackTrace();
+    return false;
+  }
   dcrteIntrinsicLastBuildMillis = millis() - buildStart;
+  if (result != null) result.sourceDomainSignature = dcrteCurrentIntrinsicDomainSignature();
   dcrteIntrinsicBuildResult = result;
   refreshDcrteIntrinsicCoordinateSystem();
   if (result == null || result.validation == null || !result.validation.exportAllowed()) {

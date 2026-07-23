@@ -31,6 +31,15 @@ DCRTEM3TestReport runDcrteMilestone3Tests() {
       cylinderRepeat == null ? null : cylinderRepeat.volume), "intrinsic volume is deterministic");
     tests.check(cylinder != null && cylinder.frames != null && cylinder.frames.valid
       && cylinder.frames.discontinuityCount == 0, "straight cylinder transport frames are continuous");
+    IntrinsicCoordinateVolume malformedVolume = new IntrinsicCoordinateVolume(cylinder == null || cylinder.volume == null ? null : cylinder.volume.spec);
+    if (malformedVolume.spec != null) {
+      malformedVolume.validCount = 1;
+      malformedVolume.theta = new float[1];
+    }
+    tests.check(!malformedVolume.isValid(), "intrinsic volume rejects mismatched visualization buffers");
+    TransportFrameField missingFrameInput = new DCRTEParallelTransportBuilder().build(null, null);
+    tests.check(missingFrameInput != null && !missingFrameInput.valid,
+      "transport-frame builder returns an explicit invalid result for missing input");
 
     IntrinsicBuildResult rotatedCylinder = dcrteBuildM3Fixture(DCRTEM3FixtureKind.ROTATED_CYLINDER, 30);
     tests.check(dcrteM3Accepted(rotatedCylinder), "rotated cylinder intrinsic build passes");

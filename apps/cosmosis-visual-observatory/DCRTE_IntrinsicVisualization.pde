@@ -4,6 +4,11 @@ void drawDcrteIntrinsicVisualization(float previewScale) {
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH
       || dcrteIntrinsicBuildResult == null) return;
   IntrinsicBuildResult result = dcrteIntrinsicBuildResult;
+  String stateIssue = dcrteIntrinsicStateIssue(result);
+  if (stateIssue.length() > 0) {
+    if (!dcrteIntrinsicBuildStatus.startsWith("BLOCKED - ")) dcrteIntrinsicBuildStatus = "STALE - " + stateIssue;
+    return;
+  }
   if (dcrteIntrinsicVisualizationMode == IntrinsicVisualizationMode.AXIAL_SLICES) {
     dcrteDrawIntrinsicAxialSlices(result, previewScale);
   } else if (dcrteIntrinsicVisualizationMode.ordinal() >= IntrinsicVisualizationMode.INTRINSIC_S.ordinal()) {
@@ -47,7 +52,8 @@ void dcrteDrawIntrinsicFrames(IntrinsicBuildResult result, float scale) {
   for (int i = 0; i < count; i += stride) {
     CenterlinePoint point = result.centerline.points[i];
     TransportFrame frame = result.frames.frames[i];
-    float length = max(0.03f, point.equivalentRadius * 0.72f) * scale;
+    float safeRadius = min(point.equivalentRadius, dcrteIntrinsicVisualizationRadiusCap());
+    float length = max(0.03f, safeRadius * 0.72f) * scale;
     float px = point.x * scale, py = point.y * scale, pz = point.z * scale;
     strokeWeight(1.6f);
     stroke(70, 226, 255, 220);
@@ -73,7 +79,7 @@ void dcrteDrawIntrinsicAxialSlices(IntrinsicBuildResult result, float scale) {
     beginShape();
     for (int ring = 0; ring <= 32; ring++) {
       float angle = TWO_PI * ring / 32.0f;
-      float radius = point.equivalentRadius;
+      float radius = min(point.equivalentRadius, dcrteIntrinsicVisualizationRadiusCap());
       float x = point.x + radius * (cos(angle) * frame.nx + sin(angle) * frame.bx);
       float y = point.y + radius * (cos(angle) * frame.ny + sin(angle) * frame.by);
       float z = point.z + radius * (cos(angle) * frame.nz + sin(angle) * frame.bz);
@@ -124,7 +130,8 @@ int dcrteIntrinsicScalarColor(IntrinsicCoordinateVolume volume, int index, Intri
       && dcrteCoordinateComparisonReport.intrinsicFinalMask != null
       && index < dcrteCoordinateComparisonReport.intrinsicFinalMask.length
       ? dcrteCoordinateComparisonReport.intrinsicFinalMask[index]
-      : dcrteImportedVolume != null && dcrteImportedVolume.finalSolid[index];
+      : dcrteImportedVolume != null && dcrteImportedVolume.finalSolid != null
+        && index < dcrteImportedVolume.finalSolid.length && dcrteImportedVolume.finalSolid[index];
     return solid ? color(255, 238, 92, 230) : color(72, 106, 118, 38);
   }
   else if (mode == IntrinsicVisualizationMode.CARTESIAN_RESULT) {
@@ -132,7 +139,8 @@ int dcrteIntrinsicScalarColor(IntrinsicCoordinateVolume volume, int index, Intri
       && dcrteCoordinateComparisonReport.cartesianFinalMask != null
       && index < dcrteCoordinateComparisonReport.cartesianFinalMask.length
       ? dcrteCoordinateComparisonReport.cartesianFinalMask[index]
-      : dcrteImportedVolume != null && dcrteImportedVolume.finalSolid[index];
+      : dcrteImportedVolume != null && dcrteImportedVolume.finalSolid != null
+        && index < dcrteImportedVolume.finalSolid.length && dcrteImportedVolume.finalSolid[index];
     return solid ? color(80, 218, 255, 230) : color(72, 106, 118, 38);
   }
   else return color(72, 106, 118, 55);
@@ -145,17 +153,22 @@ int dcrteIntrinsicScalarColor(IntrinsicCoordinateVolume volume, int index, Intri
 
 void dcrteDrawIntrinsicScalarSlice(int x, int y, int w, int h) {
   if (dcrteIntrinsicBuildResult == null || dcrteIntrinsicBuildResult.volume == null) return;
+  if (dcrteIntrinsicStateIssue(dcrteIntrinsicBuildResult).length() > 0) return;
   IntrinsicCoordinateVolume volume = dcrteIntrinsicBuildResult.volume;
-  int n = volume.spec.nx;
+  if (volume.spec == null || !volume.isValid()) return;
+  int n = dcrteImportedSliceAxis == DCRTESliceAxis.YZ ? volume.spec.ny : volume.spec.nx;
   int size = min(w, h);
   float cell = size / (float)n;
-  int fixed = constrain(dcrteImportedSliceIndex, 0, n - 1);
+  int fixedLimit = dcrteImportedSliceAxis == DCRTESliceAxis.XY ? volume.spec.nz
+    : dcrteImportedSliceAxis == DCRTESliceAxis.XZ ? volume.spec.ny : volume.spec.nx;
+  int fixed = constrain(dcrteImportedSliceIndex, 0, fixedLimit - 1);
   noStroke();
   for (int v = 0; v < n; v++) for (int u = 0; u < n; u++) {
     int gx, gy, gz;
     if (dcrteImportedSliceAxis == DCRTESliceAxis.XY) { gx = u; gy = v; gz = fixed; }
     else if (dcrteImportedSliceAxis == DCRTESliceAxis.XZ) { gx = u; gy = fixed; gz = v; }
     else { gx = fixed; gy = u; gz = v; }
+    if (gx < 0 || gy < 0 || gz < 0 || gx >= volume.spec.nx || gy >= volume.spec.ny || gz >= volume.spec.nz) continue;
     int index = volume.index(gx, gy, gz);
     fill(volume.valid[index] ? dcrteIntrinsicScalarColor(volume, index, dcrteIntrinsicVisualizationMode) : color(10, 20, 26));
     rect(x + u * cell, y + (n - 1 - v) * cell, max(1, cell + 0.2f), max(1, cell + 0.2f));

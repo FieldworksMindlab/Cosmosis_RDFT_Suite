@@ -87,6 +87,7 @@ boolean dcrteSlicePreviewEnabled = true;
 long dcrteLastBuildMillis = 0;
 
 void markDcrtePrimitiveStale(String reason) {
+  dcrteInvalidateScheduler(reason);
   dcrtePrimitiveStale = true;
   dcrteBuildStage = "STALE";
   dcrteLastBuildConfiguration = null;

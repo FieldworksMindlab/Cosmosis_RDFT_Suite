@@ -31,6 +31,7 @@ The sketch uses Processing's built-in Java mode and hand-rolled UI controls.
 7. Branes / Fibers
 8. Topology Lab / Phase Atlas
 9. Surface Foundry
+10. Geodesic Salon
 
 ## Controls
 
@@ -42,16 +43,332 @@ The sketch uses Processing's built-in Java mode and hand-rolled UI controls.
 - Press `O` to open a Cosmosis/RDFT CSV run and create a run-imprint profile.
 - Press `U` to reload generated database/Cosmosis material cache files.
 - Press `V` or click `APPLY` to map the selected material profile into the RDFT controls.
-- `1` through `9` selects a workspace.
+- `1` through `9` selects an established workspace; `0` opens Geodesic Salon.
 - Press `G` in Surface Foundry to generate a printable mesh.
 - Press `C` or click `CALL SHEET` in Surface Foundry to generate PNG drafting sheets, source STL, relief STLs, and metadata.
 - Click `PULL SVG` or press `X` after a call sheet when you explicitly want plotter/vector SVG files for the current render strategy.
 - Press `E` in Surface Foundry to export STL plus metadata JSON.
 - Press `N` in Surface Foundry to cycle the geometry carrier used for field wrapping.
+- Use the Geodesic Salon controls to rebuild domes, inspect face-local growth,
+  toggle the Plateau junction diagnostic, choose `ASSEMBLY GUIDE SVG ON/OFF`,
+  preview deterministic panel-color assignments, and export a deduplicated
+  fabrication kit with illustrated assembly sheets.
+- Click `SCHEDULER` in a DCRTE Surface Foundry pipeline to open the deterministic M4 activation lab.
 - `Space` pauses/resumes.
 - `R` resets orbit/trails.
 - `H` toggles help.
 - `S` saves a frame to `exports/`.
+
+## Geodesic Salon
+
+Geodesic Salon is a dome-first design workspace layered beside Surface Foundry.
+It creates deterministic tetrahedral, octahedral, icosahedral,
+dodecahedron-derived, and rhombic-triacontahedron-derived geodesic shells at
+frequencies `1-12`, with either a clipped dome or complete sphere extent. The
+dodecahedral and rhombic families use stable triangular decompositions of their
+polygon seed faces so they can reuse the established panel and assembly
+pipeline. Tetrahedral, octahedral, and icosahedral families also support an
+opt-in face-stellation modifier with adjustable radial height. `STELLATION ON`
+rebuilds each triangular face as three faces meeting at a new radial apex; it
+changes the qualified topology, reusable part catalog, combined shell, guides,
+and exported STLs rather than merely changing the preview. Dodecahedral and
+rhombic seed faces remain `STELLATION N/A` because their current triangular
+decompositions include support diagonals that are not original polygon edges.
+Every generated face receives a stable ID, edge neighbors, a parent seed face,
+barycentric coordinates, and a normalized center-to-edge coordinate.
+
+The fabrication contract treats every currently visualized shell as a
+fabrication problem with an explicit resolution method:
+
+1. The complete shell must satisfy its Euler characteristic and discrete
+   Gauss-Bonnet residual.
+2. A sphere must have no boundary. A dome must have exactly one closed, simple
+   polygonal boundary chain after exact plane clipping.
+3. Shell thickness follows each vertex radially so standard and stellated
+   surfaces remain closed without collapsing local crowns.
+4. Shared panel rails use reciprocal half-dihedral miters computed from the
+   actual adjacent face normals.
+5. A kit-wide dimension resolver raises physical scale or limits rail depth
+   when a requested frame cannot contain its miter, skin, portals, or minimum
+   printable wall.
+6. Each reusable STL receives its own manifold audit. Integral portals and
+   edge chamfers remain when valid. A raised mate-code emboss that alone makes
+   a panel nonmanifold is omitted only for that reusable type; its logical code
+   remains mandatory in the BOM, JSON, and illustrated guides.
+
+This separation keeps structural validity non-negotiable while allowing the
+marking method to adapt to panel scale. A kit is blocked only when the shell,
+seam, panel body, or clean fallback cannot be fabricated.
+
+The two growth views are intentionally distinct:
+
+- `OVERWRAP` advances a connected shell front over the dome.
+- `CENTER > EDGE` exposes the face-local radial coordinate and adds a printable
+  center relief to modular panel types.
+
+`PLATEAU` is an optional diagnostic overlay for the tetrahedral junction angle
+of approximately `109.471` degrees. It is a local junction/dispersion target,
+not a claim that all geodesic edges or soap-film faces meet at that angle and
+not a replacement for the intrinsic face coordinates. When bubble joining is
+enabled, each shared edge also records its dihedral angle, Plateau deviation,
+junction bisector, corner clearance, and symmetric portal schedule. The angle
+therefore informs fabrication clearance without forcing every joint to become
+a tetrahedral soap-film junction.
+
+Panel fabrication has three selectable strategies:
+
+- `FRAME + SKIN` creates a deep perimeter rail with a thinner center membrane.
+- `OPEN FRAME` creates the rail without the center membrane.
+- `SOLID` preserves the original full panel behavior.
+
+`FRAME + SKIN` also has two relief-side treatments. `INNER REINFORCEMENT` is
+the preserved default: its center-to-edge membrane rises from the panel base
+but remains recessed below the outer rail. `EXTERIOR CROWN` moves the membrane
+to the rail's exterior face and always raises its tri-meeting center beyond that
+face, producing visible topography in both growth views while leaving rail
+seams, portals, mate codes, and edge breaks unchanged. All framed kits raise
+shallow mate codes from the inward-facing membrane or rail so the exterior
+remains clean and the assembly labels stay inside the panel cavity. Labels use
+a complete `A-Z` and `0-9` rounded engineering-stroke alphabet with printable
+open counters. The strokes are generated as panel mesh geometry, not rasterized
+text or a sampled image, and remain part of one watertight shell. In KICAS,
+`P###` is raised on the inward membrane for `FRAME + SKIN` and on an inward rail
+for `OPEN FRAME`; the latter retains a completely open center.
+The setting is not applicable to `OPEN FRAME` or `SOLID`.
+
+For framed strategies, the displayed frame, skin, and portal dimensions are
+printable upper limits rather than dimensions forced onto every subdivision.
+Each face resolves lighter dimensions from its shortest edge and apothem. This
+keeps small high-frequency panels from becoming disproportionately deep or
+thick-walled while preserving the entered dimensions on reference-scale parts.
+The resolved values are recorded per reusable part and per placement in the kit
+JSON files.
+
+`PORTALS ON` cuts matched fastener tunnels into each reusable rail. Portal
+positions are derived from edge length, adjacent-face dihedral, vertex
+clearance, and the bubble-join policy. Each mating edge receives the same
+logical compatibility code on both panels; boundary edges are marked `RIM`.
+Raised interior marks are applied when the resulting reusable type remains
+watertight. Types that cannot safely carry the emboss export unmarked and
+declare `omitted_after_manifold_fallback_use_bom_json_guide` in their
+provenance. Codes sit clear of the seam, while a capped sub-millimeter edge
+break removes the printable knife edge without visibly rounding the panel. The
+fabrication core accepts an ordered convex polygon boundary, so the same rail,
+code, and portal construction supports triangles, pentagons, and future
+mixed-face polyhedra. The current seed-family outputs remain triangulated
+networks. A toroidal polyhedron is deliberately deferred because it requires a
+genus-1 validation contract rather than the current sphere/disk assumptions.
+
+`SEAM MITERED` is the default framed-panel strategy. Every shared rail receives
+one reciprocal half of the adjacent-face dihedral cut, and portal floors,
+ceilings, and end walls follow the same sloped profile. The two panels
+therefore meet on the shared bisector plane instead of presenting parallel
+square walls. `SEAM SQUARE` remains available as an explicit compatibility
+mode.
+
+Every shared edge records its face-normal angle, interior dihedral, applied
+half-miter angle, required lateral inset, and dimensional-fit result. When the
+requested depth would consume the available frame width, the face-relative
+resolver lowers the fabrication depth while preserving the requested value in
+JSON provenance. At the Plateau-like `109.471` degree interior junction, for
+example, a full `13 mm` depth would require approximately `9.19 mm` of lateral
+inset. The resolver retains a printable inner rail instead of emitting an
+impossible bevel. If even the minimum fabrication depth cannot fit, the atomic
+kit preflight blocks export and identifies the face and edge that failed.
+Integral portals remain valid for ties and user-selected joining systems in
+both seam modes.
+
+The assembled-seam preflight transforms reciprocal panel profiles back into
+the shell coordinate system and measures separation across each mating plane.
+Cross-seam distance is the fabrication gate. Longitudinal station drift near
+multi-face vertices is retained separately in the manifest as a corner-trim
+diagnostic, so it cannot be mistaken for an open or inverted miter.
+
+### Paint Mode
+
+`PAINT ON` adds deterministic face-color planning without changing shell,
+panel, miter, portal, label, or canonical STL geometry. `SCHEME <` and
+`SCHEME >` cycle:
+
+- propagation order, preserving the established teal/blue/magenta display;
+- growth rings;
+- spiral;
+- adjacency weave;
+- recursive fractal;
+- parent macro geometry;
+- the current RDFT field state;
+- local curvature;
+- harmonic bands.
+
+`COLORS -/+` selects `3-12` print color IDs for schemes that support a variable
+palette. `PHASE -/+` shifts the selected pattern. Propagation intentionally
+keeps its original three colors. The viewport displays the exact assignments
+that will be written; selecting a face reports both its color ID and part ID.
+The same model, settings, seed, scheme, count, and phase reproduce the same
+assignment plan.
+
+### KICAS Assembly
+
+`KICAS` is an optional assembly mode layered beside the preserved
+`LEGACY PORTAL` workflow. It creates a deterministic breadth-first installation
+plan with one physical STL per shell placement. Every part carries a unique
+raised interior `P###` mark; `P001` is the seed, each subsequent part names its
+parent and insertion vector in `assembly_plan.json`, and the designated key part
+closes the sequence.
+
+Parent/child edges receive reciprocal integral male/female slide captures.
+Alignment-only edges remain part of the same audited shell contract. Every
+triangle edge also retains exactly one enlarged fastener portal at its geometric
+center. The intended operation is:
+
+1. Orient the raised `P###` mark inward.
+2. Install parts in ascending `P###` order.
+3. Slide the listed integral lock fully home.
+4. Align the centered portals on the shared edge.
+5. Add a user-supplied zip tie where reinforcement is required.
+
+The center portal is secondary reinforcement, not a substitute for seating the
+lock. KICAS preserves the selected framed construction: `FRAME + SKIN` uses
+inner reinforcement, while `OPEN FRAME` remains a rail-only window. Both use
+inward physical placement labels, one center portal per edge, and audited
+half-dihedral miters. It does not alter legacy kit geometry or exports.
+
+KICAS placement numbers use a three-times-size target at 100% kit scale. With
+`INNER REINFORCEMENT` or `OPEN FRAME`, the raised `P###` number is placed on the
+upward assembly-interior rail so it remains visible when the outward face is on
+the print bed. With `EXTERIOR CROWN`, it remains on the inward membrane. The
+generator fit-caps unusually small or acute panels to keep every mark inside
+printable material and preserve the manifold seam contract. The existing code
+height control continues to set the physical relief height of these marks.
+
+`EXPORT KIT` writes one timestamped folder under `exports/geodesic_salon/`:
+
+```text
+YYYYMMDD_HHMMSS_icosa_f3/
+  manifest.json
+  bill_of_materials.json
+  assembly_plan.json
+  ASSEMBLY.txt
+  guides/
+    GS-001_assembly_overview.png
+    GS-002_digital_assembly_map.png
+    GS-003_KICAS_sequence.png      # KICAS only
+    GS-004_paint_map.png           # PAINT ON
+    guide_validation.json
+    GS-001_assembly_overview.svg  # only when SVG is ON
+    GS-002_digital_assembly_map.svg
+    GS-003_KICAS_sequence.svg     # KICAS + SVG ON
+    GS-004_paint_map.svg          # PAINT ON + SVG ON
+  combined/
+    geodesic_dome_combined.stl
+  parts/
+    P001_qtyNNN.stl
+    P002_qtyNNN.stl
+    ...
+  paint/                          # PAINT ON
+    paint_plan.json
+    paint_schedule.csv
+    print_batches.csv
+    parts_by_color/
+      C01/
+        P001_C01_qtyNNN.stl
+      C02/
+        P001_C02_qtyNNN.stl
+  print_ready/                    # PLATE KIT only
+    plate_manifest.json
+    plate_validation.json
+    plate_schedule.csv
+    C01/
+      C01_plate_01.3mf
+      C01_plate_02.3mf            # only when C01 exceeds one plate
+    C02/
+      C02_plate_01.3mf
+```
+
+Congruent panels are grouped by a canonical cyclic edge profile that preserves
+the ordered mate-code pattern, portal geometry, fabrication dimensions, relief
+side, and growth mode. Only one local-coordinate STL is written per reusable
+panel type in legacy mode. KICAS instead writes one `P###_face_####.stl` per
+ordered physical placement because its lock role and installation label are
+placement-specific. The base-geometry catalog is retained for analysis and BOM
+grouping but is not substituted for the ordered KICAS files.
+Paint Mode leaves these canonical files unchanged. Its color folders contain
+geometry-identical print batches grouped by reusable type and color in legacy
+mode. KICAS writes one color-identified ordered placement per file, for example
+`P014_C01_qty001.stl`. The JSON and CSV records remain the authority for
+face, placement, reusable type, color ID, hex reference, neighbors, and batch
+filename. `GS-004_paint_map` keeps one large isometric reference and adds
+front, right, rear, left, and top model-space projections of the identical
+face-color assignment, providing a visual assembly fallback when physical part
+labels are unavailable or difficult to read. Each orthographic title includes
+its viewing-axis sign so right and left remain unambiguous.
+`PLATE KIT` performs the same qualified kit export and then adds generic,
+printer-neutral 3MF build plates. Every physical panel instance is placed once,
+grouped into its specified `C##` color folder, with additional numbered plates
+only when that color cannot fit on one `256 x 256 mm` bed. Paint Mode OFF uses
+one neutral `C00` group. Packing is deterministic and conservative: parts
+remain axis-aligned with a `5 mm` bed margin and `5 mm` spacing. The package
+does not embed a printer profile, filament, process, support, or G-code
+settings; those remain operator decisions in the slicer. Individual reusable
+and replacement-part STLs remain unchanged.
+
+`plate_manifest.json`, `plate_schedule.csv`, and `plate_validation.json`
+record every face, part ID, color ID, plate file, transform, quantity, file
+hash, boundary check, and overlap check. A Plate Kit is reported successful
+only when every expected panel appears exactly once, color quantities agree,
+all placements are in bounds without overlap, and every 3MF ZIP contains its
+required Core model entries.
+
+The bill of materials records required quantities; the assembly plan maps every
+face to its type, ordered edge codes, edge neighbors, model-space vertices,
+centroid, outward normal, and bubble-aware edge-joint profiles. Its codebook
+records the geometry represented by every letter. Each part and placement also
+records whether its physical code was applied or replaced by the documented
+logical-code fallback. The combined shell and every exported reusable part
+type must pass the same boundary/nonmanifold/degenerate audit before export
+proceeds.
+
+Run the complete fabrication qualification matrix with:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="/path/to/cosmosis-visual-observatory" \
+  --output=/tmp/cosmosis_geodesic_matrix \
+  --force --run --geodesic-fabrication-matrix
+```
+
+The matrix covers every current seed family in dome and sphere form at
+frequencies `1`, `2`, `3`, `4`, and `6`, including standard and supported
+stellated variants. Diagnostic flags can independently disable portals,
+physical codes, or chamfers to isolate a failed detail strategy.
+
+The illustrated guides are derived from that same live catalog and adjacency
+graph. The overview is a concise kit reference; the digital assembly map adds
+the reusable panel catalog, six connected geometric stages, face map,
+orientation key, and adjacency reference. PNG guides are always written.
+KICAS adds `GS-003`, a mechanically ordered sequence that distinguishes
+`P###` placement IDs from base-geometry type IDs and diagrams the
+lock-first/center-tie-second rule.
+`ASSEMBLY GUIDE SVG ON` additionally writes editable, grouped SVG versions;
+the default `OFF` state avoids unnecessary large vector files.
+
+The guide renderer does not invent separate connectors, hubs, clips, fasteners,
+or a mechanically validated construction sequence. It describes panel
+placement, integral portal alignment, shared-edge topology, and outward-normal
+orientation. Part labels are placed above external leader lines so neither the
+text nor line obscures the panels. The builder must choose and validate hardware
+appropriate to the material and use case. `guide_validation.json`
+records BOM agreement, graph connectivity, reciprocal adjacency,
+connected-stage checks, and a zero separate-connector component count.
+
+For automated export verification, launch with `--geodesic-export-kit`; add
+`--geodesic-guide-svg` to exercise the SVG-enabled branch. Add
+`--geodesic-kicas` to exercise ordered KICAS planning, integral locks, one
+center portal per edge, unique placement STLs, and the third guide. Add
+`--geodesic-paint` to exercise color planning, the paint map, manifests,
+schedules, and color-batched STL naming. Use
+`--geodesic-export-plate-kit` instead of `--geodesic-export-kit` to add the
+per-color generic 3MF plates and their validation package.
 
 ## Material Targets
 
@@ -636,3 +953,89 @@ surface-to-volume, curvature variance, connectedness, and genus proxy.
 
 The CTC and Wigner views are analogical diagnostics for visual exploration,
 not physical claims.
+
+## DCRTE Scheduler Framework
+
+Milestone 4 adds an optional deterministic scheduler between the frozen
+candidate-solid volume and the existing materializer. `IMMEDIATE` remains the
+default and reproduces the static M1-M3 result. `FRONT PROPAGATION` exposes
+seeded activation order, component policy, neighborhood, batch size, and field
+priority without changing field candidacy.
+
+Open Surface Foundry, select a DCRTE primitive or imported pipeline, generate a
+candidate mesh, and click `SCHEDULER`. The full-preview panel provides
+initialize, step, run, pause, complete, stop, materialize, metrics export, and
+arrival/frontier slice controls. Advancing a schedule after materialization
+marks the mesh stale until the selected state is materialized again.
+
+The scheduler readout and run JSON compare the frozen M3 static candidate mask
+with the M4 active state. Immediate completion requires zero mismatched voxels;
+deterministic front completion reaches the same mask when every candidate
+component is reachable. This makes milestone differences inspectable without
+changing the established generation path.
+
+See [the M4 scheduler architecture](docs/architecture/dcrte_scheduler_framework.md)
+and [the implementation report](DCRTE_MILESTONE_4_IMPLEMENTATION_REPORT.md).
+
+M4 is deterministic and makes no physical-time claim.
+
+## DCRTE-ET Milestone 5: Emergent Entropic Scheduler
+
+Milestone 5 adds `EMERGENT ENTROPIC` as a third scheduler mode while preserving
+Immediate and Front Propagation. It evaluates exact hypothetical frontier
+activations with versioned binary occupancy and field-histogram entropy models,
+then applies relaxation, exploration, balanced, or adaptive score policies.
+Acceptance can be deterministic threshold, deterministic top-K, or stateless
+seeded stochastic.
+
+The M5 scheduler reuses the frozen candidate snapshot, M4 seed and component
+rules, frontier construction, batch commit, controller, materializer, and
+export gates. It cannot mutate the recursive field or candidate mask.
+
+The scheduler panel exposes entropy and score slices, frontier-candidate
+inspection, a relational-progress and entropy history plot, cache verification,
+and explicit complete, partial, stalled, and failed terminal labels. Tau is a
+dimensionless cumulative measure of internal computational change, not a
+physical clock.
+
+See [the M5 entropic scheduler architecture](docs/architecture/dcrte_emergent_entropic_scheduler.md)
+and [the M5 implementation report](DCRTE_MILESTONE_5_IMPLEMENTATION_REPORT.md).
+
+## DCRTE-ET Milestone 6: Boundary-Anchored Composition
+
+Milestone 6 adds an optional material-role layer after the scheduler and before
+the existing materializer. It can preserve the qualified imported surface as an
+inward fabrication shell, combine that shell with the scheduled recursive
+scaffold, inset scaffold from the boundary, analyze attachment, and add
+deterministic field- or domain-constrained anchor bridges.
+
+Open the imported-domain preflight inspector and select `COMPOSITION`.
+`ENVELOPE` controls composition mode, shell thickness, shell lock, source role,
+clearance, role composition, materialization, and overlays. `ATTACH` controls
+attachment policy, boundary seeding, bridge limits, and component analysis.
+`REPORT` exposes validation, role counts, envelope fidelity, hashes, stale
+state, and JSON export.
+
+The toolbar now includes `LOAD TORUS` beside the existing STL and egg controls.
+The canonical torus is written to deterministic binary STL and reimported
+through the normal M2 path. Cartesian mode is supported. Intrinsic axial mode
+remains blocked with `IC_CLOSED_LOOP_SUSPECTED`.
+
+`SCAFFOLD_ONLY` is the exact M5 regression path. The shell modes require a
+current qualified signed boundary, preserve locked shell voxels, and retain the
+existing manifold and export gates. M6 composes material roles; it does not
+deform the source mesh or mutate scheduler state.
+
+See [the M6 boundary-anchored composition architecture](docs/architecture/dcrte_boundary_anchored_composition.md).
+
+### M6-HX Holographic Bridge Explorer
+
+The optional `HBE` lens adds a disabled-by-default classical experiment for
+comparing candidate connectivity, scheduler-realized paths, neck bottlenecks,
+mirror agreement, and frozen field/scheduler influence. It is an analogy
+testbed inspired by Biswas et al. (2026), not a quantum-code, gravity, geodesic,
+or physical-wormhole simulation. Existing generation paths remain exact when
+the layer is disabled.
+
+See [the M6-HX Holographic Bridge Explorer architecture](docs/architecture/dcrte_holographic_bridge_explorer.md)
+and [implementation report](DCRTE_M6_HX_IMPLEMENTATION_REPORT.md).

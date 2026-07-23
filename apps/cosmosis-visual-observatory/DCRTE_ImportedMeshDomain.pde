@@ -140,6 +140,16 @@ JSONObject dcrteImportedFixtureMetadata = null;
 DCRTEConfig dcrteImportedLastBuildConfiguration = null;
 int dcrteImported128BuildArmedAt = -999999;
 
+class DCRTEImportedMeshCandidate {
+  TriangleMeshData sourceMesh;
+  TriangleMeshData worldMesh;
+  MeshDomainReport meshReport;
+  MeshTransform transform;
+  DomainPreflightReport preflightReport;
+  boolean sourceIsFixture;
+  JSONObject fixtureMetadata;
+}
+
 VolumeSpec createDcrteImportedVolumeSpec() {
   return new VolumeSpec(dcrteImportedResolution, dcrteImportedResolution, dcrteImportedResolution, dcrteObserverBounds);
 }
@@ -158,64 +168,142 @@ void dcrteImportedMeshSelected(File selection) {
 
 boolean loadDcrteImportedFile(File file, boolean fixture, JSONObject fixtureMetadata) {
   DCRTEImportedBuildState previousState = dcrteImportedBuildState;
+  boolean hadCurrentDomain = dcrteImportedSourceMesh != null;
   dcrteImportedBuildState = DCRTEImportedBuildState.IMPORTING;
   dcrteImportedErrorCode = "";
   dcrteImportedErrorMessage = "";
   try {
-    long importStart = millis();
-    TriangleMeshData parsed = dcrteStlImporter.load(file);
-    long importMillis = millis() - importStart;
-    long sanitationStart = millis();
-    MeshValidationResult validation = dcrteMeshSanitizer.sanitize(parsed);
-    long sanitationMillis = millis() - sanitationStart;
-    if (validation.mesh == null) throw new MeshImportException("IMPORT_EMPTY_MESH", "Mesh sanitation produced no usable triangles");
-    dcrteImportedSourceMesh = validation.mesh;
-    dcrteImportedMeshReport = validation.report;
-    dcrteImportedMeshReport.importParseMillis = importMillis;
-    dcrteImportedMeshReport.sanitationMillis = sanitationMillis;
-    clearDcrteImportedDerivedState();
-    dcrteImportedSourceIsFixture = fixture;
-    dcrteImportedFixtureMetadata = fixtureMetadata;
-    dcrteImportedRotateX = 0;
-    dcrteImportedRotateY = 0;
-    dcrteImportedRotateZ = 0;
-    dcrteImportedScaleMultiplier = 1.0f;
-    rebuildDcrteImportedTransform(false);
-    dcrteImportedBuildState = dcrteImportedMeshReport.strictValid()
-      ? DCRTEImportedBuildState.MESH_READY
-      : DCRTEImportedBuildState.MESH_INVALID;
-    dcrteImportedStatus = dcrteImportedMeshReport.strictValid()
-      ? "mesh inspected; rebuild SDF when ready"
-      : "preview only - domain sign is unreliable";
-    markDcrteImportedStale("imported source changed; rebuild SDF");
-    dcrteImportedAttemptPreflightReport = null;
-    runDcrteImportedPreflight();
+    DCRTEImportedMeshCandidate candidate = buildDcrteImportedCandidate(file, fixture, fixtureMetadata);
+    commitDcrteImportedCandidate(candidate);
     return true;
   }
   catch (MeshImportException error) {
     dcrteImportedErrorCode = error.code;
-    dcrteImportedErrorMessage = error.getMessage();
+    dcrteImportedErrorMessage = dcrteImportedExceptionMessage(error);
   }
   catch (Exception error) {
     dcrteImportedErrorCode = "IMPORT_PARSE_FAILURE";
-    dcrteImportedErrorMessage = error.getMessage();
+    dcrteImportedErrorMessage = dcrteImportedExceptionMessage(error);
+    println("DCRTE imported-domain replacement failed before commit: "
+      + error.getClass().getSimpleName() + " " + dcrteImportedErrorMessage);
+    error.printStackTrace();
   }
-  dcrteImportedBuildState = dcrteImportedSourceMesh == null
-    ? DCRTEImportedBuildState.MESH_INVALID : previousState;
+  dcrteImportedBuildState = hadCurrentDomain ? previousState : DCRTEImportedBuildState.MESH_INVALID;
   dcrteImportedStatus = "import failed: " + dcrteImportedErrorCode
-    + (dcrteImportedSourceMesh == null ? "" : "; current domain retained");
+    + (hadCurrentDomain ? "; current domain retained" : "");
   dcrteImportedAttemptPreflightReport = createDcrteParseFailurePreflight(file,
     dcrteImportedErrorCode, dcrteImportedErrorMessage);
   dcrtePreflightPanelOpen = true;
   return false;
 }
 
+DCRTEImportedMeshCandidate buildDcrteImportedCandidate(File file, boolean fixture,
+    JSONObject fixtureMetadata) throws Exception {
+  if (file == null) throw new MeshImportException("IMPORT_FILE_NOT_FOUND", "No STL source was selected");
+
+  DCRTEImportedMeshCandidate candidate = new DCRTEImportedMeshCandidate();
+  candidate.sourceIsFixture = fixture;
+  candidate.fixtureMetadata = fixtureMetadata;
+
+  long importStart = millis();
+  TriangleMeshData parsed = dcrteStlImporter.load(file);
+  long importMillis = millis() - importStart;
+  long sanitationStart = millis();
+  MeshValidationResult validation = dcrteMeshSanitizer.sanitize(parsed);
+  long sanitationMillis = millis() - sanitationStart;
+  if (validation == null || validation.mesh == null) {
+    throw new MeshImportException("IMPORT_EMPTY_MESH", "Mesh sanitation produced no usable triangles");
+  }
+  if (validation.report == null) {
+    throw new MeshImportException("IMPORT_VALIDATION_FAILURE", "Mesh sanitation produced no validation report");
+  }
+
+  candidate.sourceMesh = validation.mesh;
+  candidate.meshReport = validation.report;
+  candidate.meshReport.importParseMillis = importMillis;
+  candidate.meshReport.sanitationMillis = sanitationMillis;
+  candidate.transform = createDcrteFitTransform(candidate.sourceMesh, dcrteObserverBounds,
+    0, 0, 0, dcrteImportedFitMargin, 1.0f);
+  if (candidate.transform == null) {
+    throw new MeshImportException("TRANSFORM_INVALID", "Imported mesh could not be fitted into the observation domain");
+  }
+  candidate.worldMesh = candidate.sourceMesh.copyTransformed(candidate.transform);
+  if (candidate.worldMesh == null || !candidate.worldMesh.isStructurallyValid()) {
+    throw new MeshImportException("TRANSFORM_INVALID", "Imported mesh transform produced an invalid world mesh");
+  }
+  dcrteUpdateWorldReport(candidate.meshReport, candidate.worldMesh, candidate.transform);
+
+  candidate.preflightReport = dcrtePreflightMeshAnalyzer.analyze(
+    candidate.sourceMesh, candidate.worldMesh, candidate.meshReport,
+    candidate.transform, dcrteImportedResolution, dcrteObserverBounds);
+  if (candidate.preflightReport == null) {
+    throw new MeshImportException("IMPORT_PREFLIGHT_FAILURE", "Imported mesh preflight produced no report");
+  }
+  candidate.preflightReport.sanitationPolicy = SanitationPolicy.SAFE_AUTOMATIC;
+  if (fixture && fixtureMetadata != null) {
+    candidate.preflightReport.referenceCaseId = fixtureMetadata.getString("fixture_id", "");
+  }
+  dcrtePreflightVolumeAnalyzer.attach(candidate.preflightReport, candidate.worldMesh,
+    null, null, null, null, null, false, false);
+  candidate.preflightReport.reportStale = false;
+  return candidate;
+}
+
+void commitDcrteImportedCandidate(DCRTEImportedMeshCandidate candidate) throws MeshImportException {
+  if (candidate == null || candidate.sourceMesh == null || candidate.worldMesh == null
+      || candidate.meshReport == null || candidate.transform == null || candidate.preflightReport == null) {
+    throw new MeshImportException("IMPORT_COMMIT_FAILURE", "Imported mesh candidate is incomplete");
+  }
+
+  clearDcrteImportedDerivedState();
+  dcrteImportedSourceMesh = candidate.sourceMesh;
+  dcrteImportedWorldMesh = candidate.worldMesh;
+  dcrteImportedMeshReport = candidate.meshReport;
+  dcrteImportedTransform = candidate.transform;
+  dcrteImportedSourceIsFixture = candidate.sourceIsFixture;
+  dcrteImportedFixtureMetadata = candidate.fixtureMetadata;
+  dcrteImportedRotateX = 0;
+  dcrteImportedRotateY = 0;
+  dcrteImportedRotateZ = 0;
+  dcrteImportedScaleMultiplier = 1.0f;
+  dcrteImportedSdfDirty = true;
+  dcrteImportedStale = true;
+  dcrteImportedLastBuildConfiguration = null;
+  dcrteImported128BuildArmedAt = -999999;
+  dcrteImportedBuildState = dcrteImportedMeshReport.strictValid()
+    ? DCRTEImportedBuildState.SDF_DIRTY
+    : DCRTEImportedBuildState.MESH_INVALID;
+  dcrteImportedStatus = dcrteImportedMeshReport.strictValid()
+    ? "mesh inspected; rebuild SDF when ready"
+    : "preview only - domain sign is unreliable";
+  dcrteImportedAttemptPreflightReport = null;
+  dcrteImportedPreflightReport = candidate.preflightReport;
+  dcrteImportedPreflightReport.reportStale = false;
+  dcrtePreflightIssueIndex = 0;
+  dcrtePreflightClampIssueIndex();
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    markFoundryStale();
+    foundryStatus = "imported source changed; rebuild SDF";
+  }
+}
+
+String dcrteImportedExceptionMessage(Exception error) {
+  if (error == null) return "unknown import failure";
+  String message = error.getMessage();
+  return message == null || message.length() == 0 ? error.getClass().getSimpleName() : message;
+}
+
 void clearDcrteImportedDerivedState() {
+  dcrteInvalidateScheduler("imported derived state cleared");
+  dcrteImportedWorldMesh = null;
+  dcrteImportedTransform = null;
   dcrteImportedBoundary = null;
   dcrteImportedInsideOutside = null;
   dcrteImportedSdf = null;
   dcrteImportedDomain = null;
   dcrteImportedVolume = null;
+  dcrteImportedLastBuildConfiguration = null;
+  dcrteLastValidationReport = null;
   invalidateDcrteIntrinsic("imported derived state cleared");
 }
 
@@ -240,6 +328,7 @@ void rebuildDcrteImportedTransform(boolean markStale) {
 }
 
 void markDcrteImportedStale(String reason) {
+  dcrteInvalidateScheduler(reason);
   dcrteImportedSdfDirty = true;
   dcrteImportedStale = true;
   invalidateDcrteIntrinsic(reason);
@@ -259,6 +348,7 @@ void markDcrteImportedStale(String reason) {
 }
 
 void markDcrteImportedMaterialStale(String reason) {
+  dcrteInvalidateScheduler(reason);
   dcrteImportedStale = true;
   markDcrtePreflightStale();
   dcrteImportedLastBuildConfiguration = null;
@@ -413,5 +503,7 @@ boolean dcrteImportedExportAllowed() {
       && dcrteImportedPreflightReport != null
       && !dcrteImportedPreflightReport.reportStale
       && dcrteImportedPreflightReport.qualification == DomainQualification.MATERIALIZATION_READY
-      && dcrteImportedPreflightReport.exportEnabled);
+      && dcrteImportedPreflightReport.exportEnabled
+      && dcrteSchedulerExportAllowed()
+      && dcrteM6CompositionExportAllowed());
 }

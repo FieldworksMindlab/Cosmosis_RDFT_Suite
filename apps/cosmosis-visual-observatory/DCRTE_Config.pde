@@ -251,7 +251,8 @@ class DCRTEConfig {
     root.setInt("dcrte_milestone", dcrteMilestone);
     root.setString("configuration_id", configurationId);
     root.setString("architecture_version", "DCRTE-ET v0.3");
-    root.setString("application_version", dcrteMilestone >= 3 ? "Cosmosis Visual Observatory M3"
+    root.setString("application_version", dcrteMilestone >= 4 ? "Cosmosis Visual Observatory M4"
+      : dcrteMilestone >= 3 ? "Cosmosis Visual Observatory M3"
       : dcrteMilestone >= 2 ? "Cosmosis Visual Observatory M2" : "Cosmosis Visual Observatory M1");
 
     JSONObject pipeline = new JSONObject();
@@ -408,9 +409,10 @@ DCRTEConfig dcrteLastBuildConfiguration = null;
 DCRTEConfig captureDcrteConfig() {
   DCRTEConfig config = new DCRTEConfig();
   config.pipelineMode = dcrtePipelineMode.id();
-  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
-    config.schemaVersion = "0.6-m3";
-    config.dcrteMilestone = 3;
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE
+      || dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    config.schemaVersion = "0.7-m4";
+    config.dcrteMilestone = 4;
   }
   config.fieldEngineId = dcrteGenerationFieldEngineId();
   config.fieldEngineVersion = dcrteGenerationFieldEngineVersion();
@@ -480,7 +482,8 @@ DCRTEConfig captureDcrteConfig() {
   config.shellThicknessVoxelsValue = dcrteShellThicknessVoxels;
   config.schedulerIdValue = dcrteImmediateScheduler.getId();
   config.materializerIdValue = dcrteLegacyMaterializer.getId();
-  config.raisedVeinsPolicyValue = dcrteRaisedVeinsPolicy();
+  // Candidate identity must not depend on a previous scheduler's partial state.
+  config.raisedVeinsPolicyValue = dcrteBaseRaisedVeinsPolicy();
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
     config.importedSourceNameValue = dcrteImportedSourceMesh == null ? "" : dcrteImportedSourceMesh.sourceName;
     config.importedSourceFormatValue = dcrteImportedSourceMesh == null ? "" : dcrteImportedSourceMesh.sourceFormat;
@@ -544,10 +547,16 @@ void appendDcrteMetadata(JSONObject metadata) {
   metadata.setString("dcrte_generation_path", imported ? "dcrte_imported_mesh" : primitive ? "dcrte_primitive" : "legacy_direct");
   metadata.setString("dcrte_adapter_role", primitive || imported ? "field_and_materializer_boundary" : "diagnostic_only");
   JSONObject configuration = config.toJSONObject();
+  if (dcrteSchedulerController != null && dcrteSchedulerController.snapshot != null) {
+    configuration.setJSONObject("scheduler", dcrteSchedulerController.toJSON());
+  }
   if (primitive && dcrteLastValidationReport != null) {
     configuration.setJSONObject("validation", dcrteLastValidationReport.toJSON());
     if (dcrtePrimitiveVolume != null) configuration.setJSONObject("volume", dcrtePrimitiveVolume.toJSON());
-    configuration.setJSONObject("deterministic_tests", dcrteM1Tests.toJSON());
+    JSONObject tests = new JSONObject();
+    tests.setJSONObject("milestone_1", dcrteM1Tests.toJSON());
+    tests.setJSONObject("milestone_4", dcrteM4Tests.toJSON());
+    configuration.setJSONObject("deterministic_tests", tests);
   } else if (imported) {
     if (dcrteLastValidationReport != null) configuration.setJSONObject("validation", dcrteLastValidationReport.toJSON());
     if (dcrteImportedVolume != null) configuration.setJSONObject("volume", dcrteImportedVolume.toJSON());
@@ -555,8 +564,12 @@ void appendDcrteMetadata(JSONObject metadata) {
     tests.setJSONObject("milestone_2", dcrteM2Tests.toJSON());
     tests.setJSONObject("milestone_2_5", dcrteM25Tests.toJSON());
     tests.setJSONObject("milestone_3", dcrteM3Tests.toJSON());
+    tests.setJSONObject("milestone_4", dcrteM4Tests.toJSON());
+    tests.setJSONObject("milestone_5", dcrteM5Tests.toJSON());
     configuration.setJSONObject("deterministic_tests", tests);
     configuration.setJSONObject("coordinate_system", dcrteCoordinateMetadataJSON());
+    configuration.setJSONObject("milestone_6_boundary_anchored_composition",
+      dcrteM6CompositionJSON());
   }
   metadata.setJSONObject("dcrte_configuration", configuration);
 }

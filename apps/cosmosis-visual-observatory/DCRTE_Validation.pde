@@ -202,7 +202,8 @@ void validateCurrentDcrtePrimitiveVolume() {
 
 boolean dcrtePrimitiveExportAllowed() {
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
-    return dcrteLastValidationReport != null && dcrteLastValidationReport.exportAllowed() && !dcrtePrimitiveStale;
+    return dcrteLastValidationReport != null && dcrteLastValidationReport.exportAllowed()
+      && !dcrtePrimitiveStale && dcrteSchedulerExportAllowed();
   }
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) return dcrteImportedExportAllowed();
   return true;
@@ -210,9 +211,13 @@ boolean dcrtePrimitiveExportAllowed() {
 
 String dcrteFoundryExportBlockMessage() {
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
+    if (!dcrteSchedulerExportAllowed()) return dcrteSchedulerExportBlockMessage();
+    if (!dcrteM6CompositionExportAllowed()) return "blocked: boundary composition is stale or not materialized";
     return dcrtePrimitiveStale ? "primitive build is stale" : "export blocked by DCRTE validation";
   }
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
+    if (!dcrteSchedulerExportAllowed()) return dcrteSchedulerExportBlockMessage();
+    if (!dcrteM6CompositionExportAllowed()) return "blocked: boundary composition is stale or not materialized";
     if (dcrteImportedPolicy == InvalidDomainPolicy.UNSIGNED_PREVIEW) return "export blocked: imported domain is preview only";
     if (dcrteImportedMeshReport == null || !dcrteImportedMeshReport.strictValid()) return "export blocked: imported mesh is not a valid closed domain";
     if (dcrteImportedSdfDirty) return "export blocked: imported SDF is stale";

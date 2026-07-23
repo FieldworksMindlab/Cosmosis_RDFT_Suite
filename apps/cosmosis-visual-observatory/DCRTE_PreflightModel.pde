@@ -161,6 +161,8 @@ class DCRTEPreflightCodes {
 }
 
 class DCRTEPreflightActions {
+  static final String ACTION_BUILD_SDF = "ACTION_BUILD_SDF";
+  static final String ACTION_GENERATE_MATERIAL = "ACTION_GENERATE_MATERIAL";
   static final String ACTION_REEXPORT_WATERTIGHT = "ACTION_REEXPORT_WATERTIGHT";
   static final String ACTION_CLOSE_BOUNDARY_LOOPS = "ACTION_CLOSE_BOUNDARY_LOOPS";
   static final String ACTION_REMOVE_NONMANIFOLD_GEOMETRY = "ACTION_REMOVE_NONMANIFOLD_GEOMETRY";
@@ -570,6 +572,13 @@ class DomainPreflightReport {
       }
     }
     if (recommendedNextAction == null) recommendedNextAction = "";
+    if (recommendedNextAction.length() == 0 && firstBlockingCode.length() == 0) {
+      if (materializationEnabled && !exportEnabled) {
+        recommendedNextAction = DCRTEPreflightActions.ACTION_GENERATE_MATERIAL;
+      } else if (sdfBuildEnabled && (sdfReport == null || !materializationEnabled)) {
+        recommendedNextAction = DCRTEPreflightActions.ACTION_BUILD_SDF;
+      }
+    }
   }
 
   String conciseSummary() {

@@ -174,7 +174,7 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
   text("DCRTE-ET IMPORTED OBSERVATION DOMAIN", x + 10, y + 8);
   fill(150, 184, 190);
   textSize(8);
-  text("stage   " + dcrteImportedBuildState.label(), x + 10, y + 24);
+  text("stage   " + (dcrteImportedBuildState == null ? "UNKNOWN" : dcrteImportedBuildState.label()), x + 10, y + 24);
   text("source  " + shortText(dcrteImportedSourceMesh == null ? "NONE" : dcrteImportedSourceMesh.sourceName, 34), x + 10, y + 36);
   text("status  " + shortText(dcrteImportedStatus, 43), x + 10, y + 48);
 
@@ -185,8 +185,9 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
   int thirdW = (innerW - gap * 2) / 3;
   int quarterW = (innerW - gap * 3) / 4;
   int by = y + 64;
-  drawButton(innerX, by, halfW, 20, "LOAD STL", color(48, 72, 77));
-  drawButton(innerX + halfW + gap, by, halfW, 20, "LOAD EGG FIXTURE", color(58, 78, 65));
+  drawButton(innerX, by, thirdW, 20, "LOAD STL", color(48, 72, 77));
+  drawButton(innerX + thirdW + gap, by, thirdW, 20, "LOAD EGG", color(58, 78, 65));
+  drawButton(innerX + (thirdW + gap) * 2, by, thirdW, 20, "LOAD TORUS", color(62, 72, 92));
   by += 24;
   drawButton(innerX, by, halfW, 20, dcrteImportedResolution == 128 && millis() - dcrteImported128BuildArmedAt <= 10000 ? "CONFIRM 128 BUILD" : "REBUILD SDF", color(45, 86, 72));
   drawButton(innerX + halfW + gap, by, halfW, 20, "POLICY " + (dcrteImportedPolicy == InvalidDomainPolicy.STRICT ? "STRICT" : "UNSIGNED"), color(70, 66, 48));
@@ -220,9 +221,9 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
     dcrtePreflightPanelOpen ? color(70, 78, 42) : color(48, 72, 77));
   drawButton(innerX + halfW + gap, by, halfW, 20, "RUN PREFLIGHT", color(60, 82, 66));
   by += 24;
-  drawButton(innerX, by, halfW, 20, "COORD " + (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN ? "CARTESIAN" : "INTRINSIC"),
+  drawButton(innerX, by, halfW, 20, "COORD " + (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN ? "CARTESIAN" : "AXIAL"),
     dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL ? color(48, 92, 86) : color(48, 72, 77));
-  drawButton(innerX + halfW + gap, by, halfW, 20, "BUILD INTRINSIC", color(62, 82, 60));
+  drawButton(innerX + halfW + gap, by, halfW, 20, "BUILD AXIAL", color(62, 82, 60));
 
   int metricsY = by + 28;
   MeshDomainReport report = dcrteImportedMeshReport;
@@ -230,7 +231,8 @@ void drawDcrteImportedPanel(int x, int y, int w, int h) {
   String sha = dcrteImportedSourceMesh == null ? "-" : dcrteImportedSourceMesh.sourceHashSha256;
   fill(150, 184, 190);
   textSize(8);
-  text("format " + (dcrteImportedSourceMesh == null ? "-" : dcrteImportedSourceMesh.sourceFormat.toUpperCase())
+  String sourceFormat = dcrteImportedSourceMesh == null ? null : dcrteImportedSourceMesh.sourceFormat;
+  text("format " + (sourceFormat == null || sourceFormat.length() == 0 ? "-" : sourceFormat.toUpperCase())
     + "   sha " + (sha.length() > 12 ? sha.substring(0, 12) : sha), innerX, metricsY);
   text("tri " + (report == null ? 0 : report.outputTriangleCount)
     + "   boundary edges " + (report == null ? 0 : report.boundaryEdgeCount)
@@ -274,8 +276,9 @@ boolean handleDcrteImportedPanelMouse(int previewX, int previewY, int previewW, 
   int thirdW = (innerW - gap * 2) / 3;
   int quarterW = (innerW - gap * 3) / 4;
   int by = y + 64;
-  if (over(innerX, by, halfW, 20)) { selectDcrteImportedStl(); return true; }
-  if (over(innerX + halfW + gap, by, halfW, 20)) { loadDcrteEggFixture(); return true; }
+  if (over(innerX, by, thirdW, 20)) { selectDcrteImportedStl(); return true; }
+  if (over(innerX + thirdW + gap, by, thirdW, 20)) { loadDcrteEggFixture(); return true; }
+  if (over(innerX + (thirdW + gap) * 2, by, thirdW, 20)) { loadDcrteTorusFixture(); return true; }
   by += 24;
   if (over(innerX, by, halfW, 20)) { requestDcrteImportedSdfBuild(); return true; }
   if (over(innerX + halfW + gap, by, halfW, 20)) { cycleDcrteImportedPolicy(); return true; }
@@ -355,6 +358,7 @@ void drawDcrteImportedDomainPreview(float previewScale) {
     endShape();
   }
   drawDcrteIntrinsicVisualization(previewScale);
+  drawDcrteCompositionOverlay(previewScale);
   drawDcrtePreflightDiagnosticGeometry(previewScale);
 }
 
@@ -363,7 +367,7 @@ void dcrtePreviewVertex(TriangleMeshData mesh, int index, float scale) {
 }
 
 void drawDcrteImportedInvalidEdges(TriangleMeshData mesh, float scale) {
-  if (dcrteImportedMeshReport == null) return;
+  if (mesh == null || dcrteImportedMeshReport == null) return;
   strokeWeight(2.2f);
   stroke(255, 92, 92, 230);
   drawDcrteEdgeKeys(mesh, dcrteImportedMeshReport.boundaryEdges, scale);
@@ -466,6 +470,7 @@ void drawDcrtePreflightPanel(int previewX, int previewY, int previewW, int previ
   int gap = 7;
   int toolbarX = x + pad;
   int toolbarW = w - pad * 2;
+  int fixtureButtonW = (toolbarW - gap * 4) / 5;
   int buttonW = (toolbarW - gap * 3) / 4;
   fill(accent);
   textAlign(LEFT, TOP);
@@ -478,16 +483,16 @@ void drawDcrtePreflightPanel(int previewX, int previewY, int previewW, int previ
   text("qualification " + qualification + "  |  " + (report != null && report.reportStale ? "REPORT STALE" : "REPORT CURRENT"), x + w - pad, y + 10);
 
   int by = y + 25;
-  drawButton(toolbarX, by, buttonW, 21, "CLOSE PREFLIGHT", color(70, 54, 60));
-  drawButton(toolbarX + (buttonW + gap), by, buttonW, 21, "LOAD STL", color(48, 72, 77));
-  drawButton(toolbarX + (buttonW + gap) * 2, by, buttonW, 21, "LOAD EGG FIXTURE", color(58, 78, 65));
-  drawButton(toolbarX + (buttonW + gap) * 3, by, buttonW, 21, "RUN PREFLIGHT", color(55, 82, 68));
+  drawButton(toolbarX, by, fixtureButtonW, 21, "CLOSE PREFLIGHT", color(70, 54, 60));
+  drawButton(toolbarX + (fixtureButtonW + gap), by, fixtureButtonW, 21, "LOAD STL", color(48, 72, 77));
+  drawButton(toolbarX + (fixtureButtonW + gap) * 2, by, fixtureButtonW, 21, "LOAD EGG", color(58, 78, 65));
+  drawButton(toolbarX + (fixtureButtonW + gap) * 3, by, fixtureButtonW, 21, "LOAD TORUS", color(62, 72, 92));
+  drawButton(toolbarX + (fixtureButtonW + gap) * 4, by, fixtureButtonW, 21, "RUN PREFLIGHT", color(55, 82, 68));
   by += 25;
   String[] overlayNames = {"ISSUE", "LOOPS", "COMPONENTS", "INTERSECTIONS", "SIGN VOXELS"};
   drawButton(toolbarX, by, buttonW, 21,
     dcrteImportedResolution == 128 && millis() - dcrteImported128BuildArmedAt <= 10000 ? "CONFIRM 128 BUILD" : "REBUILD SDF", color(45, 86, 72));
-  drawButton(toolbarX + (buttonW + gap), by, buttonW, 21,
-    "POLICY " + (dcrteImportedPolicy == InvalidDomainPolicy.STRICT ? "STRICT" : "UNSIGNED"), color(70, 66, 48));
+  drawButton(toolbarX + (buttonW + gap), by, buttonW, 21, "FIND PATH", color(76, 78, 40));
   drawButton(toolbarX + (buttonW + gap) * 2, by, buttonW, 21,
     "OVERLAY " + overlayNames[dcrtePreflightOverlayMode], color(46, 66, 78));
   drawButton(toolbarX + (buttonW + gap) * 3, by, buttonW, 21, "EXPORT REPORT JSON", color(48, 72, 77));
@@ -507,10 +512,17 @@ void drawDcrtePreflightPanel(int previewX, int previewY, int previewW, int previ
 int dcrteOperatorGateSeverity(DomainPreflightReport report) {
   IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult == null ? null : dcrteIntrinsicBuildResult.validation;
   boolean intrinsicActive = dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL;
+  if (intrinsicActive && dcrteIntrinsicClosedLoopBlocked()) return 1;
   if (intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) return 2;
-  if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL && intrinsic == null) return 2;
+  if (intrinsicActive && intrinsic == null) return 1;
   if (report == null || report.qualification == DomainQualification.NOT_LOADED) return 1;
-  if (report.status == ValidationStatus.FAIL || report.reportStale) return 2;
+  if (report.status == ValidationStatus.FAIL) return 2;
+  if (report.reportStale) return 1;
+  if (dcrteCompositionAuthoritative) {
+    if (dcrteCompositionStale || dcrteCompositionStage == M6CompositionStage.BLOCKED
+        || dcrteCompositionValidation != null && !dcrteCompositionValidation.valid()) return 2;
+    if (dcrteCompositionVolume == null || !dcrteCompositionMaterialized) return 1;
+  }
   if (!intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) return 1;
   if (intrinsic != null && intrinsic.status == ValidationStatus.PASS_WITH_WARNINGS) return 1;
   if (report.status == ValidationStatus.PASS_WITH_WARNINGS || !report.exportEnabled) return 1;
@@ -520,24 +532,42 @@ int dcrteOperatorGateSeverity(DomainPreflightReport report) {
 String dcrteOperatorGateMessage(DomainPreflightReport report) {
   IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult == null ? null : dcrteIntrinsicBuildResult.validation;
   boolean intrinsicActive = dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL;
-  if (intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) {
-    return "EXPORT LOCKED  |  INTRINSIC  |  " + intrinsic.primaryIssue() + "  |  OPEN INTRINSIC TAB";
+  if (intrinsicActive && dcrteIntrinsicClosedLoopBlocked()) {
+    return "ROUTE AVAILABLE  |  CLOSED LOOP CANNOT USE ONE AXIAL CHART  |  FIND PATH USES CARTESIAN";
   }
-  if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL && intrinsic == null) {
-    return "EXPORT LOCKED  |  INTRINSIC COORDINATES NOT BUILT  |  OPEN INTRINSIC TAB";
+  if (intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) {
+    return "BLOCKED  |  AXIAL CHART  |  " + intrinsic.primaryIssue() + "  |  OPEN INTRINSIC TAB";
+  }
+  if (intrinsicActive && intrinsic == null) {
+    return "ACTION REQUIRED  |  BUILD AXIAL CHART OR USE FIND PATH";
   }
   if (report == null || report.qualification == DomainQualification.NOT_LOADED) {
-    return "DOMAIN NOT LOADED  |  LOAD STL OR EGG FIXTURE";
+    return "DOMAIN NOT LOADED  |  LOAD STL, EGG, OR TORUS";
   }
-  if (report.reportStale) return "EXPORT LOCKED  |  PREFLIGHT REPORT STALE  |  RUN PREFLIGHT";
+  if (report.reportStale) return "ACTION REQUIRED  |  PREFLIGHT REPORT STALE  |  FIND PATH CAN CONTINUE";
   if (report.status == ValidationStatus.FAIL) {
     String blocker = report.firstBlockingCode.length() == 0 ? "PREFLIGHT FAILED" : report.firstBlockingCode;
     return "EXPORT LOCKED  |  PREFLIGHT  |  " + blocker + "  |  OPEN ISSUES TAB";
   }
+  if (dcrteCompositionAuthoritative) {
+    if (dcrteCompositionStale) {
+      return "EXPORT LOCKED  |  COMPOSITION STALE  |  OPEN COMPOSITION TAB";
+    }
+    if (dcrteCompositionValidation != null && !dcrteCompositionValidation.valid()) {
+      return "EXPORT LOCKED  |  COMPOSITION  |  "
+        + dcrteCompositionValidation.firstBlocker() + "  |  OPEN COMPOSITION TAB";
+    }
+    if (dcrteCompositionVolume == null) {
+      return "SOURCE QUALIFIED  |  BUILD M6 COMPOSITION  |  OPEN COMPOSITION TAB";
+    }
+    if (!dcrteCompositionMaterialized) {
+      return "COMPOSITION READY  |  MATERIALIZE M6 OUTPUT  |  OPEN COMPOSITION TAB";
+    }
+  }
   if (!intrinsicActive && intrinsic != null && !intrinsic.exportAllowed()) {
     return "INTRINSIC BLOCKED (INACTIVE)  |  " + intrinsic.primaryIssue() + "  |  CARTESIAN PATH RETAINED";
   }
-  if (!report.exportEnabled) return "DOMAIN QUALIFIED  |  GENERATE MATERIAL TO ENABLE EXPORT";
+  if (!report.exportEnabled) return "DOMAIN QUALIFIED  |  NEXT: GENERATE MATERIAL  |  FIND PATH CAN CONTINUE";
   if (intrinsic != null && intrinsic.status == ValidationStatus.PASS_WITH_WARNINGS) {
     return "EXPORT READY WITH INTRINSIC WARNINGS  |  OPEN INTRINSIC TAB";
   }
@@ -560,10 +590,18 @@ void dcrteDrawOperatorGateBand(int x, int y, int w, int h, DomainPreflightReport
 
 void dcrteActivateOperatorGate(DomainPreflightReport report) {
   IntrinsicValidationReport intrinsic = dcrteIntrinsicBuildResult == null ? null : dcrteIntrinsicBuildResult.validation;
-  if (intrinsic != null && !intrinsic.exportAllowed()
-      || dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL && intrinsic == null) {
+  if (dcrteCompositionAuthoritative
+      && (dcrteCompositionStale || dcrteCompositionStage == M6CompositionStage.BLOCKED
+        || dcrteCompositionVolume == null || !dcrteCompositionMaterialized)) {
+    dcrtePreflightInspectorTab = 5;
+  } else if (dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL
+      && (dcrteIntrinsicClosedLoopBlocked() || intrinsic == null)) {
+    dcrteFindSafePath();
+  } else if (intrinsic != null && !intrinsic.exportAllowed()) {
     dcrtePreflightInspectorTab = 4;
-  } else if (report != null && report.status == ValidationStatus.FAIL) dcrtePreflightInspectorTab = 2;
+  } else if (report != null && report.status == ValidationStatus.FAIL) {
+    dcrtePreflightInspectorTab = 2;
+  } else if (report == null || report.reportStale || !report.exportEnabled) dcrteFindSafePath();
 }
 
 void dcrteDrawPreflightViewport(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
@@ -601,7 +639,7 @@ void dcrteDrawPreflightViewport(int x, int y, int w, int h, DomainPreflightRepor
   String source = report == null ? "no source loaded" : shortText(report.sourceName, max(20, w / 8));
   text(source, x + 10, y + h - 19);
   textAlign(RIGHT, TOP);
-  text("res " + dcrteImportedResolution + "^3  |  " + (report != null && report.exportEnabled ? "EXPORT READY" : "EXPORT LOCKED"), x + w - 10, y + h - 19);
+  text("res " + dcrteImportedResolution + "^3  |  " + dcrteWorkflowStateLabel(report), x + w - 10, y + h - 19);
 }
 
 void dcrteDrawPreflightInspector(int x, int y, int w, int h, DomainPreflightReport report, color accent) {
@@ -609,9 +647,9 @@ void dcrteDrawPreflightInspector(int x, int y, int w, int h, DomainPreflightRepo
   stroke(34, 68, 76);
   strokeWeight(1);
   rect(x, y, w, h, 4);
-  String[] tabs = {"SUMMARY", "STAGES", "ISSUES", "VOLUME", "INTRINSIC"};
+  String[] tabs = {"SUMMARY", "STAGES", "ISSUES", "VOLUME", "INTRINSIC", "COMPOSITION"};
   int tabGap = 4;
-  int tabW = (w - 16 - tabGap * 4) / 5;
+  int tabW = (w - 16 - tabGap * 5) / 6;
   for (int i = 0; i < tabs.length; i++) {
     drawButton(x + 8 + i * (tabW + tabGap), y + 8, tabW, 21, tabs[i],
       i == dcrtePreflightInspectorTab ? color(54, 94, 92) : color(35, 54, 61));
@@ -624,6 +662,7 @@ void dcrteDrawPreflightInspector(int x, int y, int w, int h, DomainPreflightRepo
   else if (dcrtePreflightInspectorTab == 2) dcrteDrawPreflightIssues(contentX, contentY, contentW, contentH, report);
   else if (dcrtePreflightInspectorTab == 3) dcrteDrawPreflightVolume(contentX, contentY, contentW, contentH, report);
   else if (dcrtePreflightInspectorTab == 4) dcrteDrawIntrinsicInspector(contentX, contentY, contentW, contentH, report);
+  else if (dcrtePreflightInspectorTab == 5) drawDcrteCompositionInspector(contentX, contentY, contentW, contentH);
   else dcrteDrawPreflightSummary(contentX, contentY, contentW, contentH, report, accent);
 }
 
@@ -634,8 +673,8 @@ void dcrteDrawIntrinsicInspector(int x, int y, int w, int h, DomainPreflightRepo
   int thirdW = (w - gap * 2) / 3;
   String fallbackLabel = dcrteIntrinsicFallbackPolicy == IntrinsicFallbackPolicy.BLOCK ? "BLOCK"
     : dcrteIntrinsicFallbackPolicy == IntrinsicFallbackPolicy.CARTESIAN_LOCAL_FALLBACK ? "CART LOCAL" : "CLAMP LOCAL";
-  drawButton(x, y, halfW, 20, "MODE " + (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN ? "CARTESIAN" : "INTRINSIC"), color(48, 76, 78));
-  drawButton(x + halfW + gap, y, halfW, 20, "BUILD INTRINSIC", color(54, 88, 68));
+  drawButton(x, y, halfW, 20, "MODE " + (dcrteCoordinateMode == DCRTECoordinateMode.CARTESIAN ? "CARTESIAN" : "AXIAL"), color(48, 76, 78));
+  drawButton(x + halfW + gap, y, halfW, 20, "BUILD AXIAL", color(54, 88, 68));
   drawButton(x, y + 25, halfW, 20, "RESET INTRINSIC", color(68, 54, 58));
   drawButton(x + halfW + gap, y + 25, halfW, 20, "RADIAL " + dcrteIntrinsicRadialModel.label(), color(50, 70, 82));
   drawButton(x, y + 50, quarterW, 20, "L -", color(48, 72, 77));
@@ -660,6 +699,8 @@ void dcrteDrawIntrinsicInspector(int x, int y, int w, int h, DomainPreflightRepo
   CenterlineModel centerline = result == null ? null : result.centerline;
   int validSlices = slices == null || slices.slices == null ? 0 : round(slices.validFraction * slices.slices.length);
   lineY = dcrteInspectorPair(x, lineY, w, "COORDINATE MODE", dcrteCoordinateMode.label());
+  String stateIssue = dcrteIntrinsicStateIssue(result);
+  lineY = dcrteInspectorPair(x, lineY, w, "STATE GUARD", stateIssue.length() == 0 ? "CURRENT / CONTAINED" : stateIssue);
   lineY = dcrteInspectorPair(x, lineY, w, "BUILD STATUS", dcrteIntrinsicBuildStatus);
   lineY = dcrteInspectorPair(x, lineY, w, "PREFLIGHT", report != null && report.materializationEnabled ? "QUALIFIED" : "BLOCKED");
   lineY = dcrteInspectorPair(x, lineY, w, "SUITABILITY", suitability == null ? "NOT BUILT" : suitability.status.id().toUpperCase());
@@ -717,10 +758,9 @@ void dcrteDrawPreflightSummary(int x, int y, int w, int h, DomainPreflightReport
   lineY += 22;
   fill(112, 178, 188); text("RECOMMENDED NEXT ACTION", x, lineY); lineY += 14;
   fill(185, 204, 205);
-  String nextAction = report == null ? "Load an STL or the canonical egg fixture." : report.recommendedNextAction;
-  if (report != null && nextAction.length() == 0) {
-    nextAction = report.sdfBuildEnabled ? "Rebuild the SDF to continue volume qualification." : "Review the active blockers in the Issues tab.";
-  }
+  String nextAction = dcrteWorkflowNextAction(report);
+  if (report != null && report.recommendedNextAction != null && report.recommendedNextAction.length() > 0
+      && report.status == ValidationStatus.FAIL) nextAction = dcrteWorkflowActionLabel(report.recommendedNextAction);
   dcrteDrawWrappedText(nextAction,
     x, lineY, w, 11, max(2, (h - (lineY - y)) / 11));
 }
@@ -802,6 +842,9 @@ void dcrteDrawPreflightVolume(int x, int y, int w, int h, DomainPreflightReport 
   lineY = dcrteInspectorPair(x, lineY, w, "INSIDE COMPONENTS", report == null ? "-" : str(report.insideMaskComponentCount));
   lineY = dcrteInspectorPair(x, lineY, w, "DOMINANT INSIDE", report == null ? "-" : nf(report.insideMaskDominantFraction, 1, 3));
   lineY = dcrteInspectorPair(x, lineY, w, "RES CONFIDENCE", report == null ? "-" : nf(report.sdfResolutionConfidence, 1, 3));
+  lineY = dcrteInspectorPair(x, lineY, w, "GRID CURRENT / SUGGESTED",
+    report == null || report.resolutionSuitability == null ? "-"
+    : report.selectedResolution + "^3 / " + report.resolutionSuitability.recommendedMinimumResolution + "^3 (advisory)");
   if (dcrteImportedShowSdf) {
     int sliceY = lineY + 5;
     drawDcrteImportedSdfSlice(x - 2, sliceY, w + 4, max(150, h - (sliceY - y)));
@@ -864,15 +907,17 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
   int gap = 7;
   int toolbarX = x + pad;
   int toolbarW = w - pad * 2;
+  int fixtureButtonW = (toolbarW - gap * 4) / 5;
   int buttonW = (toolbarW - gap * 3) / 4;
   int by = y + 25;
-  if (over(toolbarX, by, buttonW, 21)) { dcrtePreflightPanelOpen = false; return true; }
-  if (over(toolbarX + buttonW + gap, by, buttonW, 21)) { selectDcrteImportedStl(); return true; }
-  if (over(toolbarX + (buttonW + gap) * 2, by, buttonW, 21)) { loadDcrteEggFixture(); return true; }
-  if (over(toolbarX + (buttonW + gap) * 3, by, buttonW, 21)) { dcrteImportedAttemptPreflightReport = null; runDcrteImportedPreflight(); return true; }
+  if (over(toolbarX, by, fixtureButtonW, 21)) { dcrtePreflightPanelOpen = false; return true; }
+  if (over(toolbarX + fixtureButtonW + gap, by, fixtureButtonW, 21)) { selectDcrteImportedStl(); return true; }
+  if (over(toolbarX + (fixtureButtonW + gap) * 2, by, fixtureButtonW, 21)) { loadDcrteEggFixture(); return true; }
+  if (over(toolbarX + (fixtureButtonW + gap) * 3, by, fixtureButtonW, 21)) { loadDcrteTorusFixture(); return true; }
+  if (over(toolbarX + (fixtureButtonW + gap) * 4, by, fixtureButtonW, 21)) { dcrteImportedAttemptPreflightReport = null; runDcrteImportedPreflight(); return true; }
   by += 25;
   if (over(toolbarX, by, buttonW, 21)) { requestDcrteImportedSdfBuild(); return true; }
-  if (over(toolbarX + buttonW + gap, by, buttonW, 21)) { cycleDcrteImportedPolicy(); return true; }
+  if (over(toolbarX + buttonW + gap, by, buttonW, 21)) { dcrteFindSafePath(); return true; }
   if (over(toolbarX + (buttonW + gap) * 2, by, buttonW, 21)) { dcrtePreflightOverlayMode = (dcrtePreflightOverlayMode + 1) % 5; return true; }
   if (over(toolbarX + (buttonW + gap) * 3, by, buttonW, 21)) { exportDcrtePreflightReportJSON(); return true; }
 
@@ -883,8 +928,8 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
   int modelW = w - inspectorW - pad * 2 - gap;
   int inspectorX = x + pad + modelW + gap;
   int tabGap = 4;
-  int tabW = (inspectorW - 16 - tabGap * 4) / 5;
-  for (int i = 0; i < 5; i++) {
+  int tabW = (inspectorW - 16 - tabGap * 5) / 6;
+  for (int i = 0; i < 6; i++) {
     if (over(inspectorX + 8 + i * (tabW + tabGap), bodyY + 8, tabW, 21)) {
       dcrtePreflightInspectorTab = i;
       return true;
@@ -935,6 +980,8 @@ boolean handleDcrtePreflightPanelMouse(int previewX, int previewY, int previewW,
     if (over(contentX, contentY + 125, halfW, 20)) { cycleDcrteCoordinateComparisonMode(); return true; }
     if (over(contentX + halfW + controlGap, contentY + 125, halfW, 20)) { exportDcrteIntrinsicReportJSON(); return true; }
     if (over(contentX, contentY + 150, contentW, 20)) { revealDcrteIntrinsicReport(); return true; }
+  } else if (dcrtePreflightInspectorTab == 5) {
+    return handleDcrteCompositionInspectorMouse(contentX, contentY, contentW, bodyY + (previewH - 117) - contentY);
   }
   return false;
 }

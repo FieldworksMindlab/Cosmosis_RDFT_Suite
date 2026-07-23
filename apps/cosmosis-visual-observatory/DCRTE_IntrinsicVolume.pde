@@ -9,11 +9,21 @@ class IntrinsicCoordinateVolume {
 
   IntrinsicCoordinateVolume(VolumeSpec spec){this.spec=spec;int n=spec==null?0:max(0,spec.voxelCount());s=new float[n];radialDistance=new float[n];normalizedRadius=new float[n];theta=new float[n];signedBoundaryDistance=new float[n];confidence=new float[n];centerlineIndex=new int[n];valid=new boolean[n];ambiguous=new boolean[n];fallbackUsed=new boolean[n];java.util.Arrays.fill(centerlineIndex,-1);}
   int index(int x,int y,int z){return x+spec.nx*(y+spec.ny*z);}
-  boolean isValid(){return spec!=null&&spec.isValid()&&s.length==spec.voxelCount()&&nonFiniteCount==0&&validCount>0;}
+  boolean isValid(){
+    int count=spec==null?-1:spec.voxelCount();
+    return spec!=null&&spec.isValid()&&count>0
+      &&s!=null&&s.length==count&&radialDistance!=null&&radialDistance.length==count
+      &&normalizedRadius!=null&&normalizedRadius.length==count&&theta!=null&&theta.length==count
+      &&signedBoundaryDistance!=null&&signedBoundaryDistance.length==count
+      &&confidence!=null&&confidence.length==count&&centerlineIndex!=null&&centerlineIndex.length==count
+      &&valid!=null&&valid.length==count&&ambiguous!=null&&ambiguous.length==count
+      &&fallbackUsed!=null&&fallbackUsed.length==count&&nonFiniteCount==0&&validCount>0;
+  }
   JSONObject toJSON(){JSONObject json=new JSONObject();json.setJSONObject("spec",spec==null?new JSONObject():spec.toJSON());json.setInt("valid_voxels",validCount);json.setInt("ambiguous_voxels",ambiguousCount);json.setInt("fallback_voxels",fallbackCount);json.setInt("nonfinite_voxels",nonFiniteCount);json.setInt("pole_clamped_voxels",poleClampedCount);json.setBoolean("valid",isValid());json.setString("storage","flat_primitive_arrays");return json;}
 }
 
 class IntrinsicBuildResult {
+  String sourceDomainSignature="";
   DominantInsideComponent component;
   PCAFrame pca;
   AxialSliceSet slices;
@@ -22,7 +32,7 @@ class IntrinsicBuildResult {
   IntrinsicCoordinateVolume volume;
   IntrinsicValidationReport validation;
   String radialModel="equivalent_circular";
-  JSONObject toJSON(){JSONObject json=new JSONObject();json.setString("coordinate_system","intrinsic_axial");json.setString("version","1.0-m3");json.setString("mapping","INTRINSIC_CYLINDRICAL_EMBEDDING");json.setString("radial_model",radialModel);if(component!=null)json.setJSONObject("dominant_component",component.toJSON());if(pca!=null)json.setJSONObject("pca",pca.toJSON());if(slices!=null)json.setJSONObject("axial_slices",slices.toJSON());if(centerline!=null)json.setJSONObject("centerline",centerline.toJSON());if(frames!=null)json.setJSONObject("frames",frames.toJSON());if(volume!=null)json.setJSONObject("intrinsic_volume",volume.toJSON());if(validation!=null)json.setJSONObject("validation",validation.toJSON());return json;}
+  JSONObject toJSON(){JSONObject json=new JSONObject();json.setString("coordinate_system","intrinsic_axial");json.setString("version","1.0-m3");json.setString("mapping","INTRINSIC_CYLINDRICAL_EMBEDDING");json.setString("radial_model",radialModel);json.setString("source_domain_signature",sourceDomainSignature==null?"":sourceDomainSignature);if(component!=null)json.setJSONObject("dominant_component",component.toJSON());if(pca!=null)json.setJSONObject("pca",pca.toJSON());if(slices!=null)json.setJSONObject("axial_slices",slices.toJSON());if(centerline!=null)json.setJSONObject("centerline",centerline.toJSON());if(frames!=null)json.setJSONObject("frames",frames.toJSON());if(volume!=null)json.setJSONObject("intrinsic_volume",volume.toJSON());if(validation!=null)json.setJSONObject("validation",validation.toJSON());return json;}
 }
 
 class DCRTEIntrinsicCoordinateBuilder {
@@ -31,13 +41,18 @@ class DCRTEIntrinsicCoordinateBuilder {
     boolean preflightQualified=allowSyntheticQualified||(preflight!=null&&!preflight.reportStale&&preflight.materializationEnabled&&preflight.status!=ValidationStatus.FAIL);
     if(!preflightQualified){suitability.block(DCRTEIntrinsicCodes.IC_DOMAIN_NOT_PREFLIGHT_QUALIFIED);validation.error(DCRTEIntrinsicCodes.IC_DOMAIN_NOT_PREFLIGHT_QUALIFIED);finish(result,totalStart);return result;}
     if(sdf==null||!sdf.isValid()||sdf.inside==null){suitability.block(DCRTEIntrinsicCodes.IC_INSIDE_MASK_EMPTY);validation.error(DCRTEIntrinsicCodes.IC_INSIDE_MASK_EMPTY);finish(result,totalStart);return result;}
-    long phase=millis();DominantInsideComponent component=new DCRTEDominantComponentSelector().select(sdf);result.component=component;validation.totalInsideVoxels=component.totalInsideCount;suitability.insideComponentCount=component.componentCount;suitability.dominantComponentFraction=component.dominantFraction;suitability.singleDominantComponent=component.valid&&component.dominantFraction>=0.98f;
-    if(!component.valid){suitability.block(DCRTEIntrinsicCodes.IC_INSIDE_MASK_EMPTY);validation.error(DCRTEIntrinsicCodes.IC_INSIDE_MASK_EMPTY);finish(result,totalStart);return result;}
+    long phase=millis();DominantInsideComponent component=new DCRTEDominantComponentSelector().select(sdf);result.component=component;
+    if(component==null||!component.valid){suitability.block(DCRTEIntrinsicCodes.IC_INSIDE_MASK_EMPTY);validation.error(DCRTEIntrinsicCodes.IC_INSIDE_MASK_EMPTY);finish(result,totalStart);return result;}
+    validation.totalInsideVoxels=component.totalInsideCount;suitability.insideComponentCount=component.componentCount;suitability.dominantComponentFraction=component.dominantFraction;suitability.singleDominantComponent=component.dominantFraction>=0.98f;
     if(component.dominantFraction<0.98f){suitability.block(DCRTEIntrinsicCodes.IC_MULTIPLE_DOMINANT_COMPONENTS);validation.error(DCRTEIntrinsicCodes.IC_MULTIPLE_DOMINANT_COMPONENTS);finish(result,totalStart);return result;}
     PCAFrame pca=new DCRTEWeightedPCA().compute(sdf,component,DCRTEPCAWeightingMode.DISTANCE_WEIGHTED);validation.pcaMillis=millis()-phase;result.pca=pca;
     if(pca==null||!pca.valid){suitability.block(DCRTEIntrinsicCodes.IC_AXIS_UNDEFINED);validation.error(DCRTEIntrinsicCodes.IC_AXIS_UNDEFINED);finish(result,totalStart);return result;}
     suitability.principalEigenvalue1=pca.eigenvalue1;suitability.principalEigenvalue2=pca.eigenvalue2;suitability.principalEigenvalue3=pca.eigenvalue3;suitability.elongationRatio12=pca.eigenvalue1/max(0.0000001f,pca.eigenvalue2);suitability.elongationRatio13=pca.eigenvalue1/max(0.0000001f,pca.eigenvalue3);if(suitability.elongationRatio12<1.25f)suitability.warn(DCRTEIntrinsicCodes.IC_LOW_ELONGATION);
-    phase=millis();int sliceCount=max(32,sdf.spec.nx);DCRTEAxialSliceBuilder sliceBuilder=new DCRTEAxialSliceBuilder();AxialSliceSet slices=sliceBuilder.build(sdf,component,pca,sliceCount);dcrteResolvePcaSign(pca,slices);slices=sliceBuilder.build(sdf,component,pca,sliceCount);result.slices=slices;validation.sliceMillis=millis()-phase;suitability.validSliceFraction=slices.validFraction;suitability.centerlineCoverage=slices.coverage;suitability.maximumSliceGapFraction=slices.maximumGapFraction;
+    phase=millis();int sliceCount=max(32,sdf.spec.nx);DCRTEAxialSliceBuilder sliceBuilder=new DCRTEAxialSliceBuilder();AxialSliceSet slices=sliceBuilder.build(sdf,component,pca,sliceCount);
+    if(slices==null){suitability.block(DCRTEIntrinsicCodes.IC_CENTERLINE_COVERAGE_LOW);validation.error(DCRTEIntrinsicCodes.IC_CENTERLINE_COVERAGE_LOW);finish(result,totalStart);return result;}
+    dcrteResolvePcaSign(pca,slices);slices=sliceBuilder.build(sdf,component,pca,sliceCount);result.slices=slices;validation.sliceMillis=millis()-phase;
+    if(slices==null||slices.slices==null){suitability.block(DCRTEIntrinsicCodes.IC_CENTERLINE_COVERAGE_LOW);validation.error(DCRTEIntrinsicCodes.IC_CENTERLINE_COVERAGE_LOW);finish(result,totalStart);return result;}
+    suitability.validSliceFraction=slices.validFraction;suitability.centerlineCoverage=slices.coverage;suitability.maximumSliceGapFraction=slices.maximumGapFraction;
     if(slices.validFraction<0.85f||slices.coverage<0.90f){suitability.block(DCRTEIntrinsicCodes.IC_CENTERLINE_COVERAGE_LOW);validation.error(DCRTEIntrinsicCodes.IC_CENTERLINE_COVERAGE_LOW);finish(result,totalStart);return result;}
     if(slices.longGap||slices.maximumGapFraction>0.08f){suitability.block(DCRTEIntrinsicCodes.IC_CENTERLINE_DISCONTINUOUS);validation.error(DCRTEIntrinsicCodes.IC_CENTERLINE_DISCONTINUOUS);finish(result,totalStart);return result;}
     int dispersedSlices=0, evaluatedSlices=0;for(int i=slices.firstValid;i<=slices.lastValid&&i>=0;i++){AxialSliceSample slice=slices.slices[i];if(!slice.valid)continue;evaluatedSlices++;float spread=slice.maxRadialExtent/max(sdf.spec.minSpacing(),slice.equivalentRadius);if(spread>1.62f)dispersedSlices++;}
@@ -45,11 +60,13 @@ class DCRTEIntrinsicCoordinateBuilder {
     phase=millis();CenterlineModel centerline=new DCRTECenterlineBuilder().build(sdf,slices);validation.centerlineMillis=millis()-phase;result.centerline=centerline;
     if(centerline==null||!centerline.valid){boolean loop=suitability.elongationRatio12<1.35f||centerline!=null&&centerline.selfApproachSuspected;suitability.closedLoopSuspected=loop;suitability.branchingSuspected=!loop;String code=loop?DCRTEIntrinsicCodes.IC_CLOSED_LOOP_SUSPECTED:DCRTEIntrinsicCodes.IC_BRANCHING_SUSPECTED;suitability.block(code);validation.error(code);finish(result,totalStart);return result;}
     suitability.centerlineSelfApproachRisk=centerline.selfApproachSuspected?1:0;validation.centerlineLength=centerline.length;validation.centerlineCoverage=centerline.coverage;validation.maxCenterlineStep=centerline.maxStep;validation.minimumCenterlineSDFMargin=centerline.minimumSdfMargin;
-    phase=millis();TransportFrameField frames=new DCRTEParallelTransportBuilder().build(centerline,pca);validation.frameMillis=millis()-phase;result.frames=frames;suitability.frameContinuityScore=frames.continuityScore;
+    phase=millis();TransportFrameField frames=new DCRTEParallelTransportBuilder().build(centerline,pca);validation.frameMillis=millis()-phase;result.frames=frames;
     if(frames==null||!frames.valid){suitability.block(DCRTEIntrinsicCodes.IC_FRAME_BUILD_FAILED);validation.error(DCRTEIntrinsicCodes.IC_FRAME_BUILD_FAILED);finish(result,totalStart);return result;}
+    suitability.frameContinuityScore=frames.continuityScore;
     if(frames.elevatedRotationCount>max(2,frames.frames.length/10))suitability.warn(DCRTEIntrinsicCodes.IC_FRAME_TWIST_ELEVATED);
     validation.meanFrameRotation=frames.meanRotation;validation.maxFrameRotation=frames.maxRotation;validation.frameDiscontinuityCount=frames.discontinuityCount;
     phase=millis();IntrinsicCoordinateVolume volume=mapVolume(sdf,component,pca,slices,centerline,frames,validation);validation.mappingMillis=millis()-phase;result.volume=volume;
+    if(volume==null){suitability.block(DCRTEIntrinsicCodes.IC_MAPPING_FAILED);validation.error(DCRTEIntrinsicCodes.IC_MAPPING_FAILED);finish(result,totalStart);return result;}
     validation.validIntrinsicVoxels=volume.validCount;validation.ambiguousVoxels=volume.ambiguousCount;validation.fallbackVoxels=volume.fallbackCount;validation.nonFiniteVoxels=volume.nonFiniteCount;validation.poleClampedVoxels=volume.poleClampedCount;validation.validFraction=component.dominantCount==0?0:volume.validCount/(float)component.dominantCount;validation.ambiguityFraction=component.dominantCount==0?0:volume.ambiguousCount/(float)component.dominantCount;validation.fallbackFraction=component.dominantCount==0?0:volume.fallbackCount/(float)component.dominantCount;suitability.nearestPointAmbiguityFraction=validation.ambiguityFraction;suitability.radialNormalizationConfidence=0.82f;
     computeConfidenceStats(volume,validation);
     suitability.warn(DCRTEIntrinsicCodes.IC_RADIAL_NORMALIZATION_APPROXIMATE);

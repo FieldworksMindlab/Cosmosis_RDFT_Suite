@@ -92,7 +92,7 @@ class DCRTEPreflightVolumeAnalyzer {
 
     if (!materialIsCurrent || materialVolume == null || materializationReport == null) {
       report.setStage("MATERIALIZATION", DCRTEPreflightStageState.NOT_RUN, "SDF is qualified; generate material to continue", 0);
-      report.setStage("EXPORT", DCRTEPreflightStageState.BLOCKED, "materialization has not passed", 0);
+      report.setStage("EXPORT", DCRTEPreflightStageState.NOT_RUN, "awaiting validated materialization", 0);
       report.qualification = DomainQualification.TOPOLOGY_VALID_SDF_UNRESOLVED;
       report.exportEnabled = false;
       report.refreshSummary();

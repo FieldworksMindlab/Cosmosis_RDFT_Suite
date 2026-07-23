@@ -31,7 +31,9 @@ String[] lensNames = {
   "WIGNER STUDIO",
   "BRANES / FIBERS",
   "TOPOLOGY LAB",
-  "SURFACE FOUNDRY"
+  "SURFACE FOUNDRY",
+  "GEODESIC SALON",
+  "HBE"
 };
 
 ArrayList<SliderKnob> sliders = new ArrayList<SliderKnob>();
@@ -70,6 +72,9 @@ int seed = 1337;
 int selectedMaterial = 0;
 int materialSourceMode = 0;
 int materialAppliedFrame = -9999;
+int buttonClickFlashX = -9999;
+int buttonClickFlashY = -9999;
+int buttonClickFlashUntil = -1;
 String materialStatus = "material catalog pending";
 String materialAppliedName = "";
 String cosmosisCsvStatus = "";
@@ -187,6 +192,7 @@ float shaperWater = 0;
 float shaperCosmic = 0;
 int shaperLastPoll = -999;
 String shaperSourceStatus = "SIM";
+String geodesicCapturePath = null;
 
 void settings() {
   size(1600, 1000, P3D);
@@ -213,6 +219,46 @@ void setup() {
   initializeDcrteMilestone25();
   initializeDcrteMilestone25Tests();
   initializeDcrteMilestone3();
+  initializeDcrteMilestone4();
+  initializeDcrteMilestone5();
+  initializeDcrteMilestone6();
+  initializeDcrteHbe();
+  if (dcrteCommandLineFlag("--geodesic-exterior-crown"))
+    geodesicReliefSide = GeodesicReliefSide.EXTERIOR_CROWN;
+  if (dcrteCommandLineFlag("--geodesic-kicas"))
+    geodesicAssemblyMode = GeodesicAssemblyMode.KICAS;
+  if (dcrteCommandLineFlag("--geodesic-paint"))
+    geodesicPaintEnabled = true;
+  initializeGeodesicSalon();
+  if (dcrteCommandLineFlag("--geodesic-fabrication-matrix")) {
+    runGeodesicFabricationMatrix(
+      dcrteCommandLineFlag("--geodesic-matrix-minimal"));
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--geodesic-tests-only")) {
+    println("GEODESIC SALON TESTS " + geodesicTestStatus);
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--geodesic-salon")) activeLens = 9;
+  if (dcrteCommandLineFlag("--geodesic-guide-svg")) geodesicGuideSvgEnabled = true;
+  if (dcrteCommandLineFlag("--geodesic-export-plate-kit")) {
+    exportGeodesicSalonPlateKit();
+    println("GEODESIC SALON PLATE EXPORT " + geodesicStatus);
+    println("GEODESIC SALON OUTPUT " + geodesicLastExport);
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--geodesic-export-kit")) {
+    exportGeodesicSalonKit();
+    println("GEODESIC SALON EXPORT " + geodesicStatus);
+    println("GEODESIC SALON OUTPUT " + geodesicLastExport);
+    exit();
+    return;
+  }
+  geodesicCapturePath = dcrteCommandLineValue("--geodesic-capture=");
+  if (geodesicCapturePath != null) activeLens = 9;
   String dcrteM25ReferencePath = dcrteCommandLineValue("--dcrte-m25-reference=");
   if (dcrteM25ReferencePath != null) {
     runDcrteMilestone25ExternalReferenceCase(dcrteM25ReferencePath);
@@ -229,6 +275,58 @@ void setup() {
     exit();
     return;
   }
+  if (dcrteCommandLineFlag("--dcrte-m4-benchmark")) {
+    runDcrteMilestone4Benchmarks();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m4-acceptance")) {
+    runDcrteMilestone4AcceptanceMatrix();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m5-benchmark")) {
+    runDcrteMilestone5Benchmarks();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m5-acceptance")) {
+    runDcrteMilestone5AcceptanceMatrix();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m5-tests-only")) {
+    println("DCRTE-ET Milestone 5 deterministic tests: "
+      + dcrteM5Tests.status());
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m6-acceptance")) {
+    runDcrteMilestone6AcceptanceMatrix();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-m6-tests-only")) {
+    println("DCRTE-ET Milestone 6 deterministic tests: "
+      + dcrteM6Tests.status());
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-hbe-tests-only")) {
+    println("DCRTE-ET M6-HX HBE deterministic tests: "
+      + dcrteHbeTests.status());
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-hbe")) {
+    dcrteHbeSetEnabled(true);
+    activeLens = 10;
+  }
+  if (dcrteCommandLineFlag("--dcrte-hbe-fixture")) {
+    dcrteHbeSetEnabled(true);
+    activeLens = 10;
+    loadDcrteHbeDualLobeFixture();
+  }
   if (dcrteCommandLineFlag("--dcrte-m2-acceptance")) {
     runDcrteMilestone2AcceptanceMatrix();
     exit();
@@ -241,6 +339,8 @@ void setup() {
 }
 
 void draw() {
+  dcrteUpdateSchedulerFrame();
+  updateDcrteHbeSweep();
   if (!paused) {
     simT += 0.012 * max(0.05, timeScale);
     updateShaperStreams();
@@ -267,6 +367,11 @@ void draw() {
   drawActiveLens();
   drawStatusStrip();
   if (showHelp) drawHelpOverlay();
+  if (geodesicCapturePath != null && frameCount >= 8) {
+    save(geodesicCapturePath);
+    geodesicCapturePath = null;
+    exit();
+  }
 }
 
 void initControls() {
@@ -915,7 +1020,7 @@ void drawControls() {
   drawGauge(22, y, UI_W - 44, "ctc window", ctcScore, color(210, 142, 255)); y += 34;
   fill(100, 130, 145);
   textSize(9);
-  text("Keys: 1-9 select lenses, [ ] target material, M source mode, O opens Cosmosis CSV, U reloads data, V applies target, G generates STL mesh, C call sheets, X pulls SVG, E exports STL, N cycles Foundry geometry, SPACE pauses, R resets, H help.", 22, y, UI_W - 44, 60);
+  text("Keys: 1-9 select established lenses, 0 opens Geodesic Salon, [ ] target material, M source mode, O opens Cosmosis CSV, U reloads data, V applies target, G generates STL mesh, C call sheets, X pulls SVG, E exports STL, N cycles Foundry geometry, SPACE pauses, R resets, H help.", 22, y, UI_W - 44, 60);
 }
 
 int materialPanelY() {
@@ -1032,7 +1137,9 @@ void drawActiveLens() {
   else if (activeLens == 5) drawWignerStudio(x, y, w, h);
   else if (activeLens == 6) drawBranesFibers(x, y, w, h);
   else if (activeLens == 7) drawTopologyLab(x, y, w, h);
-  else drawSurfaceFoundry(x, y, w, h);
+  else if (activeLens == 8) drawSurfaceFoundry(x, y, w, h);
+  else if (activeLens == 9) drawGeodesicSalon(x, y, w, h);
+  else drawDcrteHbeLens(x, y, w, h);
 }
 
 void drawFieldAtlas(int x, int y, int w, int h) {
@@ -1398,6 +1505,10 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   fill(3, 7, 11);
   stroke(36, 62, 70);
   rect(x, y, w, h, 6);
+  if (dcrteSchedulerPanelOpen) {
+    drawDcrteSchedulerPanel(x, y, w, h);
+    return;
+  }
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH && dcrtePreflightPanelOpen) {
     drawDcrtePreflightPanel(x, y, w, h);
     return;
@@ -1411,7 +1522,7 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   if (foundryMesh != null && foundryMesh.tris.size() > 0
       && !(dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
         && (!dcrteImportedShowMaterial || dcrteImportedStale))) {
-    foundryMesh.drawPreview(previewScale / max(1.0, foundryScaleMM * 0.5));
+    foundryMesh.drawPreviewFitted(previewScale);
   } else if (foundryGeometryIndex > 0) {
     drawFoundryWrappedGeometryPreview(previewScale);
   } else {
@@ -1564,6 +1675,7 @@ void drawFoundryControls(int x, int y, int w) {
   drawButton(x + 252, y, 78, 26, "PULL SVG", foundryLastCallSheetBase.length() == 0 ? color(50, 52, 62) : color(86, 72, 38));
   drawButton(x, y + 30, 132, 22, "PIPE " + dcrtePipelineLabel(), dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? color(42, 57, 68) : color(65, 82, 55));
   drawButton(x + 142, y + 30, 102, 22, "EXPORT STL", foundryMesh == null ? color(42, 50, 58) : color(86, 66, 42));
+  drawButton(x + 252, y + 30, 78, 22, "SCHEDULER", dcrteSchedulerPanelOpen ? color(88, 74, 38) : color(42, 57, 68));
 
   int yy = y + 62;
   drawButton(x, yy, 78, 22, "RES -", color(42, 57, 68));
@@ -1951,8 +2063,9 @@ void generateFoundryCallSheets() {
     return;
   }
   if (!dcrtePrimitiveExportAllowed()) {
-    foundryCallSheetStatus = "blocked by DCRTE validation";
-    foundryStatus = "call sheet blocked";
+    String reason = dcrteFoundryExportBlockMessage();
+    foundryCallSheetStatus = reason;
+    foundryStatus = "call sheet " + reason;
     return;
   }
   if (!foundryMeshIsPrintable()) {
@@ -4267,15 +4380,57 @@ String[] callSheetConfigurationLines(String style) {
     "MESH tris " + (foundryMesh == null ? 0 : foundryMesh.tris.size()) + " | bridge " + foundryBridgeVoxels + " | audit " + meshAudit,
     "STATE simT " + nf(simT, 1, 3) + " | paused " + onOff(paused) + " | holonomy " + (reverseHolonomy ? "reverse" : "forward")
   };
-  if (!imported) return base;
-  String[] expanded = new String[base.length + 3];
-  System.arraycopy(base, 0, expanded, 0, 6);
-  expanded[6] = "IMPORT source " + importedSource + " | sha " + importedHash + " | units unspecified";
-  expanded[7] = "IMPORT policy " + dcrteImportedPolicy.id() + " | fit " + nf(dcrteImportedFitMargin, 1, 3) + " | scale " + nf(dcrteImportedScaleMultiplier, 1, 3);
-  expanded[8] = "IMPORT rot " + dcrteImportedRotateX + "/" + dcrteImportedRotateY + "/" + dcrteImportedRotateZ
-    + " quarter-turns | SDF " + (dcrteImportedSdf == null ? "not built" : dcrteImportedSdf.signed ? "signed" : "unsigned");
-  System.arraycopy(base, 6, expanded, 9, base.length - 6);
-  return expanded;
+  String[] result = base;
+  if (imported) {
+    String[] expanded = new String[base.length + 3];
+    System.arraycopy(base, 0, expanded, 0, 6);
+    expanded[6] = "IMPORT source " + importedSource + " | sha " + importedHash + " | units unspecified";
+    expanded[7] = "IMPORT policy " + dcrteImportedPolicy.id() + " | fit " + nf(dcrteImportedFitMargin, 1, 3) + " | scale " + nf(dcrteImportedScaleMultiplier, 1, 3);
+    expanded[8] = "IMPORT rot " + dcrteImportedRotateX + "/" + dcrteImportedRotateY + "/" + dcrteImportedRotateZ
+      + " quarter-turns | SDF " + (dcrteImportedSdf == null ? "not built" : dcrteImportedSdf.signed ? "signed" : "unsigned");
+    System.arraycopy(base, 6, expanded, 9, base.length - 6);
+    result = expanded;
+  }
+  if (!dcrteCompositionAuthoritative) return result;
+  String[] m6 = dcrteCompositionCallSheetLines();
+  String[] composed = new String[result.length + m6.length];
+  System.arraycopy(result, 0, composed, 0, result.length);
+  System.arraycopy(m6, 0, composed, result.length, m6.length);
+  return composed;
+}
+
+String[] dcrteCompositionCallSheetLines() {
+  MaterialCompositionConfiguration config = dcrteCompositionConfiguration;
+  FabricationCompositionVolume volume = dcrteCompositionVolume;
+  MaterialCompositionValidationReport validation = dcrteCompositionValidation;
+  ExteriorEnvelopeFidelityReport fidelity = dcrteEnvelopeFidelityReport;
+  String validationLabel = validation == null ? "not_run"
+    : validation.valid() ? (validation.warningCount() > 0 ? "pass_with_warnings" : "pass")
+    : "blocked_" + validation.firstBlocker();
+  return new String[] {
+    "M6 COMPOSITION " + config.mode.id() + " | stage " + dcrteCompositionStage.label()
+      + " | valid " + validationLabel,
+    "M6 SHELL " + config.sourceShell.fabricationShellThicknessVoxels + " vox / "
+      + nf(dcrteCompositionThicknessMM(), 1, 3) + "mm | epsilon "
+      + nf(config.sourceShell.boundaryEpsilonVoxels, 1, 2) + " vox | lock "
+      + onOff(config.sourceShell.lockSourceShell) + " | role " + config.sourceShell.rolePolicy.id(),
+    "M6 CLEAR " + config.clearanceMode.id() + " / " + nf(config.clearanceVoxels, 1, 2)
+      + " vox | attach " + config.attachmentPolicy.id() + " | seed " + config.boundarySeedMode.id()
+      + " | contact " + config.attachmentNeighborhood.id(),
+    "M6 BRIDGE max " + config.bridgeMaxDistanceVoxels + " vox | radius "
+      + nf(config.bridgeRadiusVoxels, 1, 2) + " | field/conf "
+      + nf(config.fieldPenaltyWeight, 1, 2) + "/" + nf(config.confidencePenaltyWeight, 1, 2),
+    "M6 ROLES domain/shell/scaffold/inset/bridge/support/final "
+      + (volume == null ? "0/0/0/0/0/0/0"
+        : volume.domainCount + "/" + volume.sourceShellCount + "/"
+          + volume.scheduledScaffoldCount + "/" + volume.insetScaffoldCount + "/"
+          + volume.anchorBridgeCount + "/" + volume.supportMaterialCount + "/"
+          + volume.regularizedMaterialCount),
+    "M6 FIDELITY coverage " + (fidelity == null ? "-" : nf(fidelity.sourceBoundaryCoverage, 1, 5))
+      + " | source p95 " + (fidelity == null ? "-" : nf(fidelity.sourceVertexDistanceP95World, 1, 5))
+      + " | outside " + (volume == null ? 0 : volume.outsideCount)
+      + " | hash " + (volume == null ? "-" : shortText(volume.compositionHash, 16))
+  };
 }
 
 String[] callSheetWrappedConfigurationLines(String style, int maxChars) {
@@ -6142,7 +6297,10 @@ void metricLine(int x, int y, String label, String value) {
 }
 
 void drawButton(int x, int y, int w, int h, String label, color bg) {
-  boolean held = this.mousePressed && over(x, y, w, h);
+  boolean clickFlash = millis() < buttonClickFlashUntil
+    && buttonClickFlashX >= x && buttonClickFlashX <= x + w
+    && buttonClickFlashY >= y && buttonClickFlashY <= y + h;
+  boolean held = this.mousePressed && over(x, y, w, h) || clickFlash;
   color buttonColor = held ? lerpColor(bg, color(255, 214, 78), 0.48f) : bg;
   if (held) {
     stroke(255, 232, 126);
@@ -6154,6 +6312,12 @@ void drawButton(int x, int y, int w, int h, String label, color bg) {
   textSize(9);
   textAlign(CENTER, CENTER);
   text(label, x + w / 2, y + h / 2 + (held ? 1 : 0));
+}
+
+void registerButtonClickFeedback() {
+  buttonClickFlashX = mouseX;
+  buttonClickFlashY = mouseY;
+  buttonClickFlashUntil = millis() + 220;
 }
 
 void drawHelpOverlay() {
@@ -6170,7 +6334,7 @@ void drawHelpOverlay() {
   text("Cosmosis Visual Observatory", x + 24, y + 22);
   fill(145, 178, 186);
   textSize(10);
-  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select workspaces. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nSurface Foundry exports fabrication geometry from the same topology field, with geometry wrapping over TPMS, manifold, lattice, and recursive fractal carriers. Database material targets may add explicitly labeled phase-transform, topological-response, or superconducting-coherence traits to the RDFT mapping. The CTC and Wigner views are analogical diagnostics, intended for visual exploration rather than physical claims.", x + 24, y + 58, w - 48, h - 80);
+  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select established workspaces; 0 opens Geodesic Salon. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nGeodesic Salon builds tetrahedral, octahedral, icosahedral, dodeca-derived, and rhombic-triaconta-derived domes or spheres. Tetra, octa, and icosa families can receive an adjustable face-stellation modifier. Kit export writes one audited STL per reusable type plus BOM and assembly maps. Framed rails default to reciprocal half-dihedral miters, with a visible SQUARE compatibility toggle and automatic depth limiting when a requested miter would consume the printable rail. Edge JSON records requested and resolved dimensions, the applied miter, and fit status. Plateau mode is an optional 109.47 degree junction diagnostic. Surface Foundry remains unchanged.", x + 24, y + 58, w - 48, h - 80);
 }
 
 void resetState() {
@@ -6203,6 +6367,7 @@ void randomizeState() {
 }
 
 void mousePressed() {
+  registerButtonClickFeedback();
   if (mouseY >= 70 && mouseY <= 100 && mouseX > UI_W) {
     int x0 = UI_W + 16;
     int usable = width - x0 - 18;
@@ -6265,6 +6430,7 @@ void mousePressed() {
     int rightX = px + previewW + 24;
     int cx = rightX + 16;
     int cy = py + 42;
+    if (handleDcrteSchedulerPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
     if (handleDcrtePrimitivePanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
     if (dcrtePreflightPanelOpen) {
       if (handleDcrtePreflightPanelMouse(px + 16, py + 40, previewW - 32, h - 82 - 58)) return;
@@ -6274,6 +6440,7 @@ void mousePressed() {
     if (over(cx + 252, cy, 78, 26)) pullFoundryCallSheetSvgs();
     if (over(cx, cy + 30, 132, 22)) cycleDcrtePipelineMode();
     if (over(cx + 142, cy + 30, 102, 22)) exportSurfaceFoundryMesh();
+    if (over(cx + 252, cy + 30, 78, 22)) { dcrteSchedulerPanelOpen = !dcrteSchedulerPanelOpen; return; }
     if (over(cx, cy + 62, 78, 22)) {
       if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) adjustDcrtePrimitiveResolution(-1);
       else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) adjustDcrteImportedResolution(-1);
@@ -6313,6 +6480,20 @@ void mousePressed() {
     if (over(rightCell, row2Buttons, buttonW, 20)) cadStochastic = max(0, cadStochastic - 0.06);
     if (over(rightCell + buttonW + buttonGap, row2Buttons, buttonW, 20)) cadStochastic = min(1, cadStochastic + 0.06);
   }
+  if (activeLens == 9) {
+    int x = UI_W + 18;
+    int y = 112;
+    int w = width - x - 20;
+    int h = height - y - 48;
+    if (handleGeodesicSalonMouse(x, y, w, h)) return;
+  }
+  if (activeLens == 10) {
+    int x = UI_W + 18;
+    int y = 112;
+    int w = width - x - 20;
+    int h = height - y - 48;
+    if (handleDcrteHbeMouse(x, y, w, h)) return;
+  }
   for (SliderKnob s : sliders) s.mousePressed();
 }
 
@@ -6338,6 +6519,8 @@ void mouseReleased() {
 
 void keyPressed() {
   if (key >= '1' && key <= '9') activeLens = key - '1';
+  else if (key == '0') activeLens = 9;
+  else if (key == 'b' || key == 'B') activeLens = 10;
   else if (key == ' ') paused = !paused;
   else if (key == 'r' || key == 'R') resetState();
   else if (key == 'h' || key == 'H') showHelp = !showHelp;
@@ -6427,6 +6610,8 @@ class CallSheetBounds {
 class SurfaceMesh {
   String name;
   ArrayList<MeshTri> tris = new ArrayList<MeshTri>();
+  float previewMinX = Float.POSITIVE_INFINITY, previewMinY = Float.POSITIVE_INFINITY, previewMinZ = Float.POSITIVE_INFINITY;
+  float previewMaxX = Float.NEGATIVE_INFINITY, previewMaxY = Float.NEGATIVE_INFINITY, previewMaxZ = Float.NEGATIVE_INFINITY;
 
   SurfaceMesh(String name) {
     this.name = name;
@@ -6434,6 +6619,12 @@ class SurfaceMesh {
 
   void addTri(PVector a, PVector b, PVector c) {
     tris.add(new MeshTri(a, b, c));
+    includePreviewBounds(a); includePreviewBounds(b); includePreviewBounds(c);
+  }
+
+  void includePreviewBounds(PVector p) {
+    previewMinX = min(previewMinX, p.x); previewMinY = min(previewMinY, p.y); previewMinZ = min(previewMinZ, p.z);
+    previewMaxX = max(previewMaxX, p.x); previewMaxY = max(previewMaxY, p.y); previewMaxZ = max(previewMaxZ, p.z);
   }
 
   void addQuad(PVector a, PVector b, PVector c, PVector d) {
@@ -6545,6 +6736,26 @@ class SurfaceMesh {
     }
     endShape();
     hint(ENABLE_DEPTH_TEST);
+  }
+
+  void drawPreviewFitted(float targetRadius) {
+    if (tris.size() == 0) return;
+    float centerX = 0.5f * (previewMinX + previewMaxX);
+    float centerY = 0.5f * (previewMinY + previewMaxY);
+    float centerZ = 0.5f * (previewMinZ + previewMaxZ);
+    float halfExtent = 0.5f * max(previewMaxX - previewMinX,
+      max(previewMaxY - previewMinY, previewMaxZ - previewMinZ));
+    if (!dcrteFinite(centerX) || !dcrteFinite(centerY) || !dcrteFinite(centerZ)
+        || !dcrteFinite(halfExtent) || halfExtent <= 0.000001f) {
+      drawPreview(targetRadius / max(1.0f, foundryScaleMM * 0.5f));
+      return;
+    }
+    float fittedScale = targetRadius / halfExtent;
+    pushMatrix();
+    scale(fittedScale);
+    translate(-centerX, -centerY, -centerZ);
+    drawPreview(1.0f);
+    popMatrix();
   }
 
   void writeSTL(String filename) {

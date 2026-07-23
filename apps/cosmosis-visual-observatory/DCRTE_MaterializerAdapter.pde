@@ -165,6 +165,107 @@ class LegacyVoxelMaterializerAdapter {
       && foundryDegenerateFaces == 0;
   }
 
+  boolean materialize(FabricationCompositionVolume composition,
+      DCRTEVolume sourceFieldVolume) {
+    if (composition == null || !composition.isValid()
+        || sourceFieldVolume == null || !sourceFieldVolume.isValid()
+        || sourceFieldVolume.spec.voxelCount() != composition.spec.voxelCount()) return false;
+
+    if (dcrteCompositionConfiguration.mode == MaterialCompositionMode.SCAFFOLD_ONLY) {
+      DCRTEVolume isolated = new DCRTEVolume(composition.spec);
+      for (int i = 0; i < isolated.active.length; i++) {
+        isolated.admitted[i] = sourceFieldVolume.admitted[i];
+        isolated.candidateSolid[i] = sourceFieldVolume.candidateSolid[i];
+        isolated.scalar[i] = sourceFieldVolume.scalar[i];
+        isolated.active[i] = composition.composedMaterial[i];
+        isolated.finalSolid[i] = composition.composedMaterial[i];
+      }
+      isolated.recountFinal();
+      boolean exactBaseline = materialize(isolated);
+      dcrteM6CopyLegacyToFlat(foundryCallSheetSolid, composition.regularizedMaterial,
+        composition.spec);
+      composition.recount();
+      composition.computeHash();
+      return exactBaseline;
+    }
+
+    boolean[][][] solid = dcrteM6ToLegacyBooleanVolume(composition.composedMaterial,
+      composition.spec);
+    if (solid == null) return false;
+    boolean[] beforeRegularization = java.util.Arrays.copyOf(
+      composition.composedMaterial, composition.composedMaterial.length);
+    foundryBridgeVoxels = regularizeFoundrySolid(solid, 24);
+
+    composition.lockedRemovalAttemptCount = 0;
+    composition.lockedRemovalCount = 0;
+    int clippedOutside = 0;
+    for (int z = 0; z < composition.spec.nz; z++) {
+      for (int y = 0; y < composition.spec.ny; y++) {
+        for (int x = 0; x < composition.spec.nx; x++) {
+          int index = composition.index(x, y, z);
+          if (composition.lockedMaterial[index] && beforeRegularization[index]
+              && !solid[x][y][z]) composition.lockedRemovalAttemptCount++;
+          if (solid[x][y][z] && !composition.domainInside[index]) {
+            solid[x][y][z] = false;
+            clippedOutside++;
+          }
+          if (composition.lockedMaterial[index]) solid[x][y][z] = true;
+          composition.regularizedMaterial[index] = solid[x][y][z];
+        }
+      }
+    }
+    foundryBridgeVoxels = max(0, foundryBridgeVoxels - clippedOutside);
+    for (int i = 0; i < composition.lockedMaterial.length; i++) {
+      if (composition.lockedMaterial[i] && !composition.regularizedMaterial[i]) {
+        composition.lockedRemovalCount++;
+      }
+    }
+    composition.recount();
+    composition.computeHash();
+    foundryCallSheetSolid = solid;
+
+    int n = composition.spec.nx;
+    String sourceName = dcrteImportedSourceMesh == null
+      ? "unknown" : dcrteImportedSourceMesh.sourceName;
+    foundryMesh = new SurfaceMesh("rdft_dcrte_m6_composed_" + sourceName);
+    for (int z = 0; z < n; z++) {
+      for (int y = 0; y < n; y++) {
+        for (int x = 0; x < n; x++) {
+          if (!solid[x][y][z]) continue;
+          addVoxelBoundaryFaces(foundryMesh, solid, x, y, z, n);
+        }
+      }
+    }
+    int[] audit = foundryMesh.manifoldAudit();
+    foundryBoundaryEdges = audit[0];
+    foundryNonManifoldEdges = audit[1];
+    foundryDegenerateFaces = audit[2];
+    boolean valid = foundryMesh.tris.size() > 0
+      && foundryBoundaryEdges == 0
+      && foundryNonManifoldEdges == 0
+      && foundryDegenerateFaces == 0
+      && composition.lockedRemovalCount == 0;
+    if (dcrteCompositionValidation != null) {
+      dcrteCompositionValidation.materializerValid = valid;
+      dcrteCompositionValidation.regularizedCount = composition.regularizedMaterialCount;
+      dcrteCompositionValidation.lockedRemovalCount = composition.lockedRemovalCount;
+      dcrteCompositionValidation.outsideCount = composition.outsideCount;
+      dcrteCompositionValidation.compositionHash = composition.compositionHash;
+      if (composition.lockedRemovalCount > 0) {
+        dcrteCompositionValidation.error(DCRTEM6Codes.LOCKED_SHELL_REMOVED,
+          "Materialization removed locked source-shell voxels.");
+      }
+      if (!valid) {
+        dcrteCompositionValidation.error(DCRTEM6Codes.MATERIALIZER_MANIFOLD_FAILURE,
+          "The composed voxel boundary failed the manifold materializer audit.");
+      }
+      dcrteEnvelopeFidelityReport = dcrteEnvelopeFidelityAnalyzer.analyze(
+        composition, dcrteImportedSdf, dcrteImportedWorldMesh);
+      dcrteCompositionValidation.fidelityReport = dcrteEnvelopeFidelityReport;
+    }
+    return valid;
+  }
+
   JSONObject toJSON() {
     JSONObject json = new JSONObject();
     json.setString("type", getId());
@@ -182,6 +283,60 @@ class LegacyVoxelMaterializerAdapter {
 }
 
 LegacyVoxelMaterializerAdapter dcrteLegacyMaterializer = new LegacyVoxelMaterializerAdapter();
+
+boolean[][][] dcrteM6ToLegacyBooleanVolume(boolean[] mask, VolumeSpec spec) {
+  if (mask == null || spec == null || !spec.isValid() || mask.length != spec.voxelCount()) return null;
+  boolean[][][] solid = new boolean[spec.nx][spec.ny][spec.nz];
+  for (int z = 0; z < spec.nz; z++) {
+    for (int y = 0; y < spec.ny; y++) {
+      for (int x = 0; x < spec.nx; x++) {
+        solid[x][y][z] = mask[x + spec.nx * (y + spec.ny * z)];
+      }
+    }
+  }
+  return solid;
+}
+
+void dcrteM6CopyLegacyToFlat(boolean[][][] solid, boolean[] target, VolumeSpec spec) {
+  if (solid == null || target == null || spec == null || target.length != spec.voxelCount()) return;
+  for (int z = 0; z < spec.nz; z++) {
+    for (int y = 0; y < spec.ny; y++) {
+      for (int x = 0; x < spec.nx; x++) {
+        target[x + spec.nx * (y + spec.ny * z)] = solid[x][y][z];
+      }
+    }
+  }
+}
+
+boolean materializeDcrteComposition() {
+  if (dcrteCompositionVolume == null || dcrteCompositionValidation == null
+      || !dcrteCompositionValidation.valid()) {
+    if (!composeDcrteCurrentMaterial()) return false;
+  }
+  DCRTEVolume source = dcrteSchedulerActiveVolume();
+  if (source == null) {
+    dcrteCompositionStatus = "composition materialization blocked - source field unavailable";
+    return false;
+  }
+  long started = millis();
+  boolean valid = dcrteLegacyMaterializer.materialize(dcrteCompositionVolume, source);
+  long elapsed = millis() - started;
+  dcrteCompositionMaterialized = valid;
+  dcrteCompositionStale = false;
+  dcrteCompositionStage = valid ? M6CompositionStage.MATERIALIZED : M6CompositionStage.BLOCKED;
+  dcrteCompositionStatus = valid
+    ? "composition materialized - " + foundryMesh.tris.size() + " triangles"
+    : "composition materializer audit failed";
+  foundryStatus = dcrteCompositionStatus;
+  foundryMeshStale = !valid;
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) dcrteImportedStale = !valid;
+  if (dcrteSchedulerController != null && dcrteSchedulerController.state != null) {
+    dcrteSchedulerController.materializedBatch = dcrteSchedulerController.state.batchIndex;
+    dcrteSchedulerController.materializedStateHash = dcrteSchedulerController.state.stateHash;
+    dcrteSchedulerController.diagnostics.materializationMillis = elapsed;
+  }
+  return valid;
+}
 
 boolean legacyCandidateSolid(float scalarValue) {
   return abs(scalarValue) < foundryIsoBand;
@@ -219,8 +374,16 @@ void generateDcrteImportedSurfaceMesh() {
   }
 
   boolean intrinsicRequired = dcrteCoordinateMode == DCRTECoordinateMode.INTRINSIC_AXIAL
-    || dcrteCoordinateComparisonMode == CoordinateComparisonMode.CARTESIAN_AND_INTRINSIC;
-  if (intrinsicRequired && (dcrteIntrinsicCoordinateSystem == null || !dcrteIntrinsicCoordinateSystem.isValid())) {
+    || dcrteCoordinateComparisonMode == CoordinateComparisonMode.CARTESIAN_AND_INTRINSIC
+    || dcrteHbeEnabled;
+  if (intrinsicRequired && !dcrteIntrinsicStateCurrent()) {
+    String staleIssue = dcrteIntrinsicStateIssue(dcrteIntrinsicBuildResult);
+    if (dcrteIntrinsicBuildResult != null && (staleIssue.equals("INTRINSIC_SOURCE_STALE")
+        || staleIssue.equals("INTRINSIC_GRID_MISMATCH") || staleIssue.equals("INTRINSIC_SOURCE_SDF_MISSING")
+        || staleIssue.equals("INTRINSIC_CENTERLINE_OUT_OF_BOUNDS") || staleIssue.equals("INTRINSIC_CENTERLINE_NONFINITE")
+        || staleIssue.equals("INTRINSIC_FRAME_NONFINITE") || staleIssue.equals("INTRINSIC_FRAME_SCALE_INVALID"))) {
+      invalidateDcrteIntrinsic(staleIssue);
+    }
     if (!buildDcrteImportedIntrinsicCoordinates()) {
       dcrteImportedStatus = "intrinsic materialization blocked - " + dcrteIntrinsicBuildStatus;
       foundryStatus = dcrteImportedStatus;
@@ -272,6 +435,25 @@ void generateDcrteImportedSurfaceMesh() {
   if (dcrteFieldEngine == null) dcrteFieldEngine = new LegacyTopologyScalarAdapter();
   dcrteFieldEngine.configure(buildConfig);
   float[] scores = buildConfig.topologyBlendCopy();
+  if (dcrteHbeEnabled && (dcrteHbePreparedObservables == null
+      || !dcrteHbeSpecsEqual(dcrteHbePreparedObservables.spec, spec))) {
+    if (!dcrteHbePrepareCurrentIntrinsic()) {
+      dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
+      dcrteImportedStatus = dcrteHbeStatus;
+      foundryStatus = dcrteImportedStatus;
+      return;
+    }
+  }
+  HBEFieldContext hbeFieldContext = dcrteHbePrepareFieldContext(spec);
+  if (dcrteHbeEnabled && dcrteHbeConfig.influenceMode.fieldEnabled()
+      && hbeFieldContext == null) {
+    dcrteHbeState = HBEState.FAILED;
+    dcrteHbeStatus = "HBE field blocked: frozen intrinsic grid does not match materializer grid";
+    dcrteImportedStatus = dcrteHbeStatus;
+    foundryStatus = dcrteImportedStatus;
+    return;
+  }
+  dcrteHbeFieldSensitivity = new HBEFieldSensitivityReport();
   DomainSample domainSample = new DomainSample();
   ObservationSample observationSample = new ObservationSample();
   long domainNanos = 0;
@@ -312,6 +494,9 @@ void generateDcrteImportedSurfaceMesh() {
           // Preserve the exact Milestone 2 Cartesian sampling baseline outside the admitted mask.
           scalarValue = dcrteSampleFoundryField(wx, wy, wz, scores);
         }
+        float baseScalarValue = scalarValue;
+        if (observationSample.admitted && coordinate.valid && hbeFieldContext != null)
+          scalarValue = dcrteHbeFieldModifier.modify(baseScalarValue, coordinate, idx, hbeFieldContext);
         volume.scalar[idx] = scalarValue;
         if (!dcrteFinite(scalarValue)) {
           volume.nonFiniteScalarCount++;
@@ -322,7 +507,11 @@ void generateDcrteImportedSurfaceMesh() {
             volume.firstNonFiniteZ = wz;
           }
         }
+        boolean baseCandidate = dcrteFinite(baseScalarValue) && legacyCandidateSolid(baseScalarValue);
         boolean candidate = dcrteFinite(scalarValue) && legacyCandidateSolid(scalarValue);
+        if (hbeFieldContext != null)
+          dcrteHbeFieldSensitivity.observe(idx, baseScalarValue, scalarValue,
+            baseCandidate, candidate, hbeFieldContext);
         volume.candidateSolid[idx] = candidate;
         if (candidate) volume.candidateSolidCount++;
         boolean active = dcrteImmediateScheduler.activate(observationSample.admitted, candidate);
@@ -354,6 +543,7 @@ void generateDcrteImportedSurfaceMesh() {
       }
     }
   }
+  dcrteHbeFieldSensitivity.finish();
   report.domainBuildMillis = domainNanos / 1000000L;
   report.fieldSampleMillis = fieldNanos / 1000000L;
   if (pairedComparison) {
@@ -398,14 +588,21 @@ void generateDcrteImportedSurfaceMesh() {
     }
   }
   volume.recountFinal();
-  long materializeStart = millis();
-  boolean materializerSucceeded = dcrteLegacyMaterializer.materialize(volume);
-  report.materializeMillis = millis() - materializeStart;
-
-  dcrteImportedVolume = volume;
   dcrteLastDomain = dcrteImportedDomain;
   dcrteLastObserver = observer;
   dcrteLastObservation = observation;
+  if (!dcrtePrepareSchedulerForVolume(volume, dcrteImportedDomain, observer, buildConfig)) {
+    dcrteImportedBuildState = DCRTEImportedBuildState.SDF_FAILED;
+    dcrteImportedStatus = "scheduler initialization failed";
+    foundryStatus = dcrteImportedStatus;
+    return;
+  }
+  long materializeStart = millis();
+  boolean materializerSucceeded = dcrteLegacyMaterializer.materialize(volume);
+  report.materializeMillis = millis() - materializeStart;
+  dcrteRecordExternalMaterialization(report.materializeMillis);
+
+  dcrteImportedVolume = volume;
   validateDcrteVolume(report, volume, dcrteImportedDomain, materializerSucceeded);
   report.totalMillis = millis() - totalStart;
   dcrteLastBuildMillis = report.totalMillis;
@@ -513,16 +710,22 @@ void generateDcrtePrimitiveSurfaceMesh() {
 
   dcrteBuildStage = "APPLYING OBSERVATION";
   volume.recountFinal();
+  dcrteLastDomain = domain;
+  dcrteLastObserver = observer;
+  dcrteLastObservation = observation;
+  if (!dcrtePrepareSchedulerForVolume(volume, domain, observer, buildConfig)) {
+    dcrteBuildStage = "SCHEDULER FAIL";
+    foundryStatus = "scheduler initialization failed";
+    return;
+  }
   long materializeStart = millis();
   dcrteBuildStage = "MATERIALIZING";
   boolean materializerSucceeded = dcrteLegacyMaterializer.materialize(volume);
   report.materializeMillis = millis() - materializeStart;
+  dcrteRecordExternalMaterialization(report.materializeMillis);
 
   dcrteBuildStage = "VALIDATING";
   dcrtePrimitiveVolume = volume;
-  dcrteLastDomain = domain;
-  dcrteLastObserver = observer;
-  dcrteLastObservation = observation;
   validateDcrteVolume(report, volume, domain, materializerSucceeded);
   report.totalMillis = millis() - totalStart;
   dcrteLastBuildMillis = report.totalMillis;
@@ -549,7 +752,17 @@ boolean foundryRaisedVeinsApplied() {
 }
 
 String dcrteRaisedVeinsPolicy() {
+  if (dcrteSchedulerController != null && dcrteSchedulerController.state != null
+      && dcrteSchedulerController.state.runState != SchedulerRunState.COMPLETE) {
+    return "disabled_for_partial_scheduler_state";
+  }
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) return "disabled_until_imported_sdf_clipping";
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_PRIMITIVE) return "legacy_behavior";
   return "disabled_until_domain_clipping";
+}
+
+String dcrteBaseRaisedVeinsPolicy() {
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) return "disabled_until_imported_sdf_clipping";
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) return "disabled_until_domain_clipping";
+  return "legacy_behavior";
 }

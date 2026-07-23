@@ -93,6 +93,7 @@ void cycleDcrtePipelineMode() {
     dcrtePipelineMode = DCRTEPipelineMode.LEGACY_DIRECT;
     dcrteAdapterDiagnostics.status = "IDLE";
   }
+  dcrteInvalidateScheduler("pipeline changed; rebuild candidate volume");
   if (previous == DCRTEPipelineMode.DCRTE_PRIMITIVE || dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
     markDcrtePrimitiveStale("pipeline changed; regenerate");
   }

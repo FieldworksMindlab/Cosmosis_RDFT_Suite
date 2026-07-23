@@ -120,6 +120,54 @@ DCRTEM2TestReport runDcrteMilestone2Tests() {
     if (sphereSdf != null) sphereSdf.sdf.normalWorld(0.7f, 0, 0, sphereNormal);
     tests.check(sphereSdf != null && sphereSdf.sdf.sampleWorld(0,0,0) < 0 && sphereSdf.sdf.sampleWorld(0.99f,0.99f,0.99f) > 0, "sphere SDF sign");
     tests.check(sphereSdf != null && sphereNormal[0] > 0.5f, "sphere SDF normal outward");
+
+    File replacementSphere = new File(directory, "reload_sphere_binary.stl");
+    writeDcrteBinaryStl(createDcrteUvSphereFixture(1, 8, 12), replacementSphere,
+      "DCRTE sequential replacement sphere");
+    boolean firstReplacementLoad = loadDcrteImportedFile(binaryCube, false, null);
+    if (firstReplacementLoad && cubeSdf != null) {
+      dcrteImportedBoundary = cubeSdf.boundary;
+      dcrteImportedInsideOutside = cubeSdf.classification;
+      dcrteImportedSdf = cubeSdf.sdf;
+      dcrteImportedDomain = cubeSdf.domain;
+      dcrteImportedSdfDirty = false;
+      dcrteImportedStale = false;
+      dcrteIntrinsicBuildResult = new IntrinsicBuildResult();
+      dcrteIntrinsicBuildResult.validation = new IntrinsicValidationReport();
+      dcrteIntrinsicCoordinateSystem = new IntrinsicAxialCoordinateSystem(null,
+        dcrteIntrinsicBuildResult.validation, 1.0f, 1.0f, IntrinsicFallbackPolicy.BLOCK);
+      dcrteCoordinateComparisonReport = new DCRTECoordinateComparisonReport();
+    }
+    boolean secondReplacementLoad = loadDcrteImportedFile(replacementSphere, false, null);
+    boolean replacementCoherent = secondReplacementLoad
+      && dcrteImportedSourceMesh != null && dcrteImportedWorldMesh != null
+      && dcrteImportedMeshReport != null && dcrteImportedTransform != null
+      && dcrteImportedPreflightReport != null
+      && dcrteImportedSourceMesh.sourceHashSha256.equals(dcrteImportedWorldMesh.sourceHashSha256)
+      && dcrteImportedSourceMesh.sourceHashSha256.equals(dcrteImportedPreflightReport.sourceHashSha256)
+      && dcrteImportedPreflightReport.meshReport == dcrteImportedMeshReport;
+    tests.check(firstReplacementLoad && replacementCoherent,
+      "sequential imported-domain replacement commits one coherent mesh generation");
+    tests.check(dcrteImportedBoundary == null && dcrteImportedInsideOutside == null
+      && dcrteImportedSdf == null && dcrteImportedDomain == null && dcrteImportedVolume == null
+      && dcrteImportedSdfDirty && dcrteImportedStale && dcrteIntrinsicBuildResult == null,
+      "successful replacement invalidates every source-dependent derived artifact");
+
+    TriangleMeshData retainedSource = dcrteImportedSourceMesh;
+    TriangleMeshData retainedWorld = dcrteImportedWorldMesh;
+    MeshDomainReport retainedMeshReport = dcrteImportedMeshReport;
+    MeshTransform retainedTransform = dcrteImportedTransform;
+    DomainPreflightReport retainedPreflight = dcrteImportedPreflightReport;
+    DCRTEImportedBuildState retainedBuildState = dcrteImportedBuildState;
+    boolean failedReplacement = loadDcrteImportedFile(malformed, false, null);
+    tests.check(!failedReplacement && dcrteImportedSourceMesh == retainedSource
+      && dcrteImportedWorldMesh == retainedWorld && dcrteImportedMeshReport == retainedMeshReport
+      && dcrteImportedTransform == retainedTransform && dcrteImportedPreflightReport == retainedPreflight
+      && dcrteImportedBuildState == retainedBuildState && dcrteImportedAttemptPreflightReport != null
+      && dcrteImportedAttemptPreflightReport.qualification == DomainQualification.PARSE_FAILED,
+      "failed replacement preserves the complete accepted domain and reports the rejected attempt");
+    resetDcrteImportedStateAfterReloadTests();
+
     if (cubeSdf != null) {
       int hardCount = dcrteCountImportedAdmitted(cubeSdf.domain, new HardInteriorObservation(dcrteBoundaryEpsilon(cubeSdf.sdf.spec)));
       int shellCount = dcrteCountImportedAdmitted(cubeSdf.domain,
@@ -164,6 +212,28 @@ DCRTEM2TestReport runDcrteMilestone2Tests() {
     tests.check(false, "M2 deterministic test exception: " + error.getClass().getSimpleName() + " " + error.getMessage());
   }
   return tests;
+}
+
+void resetDcrteImportedStateAfterReloadTests() {
+  dcrteImportedSourceMesh = null;
+  dcrteImportedMeshReport = null;
+  clearDcrteImportedDerivedState();
+  dcrteImportedSourceIsFixture = false;
+  dcrteImportedFixtureMetadata = null;
+  dcrteImportedRotateX = 0;
+  dcrteImportedRotateY = 0;
+  dcrteImportedRotateZ = 0;
+  dcrteImportedScaleMultiplier = 1.0f;
+  dcrteImportedStale = true;
+  dcrteImportedSdfDirty = true;
+  dcrteImportedBuildState = DCRTEImportedBuildState.NO_MESH;
+  dcrteImportedStatus = "load a watertight STL";
+  dcrteImportedErrorCode = "";
+  dcrteImportedErrorMessage = "";
+  dcrteImportedPreflightReport = new DomainPreflightReport();
+  dcrteImportedAttemptPreflightReport = null;
+  dcrtePreflightPanelOpen = false;
+  dcrtePreflightIssueIndex = 0;
 }
 
 DCRTEM2FixtureSdf dcrteBuildFixtureSdf(TriangleMeshData fixture, int resolution) {
