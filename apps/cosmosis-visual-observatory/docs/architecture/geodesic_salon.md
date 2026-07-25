@@ -179,12 +179,14 @@ remain available for one-off and replacement parts.
 
 ## KICAS Assembly Contract
 
-KICAS is additive and does not replace the legacy portal-and-mate-code path. A
-deterministic breadth-first planner assigns `P001` to the seed and gives every
-later placement a parent face, insertion vector, and reciprocal lock role.
-Tree edges receive integral male/female slide captures. Non-tree shared edges
-remain alignment relationships, and the final designated key closes the
-ordered sequence.
+KICAS stands for **Kinematic Integral Capture Assembly System**. The contract
+is additive and does not replace the legacy portal-and-mate-code path. In this
+mode, assembly is treated as an ordered motion plan: a deterministic
+breadth-first planner assigns `P001` to the seed and gives every later
+placement a parent face, insertion vector, and reciprocal lock role. Tree edges
+receive integral male/female slide captures printed into the panel geometry.
+Non-tree shared edges remain alignment relationships, and the final designated
+key closes the ordered sequence.
 
 Every triangle edge retains exactly one enlarged portal at edge station `0.5`.
 The operator first seats the integral capture, then aligns the matching center

@@ -209,8 +209,12 @@ assignment plan.
 
 ### KICAS Assembly
 
-`KICAS` is an optional assembly mode layered beside the preserved
-`LEGACY PORTAL` workflow. It creates a deterministic breadth-first installation
+`KICAS` means **Kinematic Integral Capture Assembly System**. It is an
+optional assembly mode layered beside the preserved `LEGACY PORTAL` workflow.
+The name describes the intent: the panel motion is ordered and kinematic, the
+locking features are printed directly into the panel geometry, and each new
+part captures against an already seated parent before optional tie
+reinforcement is added. It creates a deterministic breadth-first installation
 plan with one physical STL per shell placement. Every part carries a unique
 raised interior `P###` mark; `P001` is the seed, each subsequent part names its
 parent and insertion vector in `assembly_plan.json`, and the designated key part

@@ -39,4 +39,6 @@ length and bubble-aware dihedral metadata. Shells are gated by topology,
 boundary-chain, discrete Gauss-Bonnet, and manifold checks. Optional raised
 mate codes are audited per reusable type and fall back to documented
 BOM/JSON/guide codes if the emboss alone would invalidate an otherwise
-fabricable panel.
+fabricable panel. Its optional KICAS mode, the Kinematic Integral Capture
+Assembly System, exports placement-specific parts with integral lock features,
+center tie portals, and ordered `P###` assembly labels.
