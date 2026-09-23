@@ -32,6 +32,7 @@ The sketch uses Processing's built-in Java mode and hand-rolled UI controls.
 8. Topology Lab / Phase Atlas
 9. Surface Foundry
 10. Geodesic Salon
+11. Truss Yard
 
 ## Controls
 
@@ -43,12 +44,15 @@ The sketch uses Processing's built-in Java mode and hand-rolled UI controls.
 - Press `O` to open a Cosmosis/RDFT CSV run and create a run-imprint profile.
 - Press `U` to reload generated database/Cosmosis material cache files.
 - Press `V` or click `APPLY` to map the selected material profile into the RDFT controls.
-- `1` through `9` selects an established workspace; `0` opens Geodesic Salon.
+- `1` through `9` selects an established workspace; `0` opens Geodesic Salon; `T` opens Truss Yard; `B` opens HBE.
 - Press `G` in Surface Foundry to generate a printable mesh.
 - Press `C` or click `CALL SHEET` in Surface Foundry to generate PNG drafting sheets, source STL, relief STLs, and metadata.
 - Click `PULL SVG` or press `X` after a call sheet when you explicitly want plotter/vector SVG files for the current render strategy.
 - Press `E` in Surface Foundry to export STL plus metadata JSON.
 - Press `N` in Surface Foundry to cycle the geometry carrier used for field wrapping.
+- Press `W`, or use the field control in Holonomy Loom, to cycle the Loom-owned
+  field through `OFF`, `SKIN`, `VOLUME`, and `RELIEF`. `CAPTURE FOR FOUNDRY`
+  freezes the exact visible field artifact used by mesh generation.
 - Use the Geodesic Salon controls to rebuild domes, inspect face-local growth,
   toggle the Plateau junction diagnostic, choose `ASSEMBLY GUIDE SVG ON/OFF`,
   preview deterministic panel-color assignments, and export a deduplicated
@@ -58,6 +62,41 @@ The sketch uses Processing's built-in Java mode and hand-rolled UI controls.
 - `R` resets orbit/trails.
 - `H` toggles help.
 - `S` saves a frame to `exports/`.
+
+## Holonomy Loom Field Atlas
+
+Holonomy Loom owns a canonical adaptive field atlas produced by its closed
+adiabatic alpha/depth sweep. The atlas is visible inside the parameter loop and
+again in an enlarged inspector. Phase is encoded by hue, field magnitude by
+brightness, stepped cell outlines by local recursion scale, and bright seams by
+the differential gradient where cell scales meet. Landmarks `A` through `D`
+provide stable reference points.
+
+`CAPTURE FOR FOUNDRY` freezes that exact atlas, including its artifact ID,
+orientation, accumulated phase, recursion depths, cell spans, gradients, and
+landmarks. Surface Foundry does not synthesize a second approximation. It maps
+domain coordinates into the captured atlas and samples the same stored values
+through the selected carrier. Generating a mesh automatically captures the live
+atlas if the operator has not already done so.
+
+- `SKIN` concentrates the woven field toward the domain boundary.
+- `VOLUME` carries mixed recursion through the admitted interior.
+- `RELIEF` converts half-integer recursion transitions into an explicit ridge
+  channel while retaining a lower-amplitude woven field.
+
+Sphere, box, and cylinder primitives use periodic domain-aware coordinates.
+Imported meshes use intrinsic axial coordinates and parallel-transported frames
+when `INTRINSIC AXIAL` is selected; Cartesian imported mode uses the periodic
+spherical fallback. The exact aperiodic monotile substrate suppresses this
+layer to preserve its separate recursion and audit contract.
+
+Exports record the Loom artifact schema and SHA-256 identity, requested/applied
+mode, atlas dimensions, cell-span range, recursion range, phase accumulation and
+closure error, domain mapping, and landmark samples. The adaptive steps are
+literal cells in the canonical parameter atlas. The fabrication mesh continues
+to use its established audited uniform observer, sampling that same piecewise
+field so existing regularization, manifold audits, and STL export gates remain
+authoritative.
 
 ## Geodesic Salon
 
@@ -76,6 +115,47 @@ rhombic seed faces remain `STELLATION N/A` because their current triangular
 decompositions include support diagonals that are not original polygon edges.
 Every generated face receives a stable ID, edge neighbors, a parent seed face,
 barycentric coordinates, and a normalized center-to-edge coordinate.
+
+### Fabrication Size Presets
+
+Geodesic Salon exposes four assembled-size modes without changing the selected
+family, frequency, cap, panel style, assembly method, or paint plan:
+
+- `MICRO` resolves the smallest audited kit that still preserves the current
+  minimum rail, wall, portal, skin, miter, and label requirements.
+- `12 IN` resolves an assembled dome or shell that measures `304.8 mm` across
+  its widest horizontal span. It is the desktop-model reference size, not a
+  12-inch circumference.
+- `P1S MAX` enlarges the assembled model until its limiting unique part reaches
+  a conservative `246 x 246 x 246 mm` Bambu P1S-safe envelope. This preserves
+  the existing 5 mm margins inside the printer's 256 mm build volume.
+- `CUSTOM` preserves direct radius adjustment and reports whether the largest
+  generated part fits that same P1S envelope.
+
+The readout reports assembled diameter, limiting part ID, part dimensions, and
+fit state. A preset becomes unavailable instead of weakening fabrication
+features when its requested size conflicts with the current topology or panel
+contract. Kit manifold, seam, portal, and 3MF package audits still run normally;
+printer presets establish geometry and bed fit, not material or slicer settings.
+
+### Aperiodic Atlas Mode
+
+The `TOPOLOGY` control adds an isolated `APERIODIC` provider beside the
+preserved `POLYHEDRAL` generator. Choose either an exact local Hat substitution
+manifest or a deterministic Penrose P3 de Bruijn five-grid field. Each source
+is projected through six cube-map charts onto the same qualified triangular
+carrier used by the established dome fabrication pipeline. The aperiodic field
+therefore controls logical tile identity, visual grouping, assembly order, and
+provenance; it does not replace audited panel geometry with fragile arbitrary
+polygons.
+
+Aperiodic mode is dome-first and requires KICAS ordering. `TILE`, `CHART`,
+`DISTORTION`, and `DEFECT` overlays expose the mapped structure before export.
+The atlas writes `aperiodic_atlas.json`, per-placement atlas identity in
+`assembly_plan.json`, and `GS-005_aperiodic_atlas.png`; SVG follows the existing
+guide SVG opt-in. Complete aperiodic spheres may be visualized, but kit export
+remains locked until chart-seam closure is explicitly qualified. Existing
+polyhedral families and their fabrication behavior are unchanged.
 
 The fabrication contract treats every currently visualized shell as a
 fabrication problem with an explicit resolution method:
@@ -211,10 +291,10 @@ assignment plan.
 
 `KICAS` means **Kinematic Integral Capture Assembly System**. It is an
 optional assembly mode layered beside the preserved `LEGACY PORTAL` workflow.
-The name describes the intent: the panel motion is ordered and kinematic, the
-locking features are printed directly into the panel geometry, and each new
-part captures against an already seated parent before optional tie
-reinforcement is added. It creates a deterministic breadth-first installation
+The name describes the intent: panel motion is ordered and kinematic, locking
+features are printed directly into the panel geometry, and each new part
+captures against an already seated parent before optional tie reinforcement is
+added. It creates a deterministic breadth-first installation
 plan with one physical STL per shell placement. Every part carries a unique
 raised interior `P###` mark; `P001` is the seed, each subsequent part names its
 parent and insertion vector in `assembly_plan.json`, and the designated key part
@@ -374,6 +454,9 @@ schedules, and color-batched STL naming. Use
 `--geodesic-export-plate-kit` instead of `--geodesic-export-kit` to add the
 per-color generic 3MF plates and their validation package.
 
+Add `--geodesic-aperiodic-hat` or `--geodesic-aperiodic-penrose` to exercise
+the corresponding dome atlas, forced KICAS contract, and GS-005 export.
+
 ## Material Targets
 
 The left rail includes a material target selector with three source modes:
@@ -514,16 +597,20 @@ when requested. After `CALL SHEET`, click `PULL SVG` or press `X` to write:
 - `call_sheet/output/*_surface_silhouette.svg`
 - `call_sheet/output/*_voxel_lattice.svg`
 
-The SVG pull uses the current `TONAL LINES` or `GRAPHIC BW` render strategy and
+The SVG pull uses the current `TONAL` or `GRAPHIC BW` render strategy and
 updates the matching manifest with `svg_available: true`.
 
 The drawing layout follows the Surface Foundry call-sheet spec: a 3 by 3
 matrix of rotated orthographic isometric views, plus one large standard
 isometric view on the right. `surface_silhouette` emphasizes shadowed surface
 regions and bold contour-like linework; `voxel_lattice` now draws exposed voxel
-cube edges plus a sampled internal lattice. `TONAL LINES` keeps the descriptive
-black-line accumulation pass, while `GRAPHIC BW` switches to strict black and
-white drafting with white occlusion masks, visible-shell extraction, binary
+cube edges plus a sampled internal lattice. `TONAL` uses seven deterministic
+depth bands from light gray to near-black, thins distant interior edges as voxel
+resolution rises, and preserves the darkest/heaviest strokes for near exposed
+structure. The grayscale is written as actual SVG stroke colors rather than
+stacked transparency, so the bands can be mapped to plotter pens, pressure, or
+media-depletion studies. `GRAPHIC BW` switches to strict black and white
+drafting with white occlusion masks, visible-shell extraction, binary
 hatch regions, sparse internal structure, and a final outline pass. In voxel
 mode, graphic drafting avoids solid mass fills and uses exposed voxel edges plus
 controlled crosshatching so the form stays legible instead of collapsing into a
@@ -602,7 +689,7 @@ the Milestone 1 refactor inventory are in
 
 Milestone 1 adds a third, opt-in Surface Foundry pipeline: `PIPE DCRTE
 PRIMITIVE`. In this mode, the recursive field remains unchanged. Sphere, box,
-and cylinder domains act as finite observation constraints. Material is produced
+cylinder, and physical panel domains act as finite observation constraints. Material is produced
 only where the selected domain admits a field sample and the existing Surface
 Foundry material rule classifies that sample as solid.
 
@@ -610,8 +697,9 @@ The field carrier and observation domain are deliberately separate:
 
 - **Field carrier** is the selected TPMS, manifold, lattice, or fractal used by
   `foundryScalar(...)` to wrap and combine the RDFT field.
-- **Observation domain** is an analytic sphere, axis-aligned box, or finite
-  Y-axis cylinder that decides where samples may become material.
+- **Observation domain** is an analytic sphere, axis-aligned box, finite
+  Y-axis cylinder, continuous panel, or smoothly fused spheroid-cell panel that
+  decides where samples may become material.
 
 Changing the observation domain does not deform a finished mesh and does not
 change the field equations. It creates a new finite observation of the same
@@ -622,13 +710,44 @@ field configuration.
 Cycle the Surface Build pipeline button until the preview reads `DCRTE-ET
 PRIMITIVE DOMAIN`. Its overlay provides clickable controls for:
 
-- `DOMAIN`: sphere, box, or cylinder;
+- `DOMAIN`: sphere, box, cylinder, or panel;
 - `HARD INTERIOR` / `SHELL BAND` observation;
 - `RES`: `32^3`, `64^3`, or `128^3` voxel-center sampling;
 - domain wireframe visibility;
 - inward shell thickness in voxel units;
 - center-slice visibility;
 - explicit `BUILD` and `VALIDATE` actions.
+
+### Physical panel domains
+
+Select `DOMAIN PANEL` to open the physical panel controls. Panel width, height,
+and depth are specified in millimeters. The longest dimension becomes the
+Surface Foundry scale and the other axes retain their physical proportions
+inside the established cubic observer, preserving isotropic voxels and carrier
+geometry rather than stretching the field.
+
+Two layouts are available:
+
+- `CONTINUOUS` evaluates one global field/carrier observation throughout a
+  rectangular panel envelope.
+- `CELLS` creates a rows-by-columns array of spheroids. Each cell evaluates the
+  same field in cell-local coordinates. Adjacent values blend across the two
+  nearest cells, while the observation domains use a polynomial smooth union
+  controlled by `OVL`. The result is one fused body with a naturally scalloped
+  perimeter rather than a rectangular clipping frame.
+
+Panel controls provide independent width, height, depth, rows, columns, and
+overlap adjustments. The status line reports the nominal cubic observer and the
+effective occupied voxel count along the physical panel axes. `BAND` remains
+the Surface Foundry material/TPMS iso-band control; panel depth is an independent
+outer-envelope dimension. `HARD INTERIOR` fills the admitted panel with field
+geometry, while `SHELL BAND` restricts material generation to an inward band of
+the panel or fused-cell boundary.
+
+Panel export metadata uses schema `0.8-panel` and records the physical
+dimensions, layout, grid, cell count, overlap, smooth-union blend, natural
+scalloped-boundary policy, field mapping, observer, exact captured field state,
+carrier, iso band, and validation results.
 
 The normal `GENERATE MESH`, `G`, call-sheet, and STL controls dispatch through
 the selected pipeline. No primitive volume is rebuilt continuously in
@@ -1043,3 +1162,282 @@ the layer is disabled.
 
 See [the M6-HX Holographic Bridge Explorer architecture](docs/architecture/dcrte_holographic_bridge_explorer.md)
 and [implementation report](DCRTE_M6_HX_IMPLEMENTATION_REPORT.md).
+
+### Aperiodic Monotile Substrate
+
+Surface Foundry includes an optional `APERIODIC MONOTILE` carrier alongside
+the existing TPMS, Hopf, and fractal geometries. Levels 1–3 expose exact hat
+substitution patches containing 25, 169, and 1,156 tiles. The fixed carrier can
+be blended through the normal RDFT field pipeline, while an independent
+`EXPORT CONNECTED SWATCH` action creates a manifold 90 mm relief plate. One
+interior tile can be left plain, raised as a visible `BUMP`, or removed as a
+large `HOLE`. This geometry-only mode makes no optical, photonic, quantum,
+material-response, or CRE beam-behavior claim.
+
+See [the Aperiodic Monotile Substrate architecture and operating instructions](docs/architecture/dcrte_aperiodic_monotile.md).
+
+## Truss Yard
+
+Truss Yard is an additive fabrication workspace for modular masts and tunnels.
+It now has two deliberately separate build modes: `TRIANGLE FRAMES` generates
+reusable open triangular structural panels with one centerline-facing shared
+zip-tie aperture on every edge; `SKELETON STUDY` retains the earlier octahedral
+node-and-strut model as a visual structural study. Neither mode modifies a
+Geodesic Salon kit. With `MATCH DOME` on, the workspace reads the live salon
+scale only as a reference for a separate adapter study.
+
+Triangle-frame portals follow a reciprocal shared-edge contract. Each mating
+edge pair owns one world-space four-corner aperture. Its broad plane contains
+the radial direction and the seam line, so the closed zip-tie loop lies in a
+plane through the structural axis rather than producing mirrored local slots.
+Both panels taper to that same opening, and export is blocked if their aperture
+corners, approach orientation, or throat position do not agree.
+
+### Section, twist, and wall folds
+
+The cross-section is selectable: `TRIANGLE`, `SQUARE`, `PENTAGON`, `HEXAGON`,
+`OCTAGON`, and `DODECAGON`. Wider sections are strongly preferred for printing.
+A square section corner folds to a 90-degree interior dihedral before twist is
+applied and sharper after, which drives the half-miter close to the rail-width
+budget; a hexagon or octagon corner sits at 120 or 135 degrees and miters
+comfortably.
+
+Wall folds obey a geometric constraint worth stating plainly: **a twisted
+segmented tube cannot be convex everywhere.** The panels above and below a bay
+ring are coplanar only when consecutive rings are aligned, so any twist that is
+not a whole section step leaves exactly one concave crease ring at every bay
+interface — `sides x (bays - 1)` concave joints. No choice of split diagonal,
+twist direction, or bay-to-bay alternation removes them. What the generator
+*must* avoid is concavity beyond that floor, which the previous fixed-diagonal
+split produced by always cutting each non-planar bay quad the same way.
+
+The workspace therefore reports concave joints as *forced* versus *avoidable*,
+blocks export on any avoidable concavity, and shows the nearest fully convex
+twist next to the twist control. Set twist to a multiple of `360 / sides` for a
+wall with no concave creases at all.
+
+Zip-tie access side is recorded per orientation — a tunnel is entered so its
+ties are threaded from the bore, while a mast is a sealed shaft that can only be
+reached from outside. Only interior access is realised in geometry today: panels
+are extruded along the negative face normal by the shared Geodesic Salon
+fabrication mapping, and that normal also classifies joints as convex or
+concave, so it cannot simply be reversed. The manifest and assembly guide mark
+an unrealised access side explicitly.
+
+### What blocks export, and what is only measured
+
+Export is blocked on geometry that is wrong at any scale:
+
+- **Sealed part audit** — every reusable frame STL is closed and orientable.
+- **Avoidable concavity** — concave folds beyond the forced crease rings.
+- **Portal pair audit** — paired apertures agree on corners, throat, and
+  approach direction.
+- **Cross-seam gap** — mating rail ends lie on one line within `0.05 mm`.
+
+Everything else is measured and reported, not gated. Thresholds get set from
+real builds; a gate invented ahead of the data blocked every kit once already:
+
+- **Seam overlap** — length of shared edge over which both panels actually carry
+  rail. This is the coverage measure.
+- **Seam trim asymmetry** — reported because it is easy to mistake for a gap.
+  It compares the two panels at the same *parameter* along their miter lines,
+  and adjacent triangles legitimately trim their rail ends by different amounts,
+  so equal-parameter points sit apart by exactly that difference. Values of
+  several millimetres are normal and mean nothing has opened.
+- **Portal depth excursion** — how far an aperture strays outside its panel's
+  own depth range.
+- **Fastener fit** — see below.
+
+The portal approach direction is audited against the panel depth axis
+**measured through the assembly transform that places the exported mesh**, not
+against the function that built the aperture. The earlier check called that
+function for both jobs, so it reported exactly zero error on every kit and could
+never fail.
+
+### Fasteners and print scale
+
+An aperture is in model millimetres and a zip tie is a real object, so the two
+only meet at a print scale. A 50 mm model mast cannot pass a 2.5 mm tie at
+100% — a fact about scale, not a defect in the geometry, and scale is a slicer
+decision. So the workspace reports the **minimum print scale at which the
+declared stock passes** and never blocks on it.
+
+Declared stock defaults to a `2.5 x 1.0 mm` tie with `0.35 mm` clearance; set
+`trussZipTieWidthMM`, `trussZipTieThicknessMM`, and `trussZipTieClearanceMM` to
+match what you have. The readout and TY-001's fastening schedule both print the
+required scale, the tightest portal, and the joint that sets it.
+
+### Auditing an exported kit
+
+`tools/truss_audit.py` re-derives every gate from the exported STLs and assembly
+plan rather than trusting the manifest the sketch writes about itself:
+
+```bash
+python3 tools/truss_audit.py exports/truss_yard/<stamp>_octa_<label>_b<n>
+```
+
+It reports per-part manifoldness, true congruence classes at print tolerance
+(so duplicate part numbers for one physical shape are caught), the forced versus
+avoidable concavity split, cross-seam gap, seam overlap against rail width, and
+which side each portal actually presents to. It exits non-zero on failure.
+
+### Assembly call sheets
+
+Every `TRIANGLE FRAMES` export writes its own call sheets into
+`<folder>/call_sheets/`, as PNG and SVG, exactly as the dome guides do. They are
+drawn with the same canvas primitives as the Geodesic Salon guides, which now
+take a page size so a portrait sheet can share them; the landscape defaults
+leave dome output unchanged.
+
+`tools/truss_call_sheet.py` renders the same two sheets offline from the
+`assembly_plan.json`, `manifest.json`, and `bill_of_materials.json` of any
+existing export, which is useful for kits exported before the sheets existed:
+
+```bash
+python3 tools/truss_call_sheet.py exports/truss_yard/<folder>
+```
+
+Two A2 sheets, in the same technical-drawing
+language as the Geodesic Salon guides — black on white, double page frame, ruled
+section headers, Fieldworks MindLAB title block. They are **portrait** where the
+dome sheets are landscape, because a mast or tunnel is long on one axis and
+wastes most of a landscape page.
+
+- `TY-001_assembly_overview.svg` — isometric elevation (turned so the structure's
+  axis runs down the page), build data, fastening schedule, part catalog, wall
+  fold accounting, station key, and dimensioned flat plates of every panel type
+  so a printed part can be identified in the hand.
+- `TY-002_wall_development.svg` — the tube wall unrolled flat about its axis,
+  with every panel's part and face number, every shared joint marked at its
+  actual tie point (filled for a concave crease, open for a convex joint), and a
+  joint schedule grouped by distinct geometry rather than listing every joint.
+
+Output is SVG with the logo embedded, so the sheets are self-contained and print
+at any size.
+
+### Printing a mast or tunnel as one solid
+
+The assembly preview is a correct but self-intersecting pile of individually
+closed panels, which is fine to look at and wrong to print: a slicer filling
+that pile by the even-odd rule treats double-covered overlap as *outside* and
+can hollow out the seams.
+
+`PULL UNION + KIT` exports the full kit **and**
+`triangulated_frame_<label>_watertight_union.stl` — one watertight solid unioned
+from the placed panels, produced by `Truss_Union.pde`. `EXPORT TRUSS` skips it,
+because the union is a large file and most exports do not want one.
+
+The union samples the preview's **non-zero winding number** on a regular grid,
+which is the part that makes overlapping panels count as solid instead of
+cancelling, then extracts the boundary with surface nets.
+
+**Watertight here means no holes _and_ no non-manifold edges.** Surface nets
+places one vertex per group of solid corners in a cell, but the surface crossing
+that cell has one sheet per (solid group, empty group) pair. Where there are
+more sheets than vertices, one vertex serves two sheets and the mesh pinches
+into an edge with four incident faces — which slicers reject even though there
+is no hole. Those cells are filled solid before extraction, which costs at most
+one voxel of material at a handful of pinch points. Splitting them into separate
+vertices instead was measured tearing roughly 2500 holes, which is far worse.
+
+`tools/truss_union.py` runs the identical algorithm offline on any export:
+
+```bash
+python3 tools/truss_union.py exports/truss_yard/<folder> --voxel 0.5
+```
+
+The two implementations are kept byte-for-byte equivalent in behaviour — same
+grid, same triangle count, same volume — so the tool is a faithful preview of
+what the sketch writes. Any change to one belongs in both.
+
+**Authority.** The parts in `parts/` remain the fabrication authority; print
+those to *assemble* a truss. The union is the render authority: print it when
+you want the mast or tunnel as a single body. It is deliberately never added to
+the sealed component list, so it cannot influence the audit that gates export.
+
+Sampling defaults to `0.55 mm` (`trussUnionVoxelMM`), coarsened automatically if
+a long mast would exceed the cell budget, so an export cannot run away on
+memory.
+
+Two notes on what "watertight" means here. The output is **closed**: no holes,
+no flipped faces, positive volume. It is not always strictly 2-manifold; a cell
+carrying two sheets of surface can leave an edge with four incident faces. The
+tool reports that pinch count separately. Splitting those cells fully does
+produce a 2-manifold mesh but tears thousands of holes in the process, and a
+slicer tolerates pinch edges while holes defeat it, so closure is the gate.
+
+Resolution is a straight trade: `--voxel 0.6` is a good default, smaller values
+capture the portal slots more crisply at roughly cubic cost in time and
+triangles. `--smooth` sets Laplacian relaxation passes, each clamped inside its
+own cell so the surface cannot migrate across a rail and pinch it off.
+
+Triangle-frame rail ends now use reciprocal half-dihedral miters. The two
+panels sharing an edge derive complementary signed miter faces from the same
+assembled dihedral, rather than receiving isolated square cuts. A world-space
+cross-seam audit measures the resulting fit and blocks export above `0.05 mm`.
+This is the printable seam authority used by both panel modes:
+
+- `PANEL: OPEN FRAME` exports rail-only triangular frames for open-air tunnel,
+  mast, and scaffold structures.
+- `PANEL: EXTERIOR MEMBRANE` adds a continuous outward skin for enclosed
+  corridors while preserving the same frame, miter, and centered-portal
+  geometry. It is airtight-ready, not automatically pressure-tight: printed
+  seams and portal penetrations must still be sealed for the intended service.
+
+`EXPORT TRUSS` creates a timestamped folder under `exports/truss_yard/`:
+
+- In `TRIANGLE FRAMES`, `parts/` contains individually audited reusable
+  `FRAME_P###` STLs and `assembly_plan.json` maps each face placement to its
+  printable frame type. The plan includes reciprocal joint IDs, neighbor face
+  IDs, edge indices, portal stations, world-space portal centers, signed miter
+  classes, half-dihedral angles, and seam-audit results. Assemble matching
+  shared joints panel-to-panel through their centered portals with zip ties.
+- In `SKELETON STUDY`, `parts/` contains individually audited reusable
+  `TRUSS_DIAGONAL`, `TRUSS_RING`, and `TRUSS_NODE` STLs, with optional adapter
+  arm/root parts.
+- `bill_of_materials.json` and `ASSEMBLY.txt` record reusable quantities and
+  the current build dimensions.
+- `manifest.json` records the field state, match reference, and audit state.
+- The `*_assembly_preview.stl` is an intentionally intersecting visual
+  aggregate for orientation only; printable authority always remains with the
+  individually audited reusable parts.
+
+The current first-pass adapter establishes scale and attachment intent between
+the two systems. Dedicated dome-interface standards, boolean-unioned
+assemblies, and specialty truss families can be added later without changing
+the qualified Geodesic Salon panel pipeline.
+
+## Meta-Crystal carrier
+
+Surface Foundry includes an isolated `META-CRYSTAL` carrier based on the
+explicit BCC/BCCT geometry and grain recipes reported in
+[Tuning the mechanical behaviour of additively manufactured metamaterials](https://arxiv.org/abs/2410.07833).
+It does not replace or alter any earlier carrier. Select it with the existing
+`GEOM` controls to expose its own compact instrument block.
+
+Available families are `BCC CONTROL`, `BCCT`, `META-GRAIN`, and
+`META-HARMONIC`. The paper-derived recipes are `G44`, `G2222`, `G1x8`,
+`G242`, `G11411`, and `G112211`. `THETA` changes the BCCT twinning angle;
+`STRUT` changes normalized member radius; `LOAD AXIS` changes the geometric
+alignment readout. The four views separate raw geometry, grain identity,
+load-path alignment, and localization-risk cues.
+
+`PAPER REPLICA` is the default and materializes the explicit graph without a
+field deformation. `RDFT COUPLED` is an opt-in exploratory thickness
+modulation. It is intentionally labeled experimental so it cannot be confused
+with a result reported by the paper. The on-screen axial and risk values are
+geometry proxies, not finite-element predictions or measured properties.
+
+`EXPORT GRAPH` writes `nodes.csv`, `edges.csv`, and `manifest.json` beneath
+`exports/meta_crystal/`. Surface Foundry STL and call-sheet exports also embed
+the family, recipe, angle, load axis, coupling mode, source reference, and an
+explicit unvalidated-mechanics notice. For useful voxelized struts, use at
+least `72^3` resolution; higher resolution improves thin-member fidelity.
+
+Developer verification:
+
+```bash
+/Applications/Processing.app/Contents/MacOS/Processing cli \
+  --sketch="$PWD" --output=/tmp/cosmosis_meta --force --run \
+  --dcrte-meta-crystal-tests-only
+```

@@ -33,6 +33,7 @@ String[] lensNames = {
   "TOPOLOGY LAB",
   "SURFACE FOUNDRY",
   "GEODESIC SALON",
+  "TRUSS YARD",
   "HBE"
 };
 
@@ -112,6 +113,11 @@ int cadInternalStride = 3;
 float cadShadowThreshold = 0.23;
 float cadEdgeCull = 0.58;
 float cadStochastic = 0.42;
+final int CALL_SHEET_TONAL_DEPTH_BANDS = 7;
+final int CALL_SHEET_TONAL_FAR_GRAY = 214;
+final int CALL_SHEET_TONAL_NEAR_GRAY = 18;
+boolean callSheetTonalDepthRendering = false;
+boolean callSheetTonalLargePanel = false;
 String[] foundryGeometryNames = {
   "TPMS BLEND",
   "GYROID",
@@ -130,7 +136,9 @@ String[] foundryGeometryNames = {
   "SCHOEN FRD",
   "SPLIT P",
   "MENGER SPONGE",
-  "MANDELBULB"
+  "MANDELBULB",
+  "APERIODIC MONOTILE",
+  "META-CRYSTAL"
 };
 int foundryGeometryIndex = 0;
 float foundryWrapBlend = 0.72;
@@ -193,6 +201,8 @@ float shaperCosmic = 0;
 int shaperLastPoll = -999;
 String shaperSourceStatus = "SIM";
 String geodesicCapturePath = null;
+String holonomyLoomCapturePath = null;
+String dcrteMetaCrystalCapturePath = null;
 
 void settings() {
   size(1600, 1000, P3D);
@@ -223,13 +233,27 @@ void setup() {
   initializeDcrteMilestone5();
   initializeDcrteMilestone6();
   initializeDcrteHbe();
+  initializeHolonomyWovenField();
   if (dcrteCommandLineFlag("--geodesic-exterior-crown"))
     geodesicReliefSide = GeodesicReliefSide.EXTERIOR_CROWN;
   if (dcrteCommandLineFlag("--geodesic-kicas"))
     geodesicAssemblyMode = GeodesicAssemblyMode.KICAS;
   if (dcrteCommandLineFlag("--geodesic-paint"))
     geodesicPaintEnabled = true;
+  if (dcrteCommandLineFlag("--geodesic-aperiodic-hat")) {
+    geodesicTopologyMode = GeodesicTopologyMode.APERIODIC;
+    geodesicAperiodicFamily = GeodesicAperiodicFamily.HAT;
+    geodesicExtent = GeodesicExtentMode.DOME;
+    geodesicAssemblyMode = GeodesicAssemblyMode.KICAS;
+  }
+  if (dcrteCommandLineFlag("--geodesic-aperiodic-penrose")) {
+    geodesicTopologyMode = GeodesicTopologyMode.APERIODIC;
+    geodesicAperiodicFamily = GeodesicAperiodicFamily.PENROSE_P3;
+    geodesicExtent = GeodesicExtentMode.DOME;
+    geodesicAssemblyMode = GeodesicAssemblyMode.KICAS;
+  }
   initializeGeodesicSalon();
+  initializeTrussYard();
   if (dcrteCommandLineFlag("--geodesic-fabrication-matrix")) {
     runGeodesicFabricationMatrix(
       dcrteCommandLineFlag("--geodesic-matrix-minimal"));
@@ -241,7 +265,14 @@ void setup() {
     exit();
     return;
   }
+  if (dcrteCommandLineFlag("--truss-tests-only")) {
+    println("TRUSS YARD TESTS " + trussTestStatus);
+    exit();
+    return;
+  }
   if (dcrteCommandLineFlag("--geodesic-salon")) activeLens = 9;
+  if (dcrteCommandLineFlag("--holonomy-loom")) activeLens = 1;
+  if (dcrteCommandLineFlag("--truss-yard")) activeLens = 10;
   if (dcrteCommandLineFlag("--geodesic-guide-svg")) geodesicGuideSvgEnabled = true;
   if (dcrteCommandLineFlag("--geodesic-export-plate-kit")) {
     exportGeodesicSalonPlateKit();
@@ -259,6 +290,19 @@ void setup() {
   }
   geodesicCapturePath = dcrteCommandLineValue("--geodesic-capture=");
   if (geodesicCapturePath != null) activeLens = 9;
+  holonomyLoomCapturePath = dcrteCommandLineValue("--holonomy-loom-capture=");
+  if (holonomyLoomCapturePath != null) activeLens = 1;
+  dcrteMetaCrystalCapturePath = dcrteCommandLineValue("--dcrte-meta-crystal-capture=");
+  if (dcrteMetaCrystalCapturePath != null || dcrteCommandLineFlag("--dcrte-meta-crystal")) {
+    activeLens = 8;
+    foundryGeometryIndex = DCRTE_META_CRYSTAL_GEOMETRY_INDEX;
+    ensureDcrteMetaCrystalGraph();
+    if (dcrteMetaCrystalCapturePath != null) {
+      foundryMesh = null;
+      foundryCallSheetSolid = null;
+      foundryStatus = "mesh not generated";
+    }
+  }
   String dcrteM25ReferencePath = dcrteCommandLineValue("--dcrte-m25-reference=");
   if (dcrteM25ReferencePath != null) {
     runDcrteMilestone25ExternalReferenceCase(dcrteM25ReferencePath);
@@ -318,6 +362,11 @@ void setup() {
     exit();
     return;
   }
+  if (dcrteCommandLineFlag("--holonomy-woven-tests-only")) {
+    println("HOLONOMY LOOM FIELD TESTS " + holonomyWovenTests.status());
+    exit();
+    return;
+  }
   if (dcrteCommandLineFlag("--dcrte-hbe")) {
     dcrteHbeSetEnabled(true);
     activeLens = 10;
@@ -326,6 +375,45 @@ void setup() {
     dcrteHbeSetEnabled(true);
     activeLens = 10;
     loadDcrteHbeDualLobeFixture();
+  }
+  if (dcrteCommandLineFlag("--dcrte-monotile-tests-only")) {
+    runDcrteMonotileTests();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-meta-crystal-tests-only")) {
+    runDcrteMetaCrystalTests();
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--call-sheet-tonal-tests-only")) {
+    runCallSheetTonalDepthTests();
+    exit();
+    return;
+  }
+  String tonalSmokePath = dcrteCommandLineValue("--call-sheet-tonal-smoke=");
+  if (tonalSmokePath != null) {
+    runCallSheetTonalDepthSmoke(tonalSmokePath);
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-meta-crystal-smoke")) {
+    foundryGeometryIndex = DCRTE_META_CRYSTAL_GEOMETRY_INDEX;
+    foundryResolution = 72;
+    ensureDcrteMetaCrystalGraph();
+    generateSurfaceFoundryMesh();
+    println("META-CRYSTAL SMOKE " + (foundryMeshIsPrintable() ? "PASS" : "FAIL")
+      + " / " + foundryStatus + " / occupied tris " + (foundryMesh == null ? 0 : foundryMesh.tris.size()));
+    if (!foundryMeshIsPrintable()) throw new RuntimeException("Meta-Crystal smoke mesh is not printable");
+    exit();
+    return;
+  }
+  if (dcrteCommandLineFlag("--dcrte-monotile-swatch")) {
+    foundryGeometryIndex = DCRTE_MONOTILE_GEOMETRY_INDEX;
+    ensureDcrteMonotileManifest();
+    exportDcrteMonotileSwatch();
+    exit();
+    return;
   }
   if (dcrteCommandLineFlag("--dcrte-m2-acceptance")) {
     runDcrteMilestone2AcceptanceMatrix();
@@ -370,6 +458,16 @@ void draw() {
   if (geodesicCapturePath != null && frameCount >= 8) {
     save(geodesicCapturePath);
     geodesicCapturePath = null;
+    exit();
+  }
+  if (holonomyLoomCapturePath != null && frameCount >= 8) {
+    save(holonomyLoomCapturePath);
+    holonomyLoomCapturePath = null;
+    exit();
+  }
+  if (dcrteMetaCrystalCapturePath != null && frameCount >= 8) {
+    save(dcrteMetaCrystalCapturePath);
+    dcrteMetaCrystalCapturePath = null;
     exit();
   }
 }
@@ -910,33 +1008,14 @@ void stepOrbit() {
 }
 
 void updateHolonomyLoom() {
-  float spanA = 0.58 + 0.32 * braneTwist;
-  float spanD = 1.1 + 1.8 * floquetCoupling;
-  float a0 = constrain(alpha - spanA, 1.0, ALPHA_MAX);
-  float a1 = constrain(alpha + spanA, 1.0, ALPHA_MAX);
-  float d0 = constrain(depth - spanD, 0, DEPTH_MAX);
-  float d1 = constrain(depth + spanD, 0, DEPTH_MAX);
+  float a0 = constrain(alpha - holonomyWovenAlphaSpan, 1.0, ALPHA_MAX);
+  float a1 = constrain(alpha + holonomyWovenAlphaSpan, 1.0, ALPHA_MAX);
+  float d0 = constrain(depth - holonomyWovenDepthSpan, 0, DEPTH_MAX);
+  float d1 = constrain(depth + holonomyWovenDepthSpan, 0, DEPTH_MAX);
   float u = (simT * 0.09 * (reverseHolonomy ? -1 : 1)) % 1.0;
   if (u < 0) u += 1.0;
-  float pa = a0;
-  float pd = d0;
-  if (u < 0.25) {
-    float t = u / 0.25;
-    pa = lerp(a0, a1, t);
-    pd = d0;
-  } else if (u < 0.5) {
-    float t = (u - 0.25) / 0.25;
-    pa = a1;
-    pd = lerp(d0, d1, t);
-  } else if (u < 0.75) {
-    float t = (u - 0.5) / 0.25;
-    pa = lerp(a1, a0, t);
-    pd = d1;
-  } else {
-    float t = (u - 0.75) / 0.25;
-    pa = a0;
-    pd = lerp(d1, d0, t);
-  }
+  float pa = holonomyWovenLoopAlpha(u);
+  float pd = holonomyWovenLoopDepth(u);
   holoArea = (a1 - a0) * (d1 - d0) * (reverseHolonomy ? -1 : 1);
   float localCurv = (metricBeltrami - 0.5) * 0.9 + (phiThreshold - 0.6) * 0.45 + (quasiEnergy - 0.5) * 0.35;
   holoGamma = lerp(holoGamma, constrain(holoArea * localCurv * 0.33, -PI * 1.2, PI * 1.2), 0.035);
@@ -947,6 +1026,7 @@ void updateHolonomyLoom() {
     holoTrail.remove(0);
     holoGammaTrail.remove(0);
   }
+  rebuildHolonomyWovenLiveField(false);
 }
 
 void updateFloquetForge() {
@@ -1020,7 +1100,7 @@ void drawControls() {
   drawGauge(22, y, UI_W - 44, "ctc window", ctcScore, color(210, 142, 255)); y += 34;
   fill(100, 130, 145);
   textSize(9);
-  text("Keys: 1-9 select established lenses, 0 opens Geodesic Salon, [ ] target material, M source mode, O opens Cosmosis CSV, U reloads data, V applies target, G generates STL mesh, C call sheets, X pulls SVG, E exports STL, N cycles Foundry geometry, SPACE pauses, R resets, H help.", 22, y, UI_W - 44, 60);
+  text("Keys: 1-9 select established lenses, 0 opens Geodesic Salon, [ ] target material, M source mode, O opens Cosmosis CSV, U reloads data, V applies target, W cycles the Holonomy Loom field, G generates STL mesh, C call sheets, X pulls SVG, E exports STL, N cycles Foundry geometry, SPACE pauses, R resets, H help.", 22, y, UI_W - 44, 60);
 }
 
 int materialPanelY() {
@@ -1139,6 +1219,7 @@ void drawActiveLens() {
   else if (activeLens == 7) drawTopologyLab(x, y, w, h);
   else if (activeLens == 8) drawSurfaceFoundry(x, y, w, h);
   else if (activeLens == 9) drawGeodesicSalon(x, y, w, h);
+  else if (activeLens == 10) drawTrussYard(x, y, w, h);
   else drawDcrteHbeLens(x, y, w, h);
 }
 
@@ -1172,6 +1253,7 @@ void drawFieldAtlas(int x, int y, int w, int h) {
 
 void drawHolonomyLoom(int x, int y, int w, int h) {
   drawPanelShell(x, y, w, h, "HOLONOMY LOOM");
+  HolonomyFieldArtifact artifact = holonomyWovenDisplayField();
   int planeW = min(w - 360, h - 80);
   int px = x + 34;
   int py = y + 54;
@@ -1189,22 +1271,24 @@ void drawHolonomyLoom(int x, int y, int w, int h) {
   text("depth", 0, 0);
   popMatrix();
 
-  float aSpan = 0.58 + 0.32 * braneTwist;
-  float dSpan = 1.1 + 1.8 * floquetCoupling;
-  float a0 = constrain(alpha - aSpan, 1.0, ALPHA_MAX);
-  float a1 = constrain(alpha + aSpan, 1.0, ALPHA_MAX);
-  float d0 = constrain(depth - dSpan, 0, DEPTH_MAX);
-  float d1 = constrain(depth + dSpan, 0, DEPTH_MAX);
+  float a0 = constrain(alpha - holonomyWovenAlphaSpan, 1.0, ALPHA_MAX);
+  float a1 = constrain(alpha + holonomyWovenAlphaSpan, 1.0, ALPHA_MAX);
+  float d0 = constrain(depth - holonomyWovenDepthSpan, 0, DEPTH_MAX);
+  float d1 = constrain(depth + holonomyWovenDepthSpan, 0, DEPTH_MAX);
   float rx0 = map(a0, 1, ALPHA_MAX, px + 28, px + planeW - 28);
   float rx1 = map(a1, 1, ALPHA_MAX, px + 28, px + planeW - 28);
   float ry0 = map(d0, 0, DEPTH_MAX, py + planeW - 28, py + 28);
   float ry1 = map(d1, 0, DEPTH_MAX, py + planeW - 28, py + 28);
-  drawHolonomyCurvatureOverlay(min(rx0, rx1), min(ry0, ry1), abs(rx1 - rx0), abs(ry1 - ry0));
+  float fieldX = min(rx0, rx1);
+  float fieldY = min(ry0, ry1);
+  float fieldW = abs(rx1 - rx0);
+  float fieldH = abs(ry1 - ry0);
+  drawHolonomyWovenAtlas(fieldX, fieldY, fieldW, fieldH, artifact, true);
   noFill();
   stroke(reverseHolonomy ? color(205, 140, 255) : color(95, 230, 205));
   strokeWeight(2);
-  rect(min(rx0, rx1), min(ry0, ry1), abs(rx1 - rx0), abs(ry1 - ry0));
-  drawHolonomyLoopFibers(min(rx0, rx1), min(ry0, ry1), abs(rx1 - rx0), abs(ry1 - ry0));
+  rect(fieldX, fieldY, fieldW, fieldH);
+  drawHolonomyLoopFibers(fieldX, fieldY, fieldW, fieldH);
 
   noFill();
   beginShape();
@@ -1229,20 +1313,61 @@ void drawHolonomyLoom(int x, int y, int w, int h) {
 
   int rx = px + planeW + 32;
   int rw = w - (rx - x) - 28;
-  drawReadoutPanel(rx, py, rw, 190, "LOOP INVARIANTS");
+  drawReadoutPanel(rx, py, rw, 250, "LOOP INVARIANTS / CONTROL");
   metricLine(rx + 16, py + 40, "gamma", nf(holoGamma, 1, 4) + " rad");
   metricLine(rx + 16, py + 62, "gamma/pi", nf(holoGamma / PI, 1, 4));
   metricLine(rx + 16, py + 84, "winding", nf(holoWinding, 1, 4));
   metricLine(rx + 16, py + 106, "loop area", nf(holoArea, 1, 4));
   metricLine(rx + 16, py + 128, "orientation", reverseHolonomy ? "reverse" : "forward");
   drawButton(rx + 16, py + 150, 132, 24, reverseHolonomy ? "RUN FORWARD" : "RUN REVERSED", color(70, 52, 96));
-
-  drawReadoutPanel(rx, py + 210, rw, 236, "THREAD TRANSLATION");
-  drawHoloBraid(rx + 16, py + 252, rw - 32, 142);
+  drawButton(rx + 16, py + 180, 132, 24, "FIELD " + holonomyWovenMode.label(),
+    holonomyWovenRequested() ? color(72, 66, 112) : color(55, 55, 62));
+  drawButton(rx + 156, py + 180, max(104, rw - 172), 24,
+    holonomyWovenFieldLocked ? "RELEASE" : "CAPTURE FOR FOUNDRY",
+    holonomyWovenFieldLocked ? color(112, 76, 42) : color(42, 92, 72));
   fill(126, 160, 170);
-  textSize(9);
+  textSize(8);
   textAlign(LEFT, TOP);
-  text("The rectangle is the parameter loop. Fibers now ride the enclosed area directly; the side braid is a phase readout of that same transport.", rx + 16, py + 404, rw - 32, 42);
+  text("W cycles OFF / SKIN / VOLUME / RELIEF. Capture freezes the exact visible atlas used by Foundry.",
+    rx + 16, py + 214, rw - 32, 28);
+
+  int artifactY = py + 266;
+  drawReadoutPanel(rx, artifactY, rw, 330, "CANONICAL FIELD ARTIFACT");
+  float atlasX = rx + 16;
+  float atlasY = artifactY + 34;
+  float atlasW = rw - 32;
+  float atlasH = 190;
+  drawHolonomyWovenAtlas(atlasX, atlasY, atlasW, atlasH, artifact, true);
+  metricLine(rx + 16, artifactY + 232, "state", holonomyWovenStatusLabel());
+  metricLine(rx + 16, artifactY + 254, "field id", holonomyWovenShortArtifactId());
+  metricLine(rx + 16, artifactY + 276, "cell span", artifact == null ? "-" : artifact.minimumCellSpan + " .. " + artifact.maximumCellSpan);
+  metricLine(rx + 16, artifactY + 298, "phase closure", artifact == null ? "-" : nf(artifact.closureError, 1, 7));
+
+  float hoverU = -1;
+  float hoverV = -1;
+  if (mouseX >= atlasX && mouseX <= atlasX + atlasW && mouseY >= atlasY && mouseY <= atlasY + atlasH) {
+    hoverU = constrain((mouseX - atlasX) / atlasW, 0, 0.999999f);
+    hoverV = constrain((mouseY - atlasY) / atlasH, 0, 0.999999f);
+  } else if (mouseX >= fieldX && mouseX <= fieldX + fieldW && mouseY >= fieldY && mouseY <= fieldY + fieldH) {
+    hoverU = constrain((mouseX - fieldX) / fieldW, 0, 0.999999f);
+    hoverV = constrain((mouseY - fieldY) / fieldH, 0, 0.999999f);
+  }
+
+  int inspectY = artifactY + 612 - 266;
+  int inspectH = max(132, py + planeW - inspectY);
+  drawReadoutPanel(rx, inspectY, rw, inspectH, "FIELD INSPECTOR");
+  if (artifact != null && hoverU >= 0) {
+    metricLine(rx + 16, inspectY + 38, "atlas u / v", nf(hoverU, 1, 3) + " / " + nf(hoverV, 1, 3));
+    metricLine(rx + 16, inspectY + 60, "depth / cell", artifact.sampleLevel(hoverU, hoverV) + " / " + artifact.sampleCellSpan(hoverU, hoverV));
+    metricLine(rx + 16, inspectY + 82, "alpha / phase", nf(artifact.sampleAlpha(hoverU, hoverV), 1, 3) + " / " + nf(artifact.samplePhase(hoverU, hoverV), 1, 3));
+    metricLine(rx + 16, inspectY + 104, "value / gradient", nf(artifact.sampleValue(hoverU, hoverV), 1, 3) + " / " + nf(artifact.sampleGradient(hoverU, hoverV), 1, 3));
+  } else {
+    fill(126, 160, 170);
+    textSize(9);
+    textAlign(LEFT, TOP);
+    text("Hover either atlas to inspect the exact recursion, phase, cell scale, and differential gradient transported into the carrier.",
+      rx + 16, inspectY + 40, rw - 32, 70);
+  }
 }
 
 void drawPhiThreshold(int x, int y, int w, int h) {
@@ -1490,14 +1615,15 @@ void drawSurfaceFoundry(int x, int y, int w, int h) {
   drawReadoutPanel(px, py, previewW, previewH, "PRINTABLE TOPOLOGY PREVIEW");
   drawFoundryPreview(px + 16, py + 40, previewW - 32, previewH - 58);
 
-  drawReadoutPanel(rightX, py, rightW, 294, "SURFACE BUILD");
+  int carrierShift = dcrteMonotileModeActive() ? 78 : dcrteMetaCrystalModeActive() ? 134 : 0;
+  drawReadoutPanel(rightX, py, rightW, 294 + carrierShift, "SURFACE BUILD");
   drawFoundryControls(rightX + 16, py + 42, rightW - 32);
 
-  drawReadoutPanel(rightX, py + 312, rightW, 210, "MESH OUTPUT");
-  drawFoundryStats(rightX + 16, py + 350, rightW - 32);
+  drawReadoutPanel(rightX, py + 312 + carrierShift, rightW, 210, "MESH OUTPUT");
+  drawFoundryStats(rightX + 16, py + 350 + carrierShift, rightW - 32);
 
-  drawReadoutPanel(rightX, py + 540, rightW, max(120, h - 592), "STOCHASTIC CAD");
-  drawStochasticCadPanel(rightX + 16, py + 578, rightW - 32, max(70, h - 634));
+  drawReadoutPanel(rightX, py + 540 + carrierShift, rightW, max(120, h - 592 - carrierShift), "STOCHASTIC CAD");
+  drawStochasticCadPanel(rightX + 16, py + 578 + carrierShift, rightW - 32, max(70, h - 634 - carrierShift));
   hint(ENABLE_DEPTH_TEST);
 }
 
@@ -1523,6 +1649,8 @@ void drawFoundryPreview(int x, int y, int w, int h) {
       && !(dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
         && (!dcrteImportedShowMaterial || dcrteImportedStale))) {
     foundryMesh.drawPreviewFitted(previewScale);
+  } else if (dcrteMetaCrystalModeActive()) {
+    drawDcrteMetaCrystalGraphPreview(previewScale);
   } else if (foundryGeometryIndex > 0) {
     drawFoundryWrappedGeometryPreview(previewScale);
   } else {
@@ -1540,8 +1668,11 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   hint(DISABLE_DEPTH_TEST);
 
   if (cadPreviewEnabled) drawStochasticCadPreview(x, y, w, h);
+  drawDcrteMonotileOverlay(x, y, w, h);
+  drawDcrteMetaCrystalOverlay(x, y, w, h);
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) {
-    drawDcrtePrimitivePanel(x + w - 306, y + 12, 294, 248);
+    int primitivePanelHeight = dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.PANEL ? 338 : 248;
+    drawDcrtePrimitivePanel(x + w - 306, y + 12, 294, primitivePanelHeight);
     drawDcrteCenterSlice(x, y, w, h);
   } else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) {
     int importedPanelW = min(370, max(330, w - 24));
@@ -1554,7 +1685,9 @@ void drawFoundryPreview(int x, int y, int w, int h) {
   fill(132, 168, 176);
   textSize(9);
   textAlign(LEFT, BOTTOM);
-  text(foundryMesh == null ? "live wrap preview: " + foundryGeometryName() : "generated STL mesh preview", x + 12, y + h - 12);
+  String previewLabel = foundryMesh == null ? "live wrap preview: " + foundryGeometryName() : "generated STL mesh preview";
+  if (holonomyWovenRequested()) previewLabel += " / LOOM FIELD " + holonomyWovenStatusLabel();
+  text(previewLabel, x + 12, y + h - 12);
 }
 
 void drawStochasticCadPanel(int x, int y, int w, int h) {
@@ -1683,9 +1816,9 @@ void drawFoundryControls(int x, int y, int w) {
   metricLine(x, yy + 32, "resolution", str(foundryActiveVolumeResolution()) + "^3");
 
   yy += 50;
-  drawButton(x, yy, 78, 22, "BAND -", color(42, 57, 68));
-  drawButton(x + 88, yy, 78, 22, "BAND +", color(42, 57, 68));
-  metricLine(x, yy + 32, "iso band", nf(foundryIsoBand, 1, 3));
+  drawButton(x, yy, 78, 22, dcrteMetaCrystalModeActive() ? "STRUT -" : "BAND -", color(42, 57, 68));
+  drawButton(x + 88, yy, 78, 22, dcrteMetaCrystalModeActive() ? "STRUT +" : "BAND +", color(42, 57, 68));
+  metricLine(x, yy + 32, dcrteMetaCrystalModeActive() ? "strut radius" : "iso band", nf(dcrteMetaCrystalModeActive() ? dcrteMetaCrystalStrutRadius : foundryIsoBand, 1, 3));
 
   yy += 50;
   drawButton(x, yy, 78, 22, "GEOM <", color(42, 57, 68));
@@ -1694,8 +1827,34 @@ void drawFoundryControls(int x, int y, int w) {
 
   yy += 50;
   drawButton(x, yy, 112, 22, foundryRaisedVeins ? "VEINS ON" : "VEINS OFF", foundryRaisedVeins ? color(55, 86, 72) : color(55, 55, 62));
-  metricLine(x, yy + 32, "vein radius", nf(foundryVeinRadiusMM, 1, 1) + " mm");
-  metricLine(x, yy + 54, "scale", nf(foundryScaleMM, 1, 0) + " mm");
+  drawButton(x + 122, yy, 122, 22, "FROM HOLO LOOM", holonomyWovenRequested() ? color(72, 66, 102) : color(55, 55, 62));
+  metricLine(x, yy + 32, "Loom field", holonomyWovenStatusLabel() + " " + holonomyWovenShortArtifactId());
+  metricLine(x, yy + 54, "scale / vein", nf(foundryScaleMM, 1, 0) + " / " + nf(foundryVeinRadiusMM, 1, 1) + " mm");
+  if (dcrteMonotileModeActive()) {
+    yy += 62;
+    drawButton(x, yy, 78, 22, "LEVEL -", color(42, 57, 68));
+    drawButton(x + 88, yy, 78, 22, "LEVEL +", color(42, 57, 68));
+    drawButton(x + 176, yy, 154, 22, dcrteMonotileMarkLabel(), color(76, 65, 42));
+    drawButton(x, yy + 30, w, 24, "EXPORT CONNECTED SWATCH", color(55, 86, 72));
+    metricLine(x, yy + 62, "substrate", shortText(dcrteMonotileStatus, 31));
+  }
+  if (dcrteMetaCrystalModeActive()) {
+    yy += 62;
+    drawButton(x, yy, 78, 22, "FAMILY <", color(42, 57, 68));
+    drawButton(x + 88, yy, 78, 22, "FAMILY >", color(42, 57, 68));
+    drawButton(x + 176, yy, 154, 22, "VIEW " + dcrteMetaCrystalViewLabel(), color(52, 72, 82));
+    drawButton(x, yy + 30, 78, 22, "RECIPE <", color(42, 57, 68));
+    drawButton(x + 88, yy + 30, 78, 22, "RECIPE >", color(42, 57, 68));
+    drawButton(x + 176, yy + 30, 154, 22, dcrteMetaCrystalRdftCoupled ? "RDFT COUPLED" : "PAPER REPLICA", dcrteMetaCrystalRdftCoupled ? color(74, 62, 96) : color(55, 86, 72));
+    drawButton(x, yy + 60, 78, 22, "THETA -", color(42, 57, 68));
+    drawButton(x + 88, yy + 60, 78, 22, "THETA +", color(42, 57, 68));
+    drawButton(x + 176, yy + 60, 154, 22, "EXPORT GRAPH", color(70, 66, 42));
+    drawButton(x, yy + 90, 166, 22, "LOAD AXIS " + dcrteMetaCrystalLoadAxisLabel(), color(42, 57, 68));
+    fill(130, 166, 175);
+    textSize(8);
+    textAlign(RIGHT, TOP);
+    text(nf(dcrteMetaCrystalEffectiveThetaDeg(), 1, 1) + " deg", x + w, yy + 96);
+  }
 }
 
 void drawDcrteDiagnosticsOverlay(int x, int y, int w, int h) {
@@ -1752,6 +1911,8 @@ String foundryGeometryName() {
 
 void cycleFoundryGeometry(int delta) {
   foundryGeometryIndex = (foundryGeometryIndex + delta + foundryGeometryNames.length) % foundryGeometryNames.length;
+  if (dcrteMonotileModeActive()) ensureDcrteMonotileManifest();
+  if (dcrteMetaCrystalModeActive()) ensureDcrteMetaCrystalGraph();
   markCurrentFoundryStale("field carrier changed; regenerate");
 }
 
@@ -1765,14 +1926,18 @@ void generateSurfaceFoundryMesh() {
       float y = map(iy + 0.5, 0, foundryResolution, -1, 1);
       for (int iz = 0; iz < foundryResolution; iz++) {
         float z = map(iz + 0.5, 0, foundryResolution, -1, 1);
-        float crop = sqrt(x*x + y*y + z*z);
-        float val = foundryScalar(x, y, z, scores);
-        solid[ix][iy][iz] = abs(val) < foundryIsoBand && crop < 1.23;
+        if (dcrteMetaCrystalModeActive()) {
+          solid[ix][iy][iz] = dcrteMetaCrystalOccupied(x, y, z);
+        } else {
+          float crop = sqrt(x*x + y*y + z*z);
+          float val = foundryScalar(x, y, z, scores);
+          solid[ix][iy][iz] = abs(val) < foundryIsoBand && crop < 1.23;
+        }
       }
     }
   }
-  if (foundryRaisedVeins) addRaisedVeinsToSolid(solid, scores);
-  foundryBridgeVoxels = regularizeFoundrySolid(solid, 6);
+  if (foundryRaisedVeins && !dcrteMetaCrystalModeActive()) addRaisedVeinsToSolid(solid, scores);
+  foundryBridgeVoxels = regularizeFoundrySolid(solid, dcrteMetaCrystalModeActive() ? 2 : 6);
   foundryCallSheetSolid = solid;
 
   for (int ix = 0; ix < foundryResolution; ix++) {
@@ -2038,6 +2203,8 @@ void writeFoundryMetadata(String filename) {
   meta.setFloat("brane_twist", braneTwist);
   meta.setFloat("deep_detail", deepDetail);
   meta.setFloat("recursion_falloff", recursionFalloff());
+  appendDcrteMetaCrystalMetadata(meta);
+  appendHolonomyWovenMetadata(meta);
   meta.setBoolean("shaper_enabled", shaperEnabled);
   meta.setString("shaper_source", shaperSourceStatus);
   meta.setFloat("shaper_mix", shaperMix);
@@ -2815,13 +2982,22 @@ void drawCallSheetRasterPanel(PGraphics pg, int x, int y, int w, int h, float az
     scale = callSheetScale(bounds, w - pad * 2, h - (large ? 78 : 34));
     if (cadShadowThreshold > 0.05) drawRasterVoxelShadowFaces(pg, basis, bounds, x, y, w, h, scale, large);
     if (cadInternalLattice) {
-      pg.stroke(0, large ? 128 : 102);
-      pg.strokeWeight(large ? 0.34 : 0.26);
-      drawRasterVoxelEdgesForPanel(pg, center, basis, bounds, x, y, w, h, scale, new HashSet<String>(), false, true);
+      drawRasterTonalVoxelEdgesForPanel(pg, center, basis, bounds, x, y, w, h, scale, false, true, large);
     }
-    pg.stroke(0, 232);
-    pg.strokeWeight(large ? 0.82 : 0.54);
-    drawRasterVoxelEdgesForPanel(pg, center, basis, bounds, x, y, w, h, scale, new HashSet<String>(), true, false);
+    drawRasterTonalVoxelEdgesForPanel(pg, center, basis, bounds, x, y, w, h, scale, true, false, large);
+  }
+}
+
+void drawRasterTonalVoxelEdgesForPanel(PGraphics pg, PVector center, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, boolean exposedEdges, boolean internalLattice, boolean large) {
+  boolean previousDepthMode = callSheetTonalDepthRendering;
+  boolean previousLargePanel = callSheetTonalLargePanel;
+  callSheetTonalDepthRendering = true;
+  callSheetTonalLargePanel = large;
+  try {
+    drawRasterVoxelEdgesForPanel(pg, center, basis, bounds, x, y, w, h, scale, new HashSet<String>(), exposedEdges, internalLattice);
+  } finally {
+    callSheetTonalDepthRendering = previousDepthMode;
+    callSheetTonalLargePanel = previousLargePanel;
   }
 }
 
@@ -3368,6 +3544,12 @@ void drawVoxelGridEdge(PGraphics pg, CallSheetBasis basis, CallSheetBounds bound
   if (a.x > x + w + 4 && b.x > x + w + 4) return;
   if (a.y < y - 4 && b.y < y - 4) return;
   if (a.y > y + h - 18 && b.y > y + h - 18) return;
+  if (callSheetTonalDepthRendering) {
+    float depth01 = callSheetTonalDepth01((a.z + b.z) * 0.5, bounds);
+    if (!callSheetKeepTonalVoxelEdge(ax, ay, az, bx, by, bz, salt, exposed, depth01)) return;
+    pg.stroke(callSheetTonalGray(depth01, exposed));
+    pg.strokeWeight(callSheetTonalWeight(depth01, exposed, callSheetTonalLargePanel));
+  }
   pg.line(a.x, a.y, b.x, b.y);
 }
 
@@ -3392,7 +3574,8 @@ void drawRasterVoxelShadowFaces(PGraphics pg, CallSheetBasis basis, CallSheetBou
           PVector b = callSheetScreen(pts[1], new PVector(), basis, bounds, x, y, w, h, scale);
           PVector c = callSheetScreen(pts[2], new PVector(), basis, bounds, x, y, w, h, scale);
           PVector d = callSheetScreen(pts[3], new PVector(), basis, bounds, x, y, w, h, scale);
-          pg.fill(0, large ? 58 : 36);
+          float depth01 = callSheetTonalDepth01((a.z + b.z + c.z + d.z) * 0.25, bounds);
+          pg.fill(0, callSheetTonalShadowAlpha(depth01, large));
           pg.quad(a.x, a.y, b.x, b.y, c.x, c.y, d.x, d.y);
         }
       }
@@ -3633,8 +3816,21 @@ void writeCallSheetSvgPanel(PrintWriter out, int x, int y, int w, int h, float a
     bounds = callSheetVoxelBounds(basis);
     scale = callSheetScale(bounds, w - pad * 2, h - (large ? 78 : 34));
     if (cadShadowThreshold > 0.05) writeSvgVoxelShadowFaces(out, basis, bounds, x, y, w, h, scale, large);
-    if (cadInternalLattice) writeSvgVoxelEdgesForPanel(out, basis, bounds, x, y, w, h, scale, new HashSet<String>(), false, true, large ? 0.40 : 0.30, large ? 0.34 : 0.26);
-    writeSvgVoxelEdgesForPanel(out, basis, bounds, x, y, w, h, scale, new HashSet<String>(), true, false, 0.92, large ? 0.82 : 0.54);
+    if (cadInternalLattice) writeSvgTonalVoxelEdgesForPanel(out, basis, bounds, x, y, w, h, scale, false, true, large);
+    writeSvgTonalVoxelEdgesForPanel(out, basis, bounds, x, y, w, h, scale, true, false, large);
+  }
+}
+
+void writeSvgTonalVoxelEdgesForPanel(PrintWriter out, CallSheetBasis basis, CallSheetBounds bounds, int x, int y, int w, int h, float scale, boolean exposedEdges, boolean internalLattice, boolean large) {
+  boolean previousDepthMode = callSheetTonalDepthRendering;
+  boolean previousLargePanel = callSheetTonalLargePanel;
+  callSheetTonalDepthRendering = true;
+  callSheetTonalLargePanel = large;
+  try {
+    writeSvgVoxelEdgesForPanel(out, basis, bounds, x, y, w, h, scale, new HashSet<String>(), exposedEdges, internalLattice, 1.0, large ? 0.82 : 0.54);
+  } finally {
+    callSheetTonalDepthRendering = previousDepthMode;
+    callSheetTonalLargePanel = previousLargePanel;
   }
 }
 
@@ -4042,6 +4238,12 @@ void writeSvgVoxelGridEdge(PrintWriter out, CallSheetBasis basis, CallSheetBound
   if (a.x > x + w + 4 && b.x > x + w + 4) return;
   if (a.y < y - 4 && b.y < y - 4) return;
   if (a.y > y + h - 18 && b.y > y + h - 18) return;
+  if (callSheetTonalDepthRendering) {
+    float depth01 = callSheetTonalDepth01((a.z + b.z) * 0.5, bounds);
+    if (!callSheetKeepTonalVoxelEdge(ax, ay, az, bx, by, bz, salt, exposed, depth01)) return;
+    svgGrayLine(out, a.x, a.y, b.x, b.y, callSheetTonalGray(depth01, exposed), callSheetTonalWeight(depth01, exposed, callSheetTonalLargePanel));
+    return;
+  }
   svgLine(out, a.x, a.y, b.x, b.y, opacity, weight);
 }
 
@@ -4064,7 +4266,8 @@ void writeSvgVoxelShadowFaces(PrintWriter out, CallSheetBasis basis, CallSheetBo
           PVector b = callSheetScreen(pts[1], new PVector(), basis, bounds, x, y, w, h, scale);
           PVector c = callSheetScreen(pts[2], new PVector(), basis, bounds, x, y, w, h, scale);
           PVector d = callSheetScreen(pts[3], new PVector(), basis, bounds, x, y, w, h, scale);
-          svgPolygon4(out, a, b, c, d, "#000000", large ? 0.23 : 0.14);
+          float depth01 = callSheetTonalDepth01((a.z + b.z + c.z + d.z) * 0.25, bounds);
+          svgPolygon4(out, a, b, c, d, "#000000", callSheetTonalShadowAlpha(depth01, large) / 255.0);
         }
       }
     }
@@ -4232,7 +4435,10 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   meta.setFloat("cad_shadow_threshold", cadShadowThreshold);
   meta.setFloat("cad_edge_cull", cadEdgeCull);
   meta.setFloat("cad_stochastic", cadStochastic);
-  meta.setString("cad_render_strategy", cadGraphicDrafting ? "graphic_drafting_bw" : "tonal_line_accumulation");
+  meta.setString("cad_render_strategy", cadGraphicDrafting ? "graphic_drafting_bw" : "tonal_depth_bands_v1");
+  meta.setInt("cad_tonal_depth_bands", CALL_SHEET_TONAL_DEPTH_BANDS);
+  meta.setInt("cad_tonal_far_gray", CALL_SHEET_TONAL_FAR_GRAY);
+  meta.setInt("cad_tonal_near_gray", CALL_SHEET_TONAL_NEAR_GRAY);
   meta.setInt("seed", seed);
   meta.setFloat("simulation_time", simT);
   meta.setBoolean("paused", paused);
@@ -4294,6 +4500,8 @@ void writeFoundryCallSheetManifest(String filename, String surfaceSvg, String su
   JSONArray blend = new JSONArray();
   for (int i = 0; i < scores.length; i++) blend.setFloat(i, scores[i]);
   meta.setJSONArray("topology_blend", blend);
+  appendDcrteMetaCrystalMetadata(meta);
+  appendHolonomyWovenMetadata(meta);
   appendDcrteMetadata(meta);
   saveJSONObject(meta, filename);
 }
@@ -4311,10 +4519,10 @@ String callSheetGeneratedLabel() {
 String[] callSheetSettingsLines(String style) {
   float[] scores = currentTopologyScores();
   String[] base = new String[] {
-    styleLabel(style) + " | " + (cadGraphicDrafting ? "GRAPHIC BW" : "TONAL") + " | stride " + cadInternalStride + " | cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
-    "res " + foundryActiveVolumeResolution() + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 0) + "mm | geom " + foundryGeometryName() + " | wrap " + nf(foundryGeometryIndex == 0 ? 0 : foundryWrapBlend, 1, 2),
+    styleLabel(style) + " | " + (cadGraphicDrafting ? "GRAPHIC BW" : "TONAL DEPTH " + CALL_SHEET_TONAL_DEPTH_BANDS) + " | stride " + cadInternalStride + " | cull " + nf(cadEdgeCull, 1, 2) + " | shade " + nf(cadShadowThreshold, 1, 2) + " | rand " + nf(cadStochastic, 1, 2),
+    "res " + foundryActiveVolumeResolution() + "^3 | " + (dcrteMetaCrystalModeActive() ? "strut " + nf(dcrteMetaCrystalStrutRadius, 1, 3) : "iso " + nf(foundryIsoBand, 1, 3)) + " | scale " + nf(foundryScaleMM, 1, 0) + "mm | geom " + foundryGeometryName() + " | wrap " + nf(dcrteMetaCrystalModeActive() || foundryGeometryIndex == 0 ? 0 : foundryWrapBlend, 1, 2),
     "alpha " + nf(alpha, 1, 2) + " | depth " + depth + " | source " + nf(sourcePressure, 1, 2) + " | floquet " + nf(floquetCoupling, 1, 2) + " | quasi " + nf(quasiEnergy, 1, 2) + " | coherence " + nf(coherenceBias, 1, 2),
-    "topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18) + " | veins " + (foundryRaisedVeinsApplied() ? "applied" : (foundryRaisedVeins ? "suppressed" : "off")) + " | shaper " + (shaperEnabled ? shaperSourceStatus : "off")
+    "topo " + topologyName(activeTopologyIndex(scores)) + " | mat " + shortText(callSheetMaterialLabel(), 18) + " | veins " + (foundryRaisedVeinsApplied() ? "applied" : (foundryRaisedVeins ? "suppressed" : "off")) + " | woven " + holonomyWovenStatusLabel()
   };
   return base;
 }
@@ -4326,7 +4534,7 @@ String[] callSheetConfigurationLines(String style) {
   String materialProvider = m == null ? "none" : shortText(safeString(m.provider, ""), 38);
   String materialSourceId = m == null ? "none" : shortText(safeString(m.sourceId, ""), 38);
   String materialSource = m == null ? "none" : shortText(safeString(m.source, ""), 38);
-  float effectiveWrap = foundryGeometryIndex == 0 ? 0 : foundryWrapBlend;
+  float effectiveWrap = foundryGeometryIndex == 0 || dcrteMetaCrystalModeActive() ? 0 : foundryWrapBlend;
   String meshAudit = foundryBoundaryEdges + "/" + foundryNonManifoldEdges + "/" + foundryDegenerateFaces;
   String dcrteValidation = dcrteLastValidationReport == null ? "not_run" : dcrteLastValidationReport.status.id();
   DCRTEVolume dcrteActiveVolume = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
@@ -4348,7 +4556,7 @@ String[] callSheetConfigurationLines(String style) {
     ? dcrteObservationMode.id() + " | shell " + nf(dcrteShellThicknessVoxels, 1, 1) + " vox"
     : "not applied";
   String[] base = new String[] {
-    "OUTPUT " + styleLabel(style) + " | " + (cadGraphicDrafting ? "graphic BW" : "tonal lines"),
+    "OUTPUT " + styleLabel(style) + " | " + (cadGraphicDrafting ? "graphic BW" : "tonal depth " + CALL_SHEET_TONAL_DEPTH_BANDS + " bands"),
     "DCRTE " + dcrtePipelineLabel() + " | engine " + (dcrtePipelineMode == DCRTEPipelineMode.LEGACY_DIRECT ? "direct" : "legacy adapter"),
     "OBS DOMAIN " + observationDomain + " | field carrier remains independent",
     "OBSERVER " + observerLabel,
@@ -4360,6 +4568,7 @@ String[] callSheetConfigurationLines(String style) {
     "FIELD source " + nf(sourcePressure, 1, 3) + " | floquet " + nf(floquetCoupling, 1, 3) + " | quasi " + nf(quasiEnergy, 1, 3),
     "FIELD coherence " + nf(coherenceBias, 1, 3) + " | CTC " + nf(ctcBias, 1, 3) + " | brane " + nf(braneTwist, 1, 3),
     "FIELD time " + nf(timeScale, 1, 3) + " | falloff " + nf(recursionFalloff(), 1, 3) + " | seed " + seed,
+    "LOOM FIELD " + holonomyWovenStatusLabel() + " | id " + holonomyWovenShortArtifactId() + " | map " + holonomyWovenDomainMappingLabel(),
     "FOUNDRY res " + foundryActiveVolumeResolution() + "^3 | iso " + nf(foundryIsoBand, 1, 3) + " | scale " + nf(foundryScaleMM, 1, 1) + "mm",
     "CARRIER " + foundryGeometryName() + " | w " + nf(effectiveWrap, 1, 2) + " | vox " + nf(foundryScaleMM / max(1.0, foundryActiveVolumeResolution()), 1, 2) + "mm",
     "VEINS requested " + onOff(foundryRaisedVeins) + " | applied " + onOff(foundryRaisedVeinsApplied()) + " | " + dcrteRaisedVeinsPolicy(),
@@ -4389,6 +4598,15 @@ String[] callSheetConfigurationLines(String style) {
     expanded[8] = "IMPORT rot " + dcrteImportedRotateX + "/" + dcrteImportedRotateY + "/" + dcrteImportedRotateZ
       + " quarter-turns | SDF " + (dcrteImportedSdf == null ? "not built" : dcrteImportedSdf.signed ? "signed" : "unsigned");
     System.arraycopy(base, 6, expanded, 9, base.length - 6);
+    result = expanded;
+  }
+  if (dcrteMetaCrystalModeActive()) {
+    String[] expanded = new String[result.length + 4];
+    System.arraycopy(result, 0, expanded, 0, result.length);
+    expanded[result.length] = "META CRYSTAL " + dcrteMetaCrystalFamilyLabel() + " | recipe " + dcrteMetaCrystalPresetLabel() + " | theta " + nf(dcrteMetaCrystalEffectiveThetaDeg(), 1, 1) + " deg";
+    expanded[result.length + 1] = "META GRAPH " + (dcrteMetaCrystalGraph == null ? 0 : dcrteMetaCrystalGraph.nodes.size()) + " nodes | " + (dcrteMetaCrystalGraph == null ? 0 : dcrteMetaCrystalGraph.edges.size()) + " struts | load " + dcrteMetaCrystalLoadAxisLabel();
+    expanded[result.length + 2] = "META MODE " + (dcrteMetaCrystalRdftCoupled ? "RDFT EXPERIMENTAL" : "PAPER REPLICA") + " | source " + DCRTE_META_CRYSTAL_SOURCE;
+    expanded[result.length + 3] = "META NOTICE geometry/proxy only; mechanical behavior not validated";
     result = expanded;
   }
   if (!dcrteCompositionAuthoritative) return result;
@@ -4605,6 +4823,81 @@ boolean callSheetKeepVoxelEdge(int ax, int ay, int az, int bx, int by, int bz, i
   return h >= threshold;
 }
 
+float callSheetTonalDepth01(float depth, CallSheetBounds bounds) {
+  float span = max(0.000001, bounds.maxZ - bounds.minZ);
+  float normalized = constrain((depth - bounds.minZ) / span, 0, 1);
+  float smoothed = normalized * normalized * (3.0 - 2.0 * normalized);
+  return round(smoothed * (CALL_SHEET_TONAL_DEPTH_BANDS - 1)) / float(CALL_SHEET_TONAL_DEPTH_BANDS - 1);
+}
+
+int callSheetTonalGray(float depth01, boolean exposed) {
+  int farGray = exposed ? 164 : CALL_SHEET_TONAL_FAR_GRAY;
+  int nearGray = exposed ? CALL_SHEET_TONAL_NEAR_GRAY : 76;
+  return round(lerp(farGray, nearGray, constrain(depth01, 0, 1)));
+}
+
+float callSheetTonalWeight(float depth01, boolean exposed, boolean large) {
+  float base = exposed ? (large ? 0.78 : 0.52) : (large ? 0.30 : 0.22);
+  return base * lerp(0.82, 1.08, constrain(depth01, 0, 1));
+}
+
+int callSheetTonalShadowAlpha(float depth01, boolean large) {
+  return round(lerp(large ? 12 : 8, large ? 42 : 30, constrain(depth01, 0, 1)));
+}
+
+boolean callSheetKeepTonalVoxelEdge(int ax, int ay, int az, int bx, int by, int bz, int salt, boolean exposed, float depth01) {
+  float resolutionFactor = constrain(1.0 - max(0, foundryActiveVolumeResolution() - 36) / 120.0, 0.55, 1.0);
+  float keep = exposed
+    ? lerp(0.72, 0.98, depth01) * lerp(0.80, 1.0, resolutionFactor)
+    : lerp(0.48, 0.88, depth01) * resolutionFactor;
+  float h = hashUnit(ax * 61 + bx * 71 + seed, ay * 73 + by * 79 + salt + 701, az * 83 + bz * 89);
+  return h <= keep;
+}
+
+void runCallSheetTonalDepthTests() {
+  CallSheetBounds bounds = new CallSheetBounds();
+  bounds.include(new PVector(-1, -1, -12));
+  bounds.include(new PVector(1, 1, 12));
+  float farDepth = callSheetTonalDepth01(-12, bounds);
+  float middleDepth = callSheetTonalDepth01(0, bounds);
+  float nearDepth = callSheetTonalDepth01(12, bounds);
+  if (!(farDepth == 0 && nearDepth == 1 && middleDepth > farDepth && middleDepth < nearDepth))
+    throw new RuntimeException("Tonal depth normalization failed");
+  if (!(callSheetTonalGray(farDepth, false) > callSheetTonalGray(nearDepth, false)))
+    throw new RuntimeException("Tonal internal grayscale order failed");
+  if (!(callSheetTonalGray(farDepth, true) > callSheetTonalGray(nearDepth, true)))
+    throw new RuntimeException("Tonal boundary grayscale order failed");
+  if (!(callSheetTonalWeight(farDepth, true, false) < callSheetTonalWeight(nearDepth, true, false)))
+    throw new RuntimeException("Tonal line-weight order failed");
+  println("CALL SHEET TONAL DEPTH TESTS PASS / " + CALL_SHEET_TONAL_DEPTH_BANDS + " grayscale bands");
+}
+
+void runCallSheetTonalDepthSmoke(String outputPath) {
+  foundryGeometryIndex = DCRTE_META_CRYSTAL_GEOMETRY_INDEX;
+  foundryResolution = 72;
+  dcrteMetaCrystalFamily = 0;
+  dcrteMetaCrystalPreset = 0;
+  dcrteMetaCrystalGraph = null;
+  cadGraphicDrafting = false;
+  cadInternalLattice = true;
+  cadInternalStride = 5;
+  cadEdgeCull = 0.76;
+  cadShadowThreshold = 0.23;
+  cadStochastic = 0.48;
+  ensureDcrteMetaCrystalGraph();
+  generateSurfaceFoundryMesh();
+  if (foundryCallSheetSolid == null) throw new RuntimeException("Tonal smoke fixture has no voxel volume");
+  File outputFile = new File(outputPath);
+  File parent = outputFile.getParentFile();
+  if (parent != null) ensureDir(parent.getAbsolutePath());
+  writeFoundryCallSheetPng(outputPath, "voxel_lattice");
+  String svgPath = outputPath.toLowerCase().endsWith(".png")
+    ? outputPath.substring(0, outputPath.length() - 4) + ".svg"
+    : outputPath + ".svg";
+  writeFoundryCallSheetSvg(svgPath, "voxel_lattice");
+  println("CALL SHEET TONAL DEPTH SMOKE PASS / " + outputPath + " / " + svgPath);
+}
+
 float hashUnit(int a, int b, int c) {
   int h = a * 374761393 + b * 668265263 + c * 1442695041;
   h = (h ^ (h >> 13)) * 1274126177;
@@ -4701,6 +4994,11 @@ void svgLine(PrintWriter out, float x1, float y1, float x2, float y2, float opac
   out.println("<line x1=\"" + svgNum(x1) + "\" y1=\"" + svgNum(y1) + "\" x2=\"" + svgNum(x2) + "\" y2=\"" + svgNum(y2) + "\" stroke=\"#000000\" stroke-opacity=\"" + svgNum(opacity) + "\" stroke-width=\"" + svgNum(weight) + "\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/>");
 }
 
+void svgGrayLine(PrintWriter out, float x1, float y1, float x2, float y2, int gray, float weight) {
+  String hex = hex(constrain(gray, 0, 255), 2);
+  out.println("<line x1=\"" + svgNum(x1) + "\" y1=\"" + svgNum(y1) + "\" x2=\"" + svgNum(x2) + "\" y2=\"" + svgNum(y2) + "\" stroke=\"#" + hex + hex + hex + "\" stroke-width=\"" + svgNum(weight) + "\" stroke-linecap=\"butt\" stroke-linejoin=\"miter\"/>");
+}
+
 void svgCircle(PrintWriter out, float x, float y, float r) {
   out.println("<circle cx=\"" + svgNum(x) + "\" cy=\"" + svgNum(y) + "\" r=\"" + svgNum(r) + "\" fill=\"#000000\"/>");
 }
@@ -4764,11 +5062,15 @@ String safeXml(String v) {
 
 float foundryScalar(float x, float y, float z, float[] scores) {
   float base = topologyScalar(x, y, z, scores);
-  if (foundryGeometryIndex == 0) return base;
+  float woven = holonomyWovenModifier(x, y, z);
+  if (foundryGeometryIndex == 0) return base + woven;
   float geom = geometryCarrierScalar(foundryGeometryIndex, x, y, z);
+  if (dcrteMetaCrystalModeActive()) return geom + woven;
+  if (dcrteMonotileModeActive()) return lerp(base, geom + base * 0.30f, foundryWrapBlend);
   float fieldWrap = sampleFieldWrap(x, y) * (0.35 + 0.25 * coherenceBias);
   float phaseLift = 0.08 * sin((x + y + z) * PI * (1.0 + braneTwist) + holoGamma + shaperCosmic * TWO_PI);
-  return lerp(base, geom + base * 0.30 + fieldWrap + phaseLift, foundryWrapBlend);
+  float carried = lerp(base, geom + base * 0.30 + fieldWrap + phaseLift, foundryWrapBlend);
+  return carried + woven;
 }
 
 float sampleFieldWrap(float x, float y) {
@@ -4863,7 +5165,10 @@ float geometryCarrierScalar(int mode, float x, float y, float z) {
     return (primary + 0.82 * split) / 3.25;
   }
   if (mode == 16) return mengerDistance(x, y, z);
-  return mandelbulbDistance(x, y, z);
+  if (mode == 17) return mandelbulbDistance(x, y, z);
+  if (mode == DCRTE_MONOTILE_GEOMETRY_INDEX) return evaluateDcrteMonotileSubstrate(x, y, z);
+  if (mode == DCRTE_META_CRYSTAL_GEOMETRY_INDEX) return evaluateDcrteMetaCrystalCarrier(x, y, z);
+  return 2.0f;
 }
 
 float repeatMod(float value, float period) {
@@ -5024,6 +5329,8 @@ void drawFoundryWrappedGeometryPreview(float scale) {
         float z = map(iz, 0, 17, -1, 1);
         float v = foundryScalar(x, y, z, scores);
         if (abs(v) < foundryIsoBand * 1.35 && (ix + iy + iz) % 2 == 0) {
+          if (holonomyWovenApplied()) stroke(holonomyWovenCarrierColor(x, y, z), 190);
+          else stroke(ca, 135);
           vertex(x * scale, y * scale, z * scale);
         }
       }
@@ -6334,7 +6641,7 @@ void drawHelpOverlay() {
   text("Cosmosis Visual Observatory", x + 24, y + 22);
   fill(145, 178, 186);
   textSize(10);
-  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select established workspaces; 0 opens Geodesic Salon. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nGeodesic Salon builds tetrahedral, octahedral, icosahedral, dodeca-derived, and rhombic-triaconta-derived domes or spheres. Tetra, octa, and icosa families can receive an adjustable face-stellation modifier. Kit export writes one audited STL per reusable type plus BOM and assembly maps. Framed rails default to reciprocal half-dihedral miters, with a visible SQUARE compatibility toggle and automatic depth limiting when a requested miter would consume the printable rail. Edge JSON records requested and resolved dimensions, the applied miter, and fit status. Plateau mode is an optional 109.47 degree junction diagnostic. Surface Foundry remains unchanged.", x + 24, y + 58, w - 48, h - 80);
+  text("This sketch turns the theory vocabulary into visual lenses over one shared field state.\n\n1-9 select established workspaces; 0 opens Geodesic Salon; T opens Truss Yard; B opens HBE. Drag sliders to reshape the recursive field. Depth now spans 0-12, giving 13 recursive layers; Deep Detail controls how strongly deeper layers survive alpha falloff. Holonomy Loom owns the canonical adaptive field atlas: W cycles OFF/SKIN/VOLUME/RELIEF, and CAPTURE FOR FOUNDRY freezes the exact visible atlas that will be transported through the carrier. Floquet Forge has an optional Shaper layer for simulated or Sender-fed environmental streams. [ and ] cycle material targets. M switches material source mode: heuristic, database, or Cosmosis CSV. O opens a Cosmosis/RDFT CSV run and creates an active run-imprint profile. U reloads generated material caches. V applies the selected material profile. N cycles the Surface Foundry geometry carrier. G captures the Loom atlas and generates a Surface Foundry mesh. C generates PNG/STL call sheets. X pulls optional SVG call sheets for the current render strategy. E exports STL plus metadata. SPACE pauses. R resets the orbit and trails. S saves a frame. H closes this overlay.\n\nGeodesic Salon builds tetrahedral, octahedral, icosahedral, dodeca-derived, and rhombic-triaconta-derived domes or spheres. Its TOPOLOGY control also opens a dome-first APERIODIC atlas with Hat and Penrose P3 sources, four diagnostic overlays, forced KICAS ordering, and a GS-005 atlas guide. Aperiodic sphere export remains locked pending explicit chart-closure qualification. Tetra, octa, and icosa families can receive an adjustable face-stellation modifier. Truss Yard is a separate octahedral tower/tunnel workspace. MATCH DOME reads the active salon scale and writes a reference adapter without changing salon panels. Its parts/ folder contains individually audited struts and nodes; the aggregate assembly preview is visual only. Surface Foundry appends an exact, recursion-selectable APERIODIC MONOTILE carrier and a separately audited connected swatch exporter.", x + 24, y + 58, w - 48, h - 80);
 }
 
 void resetState() {
@@ -6347,6 +6654,8 @@ void resetState() {
   holoGammaTrail.clear();
   holoGamma = 0;
   simT = 0;
+  releaseHolonomyWovenFieldCapture("field state reset");
+  rebuildHolonomyWovenLiveField(true);
   initParticles();
   dirtyField = true;
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) markDcrtePrimitiveStale("field state reset; regenerate");
@@ -6400,7 +6709,14 @@ void mousePressed() {
     int planeW = min(w - 360, h - 80);
     int rx = x + 34 + planeW + 32;
     int py = y + 54;
-    if (over(rx + 16, py + 150, 132, 24)) reverseHolonomy = !reverseHolonomy;
+    if (over(rx + 16, py + 150, 132, 24)) {
+      reverseHolonomy = !reverseHolonomy;
+      releaseHolonomyWovenFieldCapture("orientation changed");
+      rebuildHolonomyWovenLiveField(true);
+      markCurrentFoundryStale("Holonomy Loom orientation changed; regenerate");
+    }
+    if (over(rx + 16, py + 180, 132, 24)) cycleHolonomyWovenMode();
+    if (over(rx + 156, py + 180, max(104, w - (rx - x) - 200), 24)) toggleHolonomyWovenFieldCapture();
   }
   if (activeLens == 3) {
     int x = UI_W + 18;
@@ -6451,12 +6767,39 @@ void mousePressed() {
       else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) adjustDcrteImportedResolution(1);
       else { foundryResolution = min(96, foundryResolution + 6); markFoundryStale(); }
     }
-    if (over(cx, cy + 112, 78, 22)) { foundryIsoBand = max(0.035, foundryIsoBand - 0.01); markCurrentFoundryStale("iso band changed; regenerate"); }
-    if (over(cx + 88, cy + 112, 78, 22)) { foundryIsoBand = min(0.22, foundryIsoBand + 0.01); markCurrentFoundryStale("iso band changed; regenerate"); }
+    if (over(cx, cy + 112, 78, 22)) {
+      if (dcrteMetaCrystalModeActive()) dcrteMetaCrystalStrutRadius = max(0.012f, dcrteMetaCrystalStrutRadius - 0.003f);
+      else foundryIsoBand = max(0.035, foundryIsoBand - 0.01);
+      markCurrentFoundryStale(dcrteMetaCrystalModeActive() ? "strut radius changed; regenerate" : "iso band changed; regenerate");
+    }
+    if (over(cx + 88, cy + 112, 78, 22)) {
+      if (dcrteMetaCrystalModeActive()) dcrteMetaCrystalStrutRadius = min(0.070f, dcrteMetaCrystalStrutRadius + 0.003f);
+      else foundryIsoBand = min(0.22, foundryIsoBand + 0.01);
+      markCurrentFoundryStale(dcrteMetaCrystalModeActive() ? "strut radius changed; regenerate" : "iso band changed; regenerate");
+    }
     if (over(cx, cy + 162, 78, 22)) cycleFoundryGeometry(-1);
     if (over(cx + 88, cy + 162, 78, 22)) cycleFoundryGeometry(1);
     if (over(cx, cy + 212, 112, 22)) { foundryRaisedVeins = !foundryRaisedVeins; markCurrentFoundryStale("raised vein request changed; regenerate"); }
-    int cadY = py + 578;
+    int carrierShift = dcrteMonotileModeActive() ? 78 : dcrteMetaCrystalModeActive() ? 134 : 0;
+    if (dcrteMonotileModeActive()) {
+      if (over(cx, cy + 274, 78, 22)) cycleDcrteMonotileLevel(-1);
+      if (over(cx + 88, cy + 274, 78, 22)) cycleDcrteMonotileLevel(1);
+      if (over(cx + 176, cy + 274, 154, 22)) cycleDcrteMonotileMark();
+      if (over(cx, cy + 304, rightW - 32, 24)) exportDcrteMonotileSwatch();
+    }
+    if (dcrteMetaCrystalModeActive()) {
+      if (over(cx, cy + 274, 78, 22)) cycleDcrteMetaCrystalFamily(-1);
+      if (over(cx + 88, cy + 274, 78, 22)) cycleDcrteMetaCrystalFamily(1);
+      if (over(cx + 176, cy + 274, 154, 22)) cycleDcrteMetaCrystalView();
+      if (over(cx, cy + 304, 78, 22)) cycleDcrteMetaCrystalPreset(-1);
+      if (over(cx + 88, cy + 304, 78, 22)) cycleDcrteMetaCrystalPreset(1);
+      if (over(cx + 176, cy + 304, 154, 22)) toggleDcrteMetaCrystalCoupling();
+      if (over(cx, cy + 334, 78, 22)) adjustDcrteMetaCrystalTheta(-3);
+      if (over(cx + 88, cy + 334, 78, 22)) adjustDcrteMetaCrystalTheta(3);
+      if (over(cx + 176, cy + 334, 154, 22)) exportDcrteMetaCrystalGraph();
+      if (over(cx, cy + 364, 166, 22)) cycleDcrteMetaCrystalLoadAxis();
+    }
+    int cadY = py + 578 + carrierShift;
     int cadW = rightW - 32;
     int topGap = 6;
     int topW = (cadW - topGap * 2) / 3;
@@ -6492,6 +6835,13 @@ void mousePressed() {
     int y = 112;
     int w = width - x - 20;
     int h = height - y - 48;
+    if (handleTrussYardMouse(x, y, w, h)) return;
+  }
+  if (activeLens == 11) {
+    int x = UI_W + 18;
+    int y = 112;
+    int w = width - x - 20;
+    int h = height - y - 48;
     if (handleDcrteHbeMouse(x, y, w, h)) return;
   }
   for (SliderKnob s : sliders) s.mousePressed();
@@ -6520,7 +6870,8 @@ void mouseReleased() {
 void keyPressed() {
   if (key >= '1' && key <= '9') activeLens = key - '1';
   else if (key == '0') activeLens = 9;
-  else if (key == 'b' || key == 'B') activeLens = 10;
+  else if (key == 't' || key == 'T') activeLens = 10;
+  else if (key == 'b' || key == 'B') activeLens = 11;
   else if (key == ' ') paused = !paused;
   else if (key == 'r' || key == 'R') resetState();
   else if (key == 'h' || key == 'H') showHelp = !showHelp;
@@ -6530,6 +6881,7 @@ void keyPressed() {
   else if (key == 'x' || key == 'X') pullFoundryCallSheetSvgs();
   else if (key == 'e' || key == 'E') exportSurfaceFoundryMesh();
   else if (key == 'n' || key == 'N') cycleFoundryGeometry(1);
+  else if (key == 'w' || key == 'W') cycleHolonomyWovenMode();
   else if (key == 'm' || key == 'M') cycleMaterialSource();
   else if (key == 'o' || key == 'O') openCosmosisCsv();
   else if (key == 'u' || key == 'U') refreshMaterialSources();
@@ -6596,6 +6948,8 @@ class CallSheetBounds {
   float maxX = -999999;
   float minY = 999999;
   float maxY = -999999;
+  float minZ = 999999;
+  float maxZ = -999999;
   boolean valid = false;
 
   void include(PVector p) {
@@ -6603,6 +6957,8 @@ class CallSheetBounds {
     maxX = max(maxX, p.x);
     minY = min(minY, p.y);
     maxY = max(maxY, p.y);
+    minZ = min(minZ, p.z);
+    maxZ = max(maxZ, p.z);
     valid = true;
   }
 }
@@ -6656,6 +7012,24 @@ class SurfaceMesh {
       else if (count > 2 || (count == 2 && abs(balance) == 2)) nonManifold++;
     }
     return new int[] { boundary, nonManifold, degenerate };
+  }
+
+  ArrayList<String> boundaryEdgeKeys() {
+    HashMap<String, Integer> edgeCounts = new HashMap<String, Integer>();
+    HashMap<String, Integer> edgeBalance = new HashMap<String, Integer>();
+    for (MeshTri tri : tris) {
+      PVector ab = PVector.sub(tri.b, tri.a);
+      PVector ac = PVector.sub(tri.c, tri.a);
+      if (ab.cross(ac).magSq() < 0.00000001f) continue;
+      auditEdge(edgeCounts, edgeBalance, tri.a, tri.b);
+      auditEdge(edgeCounts, edgeBalance, tri.b, tri.c);
+      auditEdge(edgeCounts, edgeBalance, tri.c, tri.a);
+    }
+    ArrayList<String> result = new ArrayList<String>();
+    for (String key : edgeCounts.keySet())
+      if (edgeCounts.get(key) == 1) result.add(key);
+    java.util.Collections.sort(result);
+    return result;
   }
 
   void auditEdge(HashMap<String, Integer> counts, HashMap<String, Integer> balance, PVector a, PVector b) {
@@ -6713,9 +7087,13 @@ class SurfaceMesh {
   }
 
   void drawPreview(float s) {
+    drawPreview(s, color(75, 180, 210, 44), color(120, 235, 220, 95));
+  }
+
+  void drawPreview(float s, int fillColor, int strokeColor) {
     hint(DISABLE_DEPTH_TEST);
     noStroke();
-    fill(75, 180, 210, 44);
+    fill(fillColor);
     int stride = max(1, tris.size() / 6500);
     beginShape(TRIANGLES);
     for (int i = 0; i < tris.size(); i += stride) {
@@ -6725,7 +7103,7 @@ class SurfaceMesh {
       vertex(t.c.x * s, t.c.y * s, t.c.z * s);
     }
     endShape();
-    stroke(120, 235, 220, 95);
+    stroke(strokeColor);
     strokeWeight(0.8);
     noFill();
     beginShape(LINES);
@@ -6739,6 +7117,12 @@ class SurfaceMesh {
   }
 
   void drawPreviewFitted(float targetRadius) {
+    // Existing callers keep the standard teal; the colour overload is additive.
+    drawPreviewFitted(targetRadius, color(75, 180, 210, 44),
+      color(120, 235, 220, 95));
+  }
+
+  void drawPreviewFitted(float targetRadius, int fillColor, int strokeColor) {
     if (tris.size() == 0) return;
     float centerX = 0.5f * (previewMinX + previewMaxX);
     float centerY = 0.5f * (previewMinY + previewMaxY);
@@ -6747,14 +7131,15 @@ class SurfaceMesh {
       max(previewMaxY - previewMinY, previewMaxZ - previewMinZ));
     if (!dcrteFinite(centerX) || !dcrteFinite(centerY) || !dcrteFinite(centerZ)
         || !dcrteFinite(halfExtent) || halfExtent <= 0.000001f) {
-      drawPreview(targetRadius / max(1.0f, foundryScaleMM * 0.5f));
+      drawPreview(targetRadius / max(1.0f, foundryScaleMM * 0.5f),
+        fillColor, strokeColor);
       return;
     }
     float fittedScale = targetRadius / halfExtent;
     pushMatrix();
     scale(fittedScale);
     translate(-centerX, -centerY, -centerZ);
-    drawPreview(1.0f);
+    drawPreview(1.0f, fillColor, strokeColor);
     popMatrix();
   }
 

@@ -190,6 +190,7 @@ class GeodesicPlateKitValidation {
     json.setInt("color_quantity_mismatches", colorQuantityMismatches);
     json.setInt("plate_files", plateFiles);
     json.setInt("invalid_3mf_packages", invalidPackages);
+    json.setFloat("safe_part_envelope_mm", GEODESIC_P1S_SAFE_PART_MM);
     return json;
   }
 }
@@ -223,6 +224,7 @@ class GeodesicPlateKitExportResult {
     json.setFloat("bed_height_mm", GEODESIC_PLATE_HEIGHT_MM);
     json.setFloat("margin_mm", GEODESIC_PLATE_MARGIN_MM);
     json.setFloat("part_spacing_mm", GEODESIC_PLATE_SPACING_MM);
+    json.setFloat("safe_part_envelope_mm", GEODESIC_P1S_SAFE_PART_MM);
     return json;
   }
 }
@@ -309,6 +311,31 @@ GeodesicPlateKitExportResult exportGeodesicPlateKitPackage(
     expectedByColor.put(colorId,
       expectedByColor.containsKey(colorId) ?
       expectedByColor.get(colorId) + 1 : 1);
+  }
+
+  // Refuse the entire prepared package before packing or writing any 3MF when
+  // one instance cannot fit the conservative P1S envelope. A partial color
+  // package is more dangerous than no package because its missing pieces are
+  // easy to overlook at the slicer.
+  for (ArrayList<GeodesicPlateInstance> colorInstances : byColor.values()) {
+    for (GeodesicPlateInstance instance : colorInstances) {
+      GeodesicPlateMeshResource resource = instance.resource;
+      if (resource == null || !resource.valid()) continue;
+      if (resource.widthMM() > GEODESIC_P1S_SAFE_PART_MM + 0.001f ||
+          resource.heightMM() > GEODESIC_P1S_SAFE_PART_MM + 0.001f ||
+          resource.depthMM() > GEODESIC_P1S_SAFE_PART_MM + 0.001f)
+        validation.oversizedInstances++;
+    }
+  }
+  if (validation.invalidResources > 0 ||
+      validation.oversizedInstances > 0) {
+    validation.status = validation.oversizedInstances > 0 ?
+      "PLATE KIT BLOCKED / P1S ENVELOPE" :
+      "PLATE KIT BLOCKED / INVALID PART";
+    saveJSONObject(validation.toJSON(),
+      new File(runFolder, result.validationJson).getAbsolutePath());
+    result.status = validation.status;
+    return result;
   }
 
   ArrayList<String> colorIds =
@@ -511,6 +538,7 @@ JSONObject geodesicPlateManifestJSON(
   json.setFloat("bed_height_mm", GEODESIC_PLATE_HEIGHT_MM);
   json.setFloat("margin_mm", GEODESIC_PLATE_MARGIN_MM);
   json.setFloat("part_spacing_mm", GEODESIC_PLATE_SPACING_MM);
+  json.setFloat("safe_part_envelope_mm", GEODESIC_P1S_SAFE_PART_MM);
   json.setString("packing_policy",
     "deterministic conservative axis_aligned_shelf");
   json.setString("model_fingerprint",

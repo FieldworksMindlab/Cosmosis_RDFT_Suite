@@ -1,6 +1,10 @@
 /* DCRTE-ET Milestone 1 Surface Foundry controls and diagnostics. */
 
 void drawDcrtePrimitivePanel(int x, int y, int w, int h) {
+  if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.PANEL) {
+    drawDcrtePanelPrimitivePanel(x, y, w, h);
+    return;
+  }
   color accent = dcrteLastValidationReport == null ? color(255, 200, 90)
     : dcrteLastValidationReport.status == ValidationStatus.FAIL ? color(255, 104, 116)
     : dcrteLastValidationReport.status == ValidationStatus.PASS_WITH_WARNINGS ? color(255, 200, 90)
@@ -59,6 +63,9 @@ void drawDcrtePrimitivePanel(int x, int y, int w, int h) {
 
 boolean handleDcrtePrimitivePanelMouse(int previewX, int previewY, int previewW, int previewH) {
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_PRIMITIVE) return false;
+  if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.PANEL) {
+    return handleDcrtePanelPrimitiveMouse(previewX, previewY, previewW, previewH);
+  }
   int x = previewX + previewW - 306;
   int y = previewY + 12;
   int w = 294;
@@ -84,6 +91,135 @@ boolean handleDcrtePrimitivePanelMouse(int previewX, int previewY, int previewW,
   return false;
 }
 
+void drawDcrtePanelPrimitivePanel(int x, int y, int w, int h) {
+  color accent = dcrteLastValidationReport == null ? color(255, 200, 90)
+    : dcrteLastValidationReport.status == ValidationStatus.FAIL ? color(255, 104, 116)
+    : dcrteLastValidationReport.status == ValidationStatus.PASS_WITH_WARNINGS ? color(255, 200, 90)
+    : color(104, 236, 174);
+  fill(3, 9, 13, 242);
+  stroke(red(accent), green(accent), blue(accent), 220);
+  strokeWeight(1.0f);
+  rect(x, y, w, h, 5);
+  fill(accent);
+  textAlign(LEFT, TOP);
+  textSize(9);
+  text("DCRTE-ET PHYSICAL PANEL DOMAIN", x + 10, y + 8);
+
+  int innerX = x + 10;
+  int innerW = w - 20;
+  fill(150, 184, 190);
+  textSize(8);
+  text("stage       " + dcrteBuildStage, innerX, y + 25);
+  text("carrier     " + shortText(foundryGeometryName(), 18), innerX, y + 37);
+  text("layout      " + dcrtePanelLayoutMode.id().toUpperCase(), innerX, y + 49);
+  text("observation " + dcrteObservationMode.id().toUpperCase(), innerX, y + 61);
+
+  int gap = 6;
+  int halfW = (innerW - gap) / 2;
+  int quarterGap = 4;
+  int quarterW = (innerW - quarterGap * 3) / 4;
+  int by = y + 76;
+  drawButton(innerX, by, halfW, 20, "DOMAIN PANEL", color(48, 72, 77));
+  drawButton(innerX + halfW + gap, by, halfW, 20,
+    dcrteObservationMode == DCRTEObservationMode.HARD_INTERIOR ? "HARD INTERIOR" : "SHELL BAND", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, "LAYOUT " + dcrtePanelLayoutMode.label(), color(58, 78, 70));
+  drawButton(innerX + halfW + gap, by, halfW, 20,
+    dcrteDomainPreviewEnabled ? "DOMAIN VIEW ON" : "DOMAIN VIEW OFF", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, quarterW, 20, "W-", color(48, 72, 77));
+  drawButton(innerX + quarterW + quarterGap, by, quarterW, 20, "W+", color(48, 72, 77));
+  drawButton(innerX + (quarterW + quarterGap) * 2, by, quarterW, 20, "H-", color(48, 72, 77));
+  drawButton(innerX + (quarterW + quarterGap) * 3, by, quarterW, 20, "H+", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, quarterW, 20, "D-", color(48, 72, 77));
+  drawButton(innerX + quarterW + quarterGap, by, quarterW, 20, "D+", color(48, 72, 77));
+  drawButton(innerX + (quarterW + quarterGap) * 2, by, quarterW, 20, "OVL-", color(48, 72, 77));
+  drawButton(innerX + (quarterW + quarterGap) * 3, by, quarterW, 20, "OVL+", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, quarterW, 20, "COL-", color(48, 72, 77));
+  drawButton(innerX + quarterW + quarterGap, by, quarterW, 20, "COL+", color(48, 72, 77));
+  drawButton(innerX + (quarterW + quarterGap) * 2, by, quarterW, 20, "ROW-", color(48, 72, 77));
+  drawButton(innerX + (quarterW + quarterGap) * 3, by, quarterW, 20, "ROW+", color(48, 72, 77));
+  by += 24;
+  drawButton(innerX, by, halfW, 20, "RES " + dcrtePrimitiveResolution + "^3", color(48, 72, 77));
+  drawButton(innerX + halfW + gap, by, halfW, 20,
+    dcrteSlicePreviewEnabled ? "SLICE ON" : "SLICE OFF", color(48, 72, 77));
+  by += 24;
+  int thirdGap = 5;
+  int thirdW = (innerW - thirdGap * 2) / 3;
+  drawButton(innerX, by, thirdW, 20, "SHELL -", color(48, 72, 77));
+  drawButton(innerX + thirdW + thirdGap, by, thirdW, 20, "SHELL +", color(48, 72, 77));
+  drawButton(innerX + (thirdW + thirdGap) * 2, by, thirdW, 20,
+    dcrtePanelLayoutMode == DCRTEPanelLayoutMode.SPHEROID_CELLS ? "SCALLOPED" : "RECTANGULAR", color(64, 72, 52));
+  by += 24;
+  drawButton(innerX, by, halfW, 22, "BUILD PANEL", color(45, 86, 72));
+  drawButton(innerX + halfW + gap, by, halfW, 22, "VALIDATE", color(62, 82, 96));
+
+  int metricsY = by + 29;
+  DCRTEVolume volume = dcrtePrimitiveVolume;
+  DCRTEValidationReport validation = dcrteLastValidationReport;
+  int admitted = volume == null ? 0 : volume.admittedCount;
+  int finalCount = volume == null ? 0 : volume.finalSolidCount;
+  float fillRatio = admitted > 0 ? finalCount * 100.0f / admitted : 0;
+  fill(150, 184, 190);
+  textSize(8);
+  text("size " + nf(dcrtePanelWidthMM, 1, 0) + " x " + nf(dcrtePanelHeightMM, 1, 0)
+    + " x " + nf(dcrtePanelDepthMM, 1, 0) + " mm", innerX, metricsY);
+  text("grid " + dcrtePanelColumns + " x " + dcrtePanelRows + "   overlap "
+    + nf(dcrtePanelOverlap * 100.0f, 1, 0) + "%   effective vox "
+    + dcrtePanelEffectiveVoxels(dcrtePanelWidthMM) + "x"
+    + dcrtePanelEffectiveVoxels(dcrtePanelHeightMM) + "x"
+    + dcrtePanelEffectiveVoxels(dcrtePanelDepthMM), innerX, metricsY + 12);
+  text("admitted " + admitted + "   final " + finalCount + "   fill " + nf(fillRatio, 1, 2) + "%", innerX, metricsY + 24);
+  String validationText = validation == null ? "NOT RUN" : validation.status.id().toUpperCase();
+  text("validation " + validationText + "   build " + nf(dcrteLastBuildMillis / 1000.0f, 1, 2) + " s", innerX, metricsY + 36);
+}
+
+boolean handleDcrtePanelPrimitiveMouse(int previewX, int previewY, int previewW, int previewH) {
+  int x = previewX + previewW - 306;
+  int y = previewY + 12;
+  int innerX = x + 10;
+  int innerW = 294 - 20;
+  int gap = 6;
+  int halfW = (innerW - gap) / 2;
+  int quarterGap = 4;
+  int quarterW = (innerW - quarterGap * 3) / 4;
+  int by = y + 76;
+  if (over(innerX, by, halfW, 20)) { cycleDcrtePrimitiveDomain(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { cycleDcrteObservationMode(); return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { cycleDcrtePanelLayoutMode(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { dcrteDomainPreviewEnabled = !dcrteDomainPreviewEnabled; return true; }
+  by += 24;
+  if (over(innerX, by, quarterW, 20)) { adjustDcrtePanelWidth(-20); return true; }
+  if (over(innerX + quarterW + quarterGap, by, quarterW, 20)) { adjustDcrtePanelWidth(20); return true; }
+  if (over(innerX + (quarterW + quarterGap) * 2, by, quarterW, 20)) { adjustDcrtePanelHeight(-20); return true; }
+  if (over(innerX + (quarterW + quarterGap) * 3, by, quarterW, 20)) { adjustDcrtePanelHeight(20); return true; }
+  by += 24;
+  if (over(innerX, by, quarterW, 20)) { adjustDcrtePanelDepth(-5); return true; }
+  if (over(innerX + quarterW + quarterGap, by, quarterW, 20)) { adjustDcrtePanelDepth(5); return true; }
+  if (over(innerX + (quarterW + quarterGap) * 2, by, quarterW, 20)) { adjustDcrtePanelOverlap(-0.03f); return true; }
+  if (over(innerX + (quarterW + quarterGap) * 3, by, quarterW, 20)) { adjustDcrtePanelOverlap(0.03f); return true; }
+  by += 24;
+  if (over(innerX, by, quarterW, 20)) { adjustDcrtePanelColumns(-1); return true; }
+  if (over(innerX + quarterW + quarterGap, by, quarterW, 20)) { adjustDcrtePanelColumns(1); return true; }
+  if (over(innerX + (quarterW + quarterGap) * 2, by, quarterW, 20)) { adjustDcrtePanelRows(-1); return true; }
+  if (over(innerX + (quarterW + quarterGap) * 3, by, quarterW, 20)) { adjustDcrtePanelRows(1); return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 20)) { cycleDcrtePrimitiveResolution(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 20)) { dcrteSlicePreviewEnabled = !dcrteSlicePreviewEnabled; return true; }
+  by += 24;
+  int thirdGap = 5;
+  int thirdW = (innerW - thirdGap * 2) / 3;
+  if (over(innerX, by, thirdW, 20)) { adjustDcrteShellThickness(-1); return true; }
+  if (over(innerX + thirdW + thirdGap, by, thirdW, 20)) { adjustDcrteShellThickness(1); return true; }
+  by += 24;
+  if (over(innerX, by, halfW, 22)) { generateDcrtePrimitiveSurfaceMesh(); return true; }
+  if (over(innerX + halfW + gap, by, halfW, 22)) { validateCurrentDcrtePrimitiveVolume(); return true; }
+  return false;
+}
+
 void drawDcrtePrimitiveWireframe(float previewScale) {
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_PRIMITIVE || !dcrteDomainPreviewEnabled) return;
   noFill();
@@ -100,8 +236,32 @@ void drawDcrtePrimitiveWireframe(float previewScale) {
     translate(dcrteDomainCenterX * previewScale, dcrteDomainCenterY * previewScale, dcrteDomainCenterZ * previewScale);
     box(dcrteBoxHalfX * previewScale * 2, dcrteBoxHalfY * previewScale * 2, dcrteBoxHalfZ * previewScale * 2);
     popMatrix();
-  } else {
+  } else if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.CYLINDER) {
     drawDcrteCylinderWireframe(previewScale);
+  } else {
+    drawDcrtePanelWireframe(previewScale);
+  }
+}
+
+void drawDcrtePanelWireframe(float previewScale) {
+  ObservationDomain panel = createDcrtePanelDomain();
+  if (panel instanceof ContinuousPanelDomain) {
+    Bounds3D bounds = panel.bounds();
+    pushMatrix();
+    box(bounds.sizeX() * previewScale, bounds.sizeY() * previewScale, bounds.sizeZ() * previewScale);
+    popMatrix();
+    return;
+  }
+  SmoothSpheroidCellArrayDomain cells = (SmoothSpheroidCellArrayDomain)panel;
+  sphereDetail(12);
+  for (int row = 0; row < cells.rows; row++) {
+    for (int column = 0; column < cells.columns; column++) {
+      pushMatrix();
+      translate(cells.centerX(column) * previewScale, cells.centerY(row) * previewScale, 0);
+      scale(cells.radiusX * previewScale, cells.radiusY * previewScale, cells.radiusZ * previewScale);
+      sphere(1);
+      popMatrix();
+    }
   }
 }
 

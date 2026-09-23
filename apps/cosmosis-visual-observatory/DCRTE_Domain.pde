@@ -3,7 +3,8 @@
 enum DCRTEPrimitiveDomainType {
   SPHERE,
   BOX,
-  CYLINDER;
+  CYLINDER,
+  PANEL;
 
   String id() {
     return name().toLowerCase();
@@ -319,6 +320,9 @@ float dcrteCylinderRadius = 0.68f;
 float dcrteCylinderHalfHeight = 0.88f;
 
 ObservationDomain createDcrteObservationDomain() {
+  if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.PANEL) {
+    return createDcrtePanelDomain();
+  }
   if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.BOX) {
     return new BoxDomain(dcrteDomainCenterX, dcrteDomainCenterY, dcrteDomainCenterZ, dcrteBoxHalfX, dcrteBoxHalfY, dcrteBoxHalfZ);
   }
@@ -331,6 +335,7 @@ ObservationDomain createDcrteObservationDomain() {
 void cycleDcrtePrimitiveDomain() {
   if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.SPHERE) dcrtePrimitiveDomainType = DCRTEPrimitiveDomainType.BOX;
   else if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.BOX) dcrtePrimitiveDomainType = DCRTEPrimitiveDomainType.CYLINDER;
+  else if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.CYLINDER) dcrtePrimitiveDomainType = DCRTEPrimitiveDomainType.PANEL;
   else dcrtePrimitiveDomainType = DCRTEPrimitiveDomainType.SPHERE;
   markDcrtePrimitiveStale("observation domain changed; regenerate");
 }

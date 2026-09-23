@@ -14,6 +14,27 @@ apothem. Large panels retain the requested caps, while subdivided panels become
 proportionally lighter. The requested caps remain in the manifest and the
 resolved dimensions are written into the reusable-part and placement records.
 
+## Fabrication Size Contract
+
+The Salon resolves assembled scale after minimum-feature fabrication has been
+calculated, so a preset never obtains its target by silently shrinking portals,
+rails, walls, skins, labels, or miter clearances:
+
+- `MICRO` uses the minimum audited radius and accepts any automatic enlargement
+  required by the active fabrication contract.
+- `12 IN` solves for a `304.8 mm` widest horizontal assembled span.
+- `P1S MAX` solves for the largest assembly whose limiting part remains within
+  a conservative `246 x 246 x 246 mm` P1S part envelope.
+- `CUSTOM` leaves the radius operator-controlled while measuring and reporting
+  the same limiting part and bed-fit result.
+
+The solution is topology-specific and is recomputed when family, recursion,
+extent, cut, panel, seam, portal, or assembly settings change. Presets may be
+reported unavailable when minimum physical features and the requested target
+cannot coexist. This is an explicit qualification result, not a geometry
+downgrade. The selected preset, actual assembled diameter, limiting part, and
+safe envelope are serialized with the kit manifest.
+
 ## Geometry Contract
 
 The engine supports tetrahedral, octahedral, icosahedral, dodecahedral, and
@@ -34,6 +55,37 @@ half-panels and preserves reusable triangle adjacency. The result must satisfy:
 - a full sphere has no boundary and Euler characteristic 2;
 - a dome has one boundary cycle and Euler characteristic 1;
 - every dome boundary vertex lies on the clipping plane.
+
+## Aperiodic Atlas Provider
+
+`POLYHEDRAL` remains the default and retains the original seed-family builder.
+The additive `APERIODIC` topology mode constructs a qualified icosahedral dome
+carrier and maps one of two nonperiodic logical domains across six deterministic
+cube-map charts:
+
+- `HAT` samples the checked-in exact substitution manifests at recursion levels
+  1-3. Higher display recursion refines the triangular carrier without claiming
+  additional Hat substitution levels.
+- `PENROSE P3` derives stable tile identity from a de Bruijn five-grid band
+  classification with deterministic phase.
+
+Every carrier face records its logical tile ID and kind, chart ID, chart-local
+coordinates, distortion estimate, and seam/defect flag. Logical source-tile and
+chart boundaries are derived from reciprocal face adjacency. These values are
+visualized directly in Salon and exported to `aperiodic_atlas.json`; each KICAS
+placement repeats its atlas identity in `assembly_plan.json`.
+
+The atlas is deliberately a logical and ordering layer. Fabrication remains on
+the proven triangular carrier, so half-dihedral miters, KICAS locks, centered
+reinforcement portals, labels, manifold audits, and assembly validators are not
+duplicated or weakened. Aperiodic mode forces KICAS and disables stellation.
+Dome export is qualified by the existing boundary contract. A complete sphere
+can be inspected, but export is blocked until source-chart closure and seam
+equivalence receive a dedicated qualification rule.
+
+`GS-005_aperiodic_atlas` uses black-and-white pattern fields, heavy dashed chart
+seams, source tile boundaries, and defect marks to document the mapping without
+turning display colors into fabrication geometry. SVG remains opt-in.
 
 ## Intrinsic Coordinates
 
@@ -165,7 +217,9 @@ placement-specific parts remain unique resources.
 
 The packer is deterministic, axis-aligned, and conservative. It does not
 perform slicer-dependent orientation, support generation, or nesting. It
-rejects a Plate Kit success state when an expected face is missing or
+blocks the complete prepared package before writing any 3MF when a source mesh
+is invalid or any part exceeds the safe P1S envelope. It also rejects a Plate
+Kit success state when an expected face is missing or
 duplicated, a color quantity differs from the paint plan, a resource is
 invalid, a part exceeds the bed, placements overlap or leave the safe bounds,
 or a 3MF package lacks required ZIP entries. `plate_manifest.json`,
@@ -179,14 +233,12 @@ remain available for one-off and replacement parts.
 
 ## KICAS Assembly Contract
 
-KICAS stands for **Kinematic Integral Capture Assembly System**. The contract
-is additive and does not replace the legacy portal-and-mate-code path. In this
-mode, assembly is treated as an ordered motion plan: a deterministic
-breadth-first planner assigns `P001` to the seed and gives every later
-placement a parent face, insertion vector, and reciprocal lock role. Tree edges
-receive integral male/female slide captures printed into the panel geometry.
-Non-tree shared edges remain alignment relationships, and the final designated
-key closes the ordered sequence.
+KICAS is additive and does not replace the legacy portal-and-mate-code path. A
+deterministic breadth-first planner assigns `P001` to the seed and gives every
+later placement a parent face, insertion vector, and reciprocal lock role.
+Tree edges receive integral male/female slide captures. Non-tree shared edges
+remain alignment relationships, and the final designated key closes the
+ordered sequence.
 
 Every triangle edge retains exactly one enlarged portal at edge station `0.5`.
 The operator first seats the integral capture, then aligns the matching center

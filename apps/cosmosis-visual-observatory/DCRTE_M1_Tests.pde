@@ -68,6 +68,33 @@ DCRTEM1TestReport runDcrteMilestone1Tests() {
   report.check(abs(cylinder.signedDistance(2, 0, 0) - 1) <= tolerance, "cylinder radial exterior sdf");
   report.check(abs(cylinder.signedDistance(0, 2, 0) - 1) <= tolerance, "cylinder axial exterior sdf");
 
+  ContinuousPanelDomain continuousPanel = new ContinuousPanelDomain(180, 120, 30);
+  report.check(continuousPanel.isValid(), "continuous panel valid");
+  report.check(abs(continuousPanel.bounds().sizeX() - 2.0f) <= tolerance
+    && abs(continuousPanel.bounds().sizeY() - 1.3333334f) <= 0.0001f
+    && abs(continuousPanel.bounds().sizeZ() - 0.33333334f) <= 0.0001f,
+    "continuous panel physical aspect normalization");
+  report.check(continuousPanel.signedDistance(0, 0, 0) < 0
+    && continuousPanel.signedDistance(1.1f, 0, 0) > 0,
+    "continuous panel sdf");
+
+  SmoothSpheroidCellArrayDomain cellPanel = new SmoothSpheroidCellArrayDomain(
+    180, 120, 30, 3, 3, 0.18f, 0.65f);
+  report.check(cellPanel.isValid() && cellPanel.columns * cellPanel.rows == 9,
+    "spheroid panel cell count");
+  report.check(cellPanel.signedDistance(cellPanel.centerX(0), cellPanel.centerY(0), 0) < 0
+    && cellPanel.signedDistance(cellPanel.centerX(2), cellPanel.centerY(2), 0) < 0,
+    "spheroid panel admits cell centers");
+  float joinedX = (cellPanel.centerX(0) + cellPanel.centerX(1)) * 0.5f;
+  report.check(cellPanel.signedDistance(joinedX, cellPanel.centerY(1), 0) < 0,
+    "spheroid panel controlled overlap joins neighbors");
+  report.check(cellPanel.signedDistance(-cellPanel.halfX, -cellPanel.halfY, 0) > 0,
+    "spheroid panel retains scalloped outer corner");
+  float cellReferenceVolume = cellPanel.analyticVolume();
+  report.check(dcrteFinite(cellReferenceVolume) && cellReferenceVolume > 0
+    && cellReferenceVolume < cellPanel.bounds().volume(),
+    "spheroid panel deterministic reference volume");
+
   VolumeSpec smallSpec = new VolumeSpec(4, 4, 4, new Bounds3D(-1, -1, -1, 1, 1, 1));
   UniformGridObserver smallObserver = new UniformGridObserver();
   smallObserver.initialize(smallSpec);
@@ -195,6 +222,7 @@ void runDcrteMilestone1AcceptanceMatrix() {
   DCRTEPipelineMode previousPipeline = dcrtePipelineMode;
   DCRTEPrimitiveDomainType previousDomain = dcrtePrimitiveDomainType;
   DCRTEObservationMode previousObservation = dcrteObservationMode;
+  DCRTEPanelLayoutMode previousPanelLayout = dcrtePanelLayoutMode;
   int previousResolution = dcrtePrimitiveResolution;
   dcrtePipelineMode = DCRTEPipelineMode.DCRTE_PRIMITIVE;
   dcrtePrimitiveResolution = 64;
@@ -206,10 +234,16 @@ void runDcrteMilestone1AcceptanceMatrix() {
     for (DCRTEObservationMode observationMode : DCRTEObservationMode.values()) {
       dcrtePrimitiveDomainType = domainType;
       dcrteObservationMode = observationMode;
+      if (domainType == DCRTEPrimitiveDomainType.PANEL) {
+        dcrtePanelLayoutMode = DCRTEPanelLayoutMode.CONTINUOUS_FIELD;
+      }
       generateDcrtePrimitiveSurfaceMesh();
       JSONObject run = new JSONObject();
       run.setString("id", "M1-" + char('A' + runIndex));
       run.setString("domain", domainType.id());
+      if (domainType == DCRTEPrimitiveDomainType.PANEL) {
+        run.setString("panel_layout", dcrtePanelLayoutMode.id());
+      }
       run.setString("observation", observationMode.id());
       run.setInt("resolution", dcrtePrimitiveResolution);
       run.setString("build_stage", dcrteBuildStage);
@@ -234,6 +268,37 @@ void runDcrteMilestone1AcceptanceMatrix() {
         + " -> " + (runPassed ? "PASS" : "FAIL") + " in " + dcrteLastBuildMillis + " ms");
       runIndex++;
     }
+  }
+
+  for (DCRTEObservationMode observationMode : DCRTEObservationMode.values()) {
+    dcrtePrimitiveDomainType = DCRTEPrimitiveDomainType.PANEL;
+    dcrtePanelLayoutMode = DCRTEPanelLayoutMode.SPHEROID_CELLS;
+    dcrteObservationMode = observationMode;
+    generateDcrtePrimitiveSurfaceMesh();
+    JSONObject run = new JSONObject();
+    run.setString("id", "M1-" + char('A' + runIndex));
+    run.setString("domain", "panel");
+    run.setString("panel_layout", dcrtePanelLayoutMode.id());
+    run.setString("observation", observationMode.id());
+    run.setInt("resolution", dcrtePrimitiveResolution);
+    run.setString("build_stage", dcrteBuildStage);
+    run.setBoolean("mesh_printable", foundryMeshIsPrintable());
+    run.setInt("triangles", foundryMesh == null ? 0 : foundryMesh.tris.size());
+    run.setInt("mesh_boundary_edges", foundryBoundaryEdges);
+    run.setInt("mesh_non_manifold_edges", foundryNonManifoldEdges);
+    run.setInt("mesh_degenerate_faces", foundryDegenerateFaces);
+    if (dcrteLastValidationReport != null) run.setJSONObject("validation", dcrteLastValidationReport.toJSON());
+    boolean runPassed = dcrteLastValidationReport != null
+      && dcrteLastValidationReport.exportAllowed()
+      && dcrteLastValidationReport.finalSolidSamples > 0
+      && dcrteLastValidationReport.outsideSolidSamples == 0
+      && foundryMeshIsPrintable();
+    run.setBoolean("acceptance_passed", runPassed);
+    if (runPassed) passed++;
+    runs.setJSONObject(runIndex, run);
+    println(run.getString("id") + " panel " + dcrtePanelLayoutMode.id() + " " + observationMode.id()
+      + " -> " + (runPassed ? "PASS" : "FAIL") + " in " + dcrteLastBuildMillis + " ms");
+    runIndex++;
   }
 
   JSONObject sampleProvenance = dcrteLastBuildConfiguration == null
@@ -301,5 +366,6 @@ void runDcrteMilestone1AcceptanceMatrix() {
   dcrtePipelineMode = previousPipeline;
   dcrtePrimitiveDomainType = previousDomain;
   dcrteObservationMode = previousObservation;
+  dcrtePanelLayoutMode = previousPanelLayout;
   dcrtePrimitiveResolution = previousResolution;
 }

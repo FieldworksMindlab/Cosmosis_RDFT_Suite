@@ -39,6 +39,24 @@ length and bubble-aware dihedral metadata. Shells are gated by topology,
 boundary-chain, discrete Gauss-Bonnet, and manifold checks. Optional raised
 mate codes are audited per reusable type and fall back to documented
 BOM/JSON/guide codes if the emboss alone would invalidate an otherwise
-fabricable panel. Its optional KICAS mode, the Kinematic Integral Capture
-Assembly System, exports placement-specific parts with integral lock features,
-center tie portals, and ordered `P###` assembly labels.
+fabricable panel.
+
+Truss Yard is the eleventh workspace and sits beside, rather than inside,
+Geodesic Salon. It builds modular tower or tunnel structures from
+`TRIANGLE FRAMES` for printable zip-tie panel assemblies, or preserves the
+original `SKELETON STUDY` octahedral lattice for visual structural exploration.
+Triangle frames use canonical edge ordering plus reciprocal shared-joint
+records so both panels place their opening at the same exact world-space edge
+midpoint. Their rail ends are complementary signed half-dihedral miters derived
+from the assembled neighboring faces, and export requires the cross-seam gap
+audit to remain within `0.05 mm`. `PANEL: OPEN FRAME` produces a rail-only open
+scaffold; `PANEL: EXTERIOR MEMBRANE` adds the outward enclosure face while
+retaining the same miter and portal contracts. The membrane mode is
+airtight-ready geometry, but physical seams and portal penetrations still need
+an appropriate seal for pressure or weather service. `MATCH DOME` reads the live Salon scale to
+create a separate reference adapter without changing any dome panel geometry.
+Its timestamped export contains audited `parts/` STLs, a bill of materials,
+an assembly plan with portal-pair coordinates, assembly notes, and a
+non-authoritative intersecting assembly-preview STL for orientation. The print
+contract is the individually audited reusable parts; the preview is not a
+boolean-unioned manufacturing solid.

@@ -7,6 +7,36 @@
   behavior of the existing milestone implementations.
 */
 
+enum GeodesicTopologyMode {
+  POLYHEDRAL,
+  APERIODIC;
+
+  String label() { return this == APERIODIC ? "APERIODIC" : "POLYHEDRAL"; }
+}
+
+enum GeodesicAperiodicFamily {
+  HAT,
+  PENROSE_P3;
+
+  String label() { return this == PENROSE_P3 ? "PENROSE P3" : "HAT MONOTILE"; }
+  String shortLabel() { return this == PENROSE_P3 ? "PENROSE" : "HAT"; }
+  int maxRecursion() { return this == PENROSE_P3 ? 5 : 3; }
+}
+
+enum GeodesicAperiodicOverlay {
+  TILE,
+  CHART,
+  DISTORTION,
+  DEFECT;
+
+  String label() {
+    if (this == CHART) return "CHART ATLAS";
+    if (this == DISTORTION) return "DISTORTION";
+    if (this == DEFECT) return "DEFECT SEAMS";
+    return "TILE DOMAINS";
+  }
+}
+
 enum GeodesicSeedFamily {
   TETRAHEDRAL,
   OCTAHEDRAL,
@@ -20,6 +50,25 @@ enum GeodesicSeedFamily {
     if (this == DODECAHEDRAL) return "DODECA";
     if (this == RHOMBIC_TRIACONTAHEDRAL) return "RHOMBIC 30";
     return "ICOSA";
+  }
+
+  String displayLabel() {
+    if (this == RHOMBIC_TRIACONTAHEDRAL) return "RHOMBIC TRIACONTA";
+    return label();
+  }
+
+  String description() {
+    if (this == RHOMBIC_TRIACONTAHEDRAL)
+      return "golden rhombic triacontahedron seed, triangulated for fabrication";
+    if (this == DODECAHEDRAL) return "dodecahedral dual seed, triangulated for fabrication";
+    if (this == ICOSAHEDRAL) return "icosahedral triangular seed";
+    if (this == OCTAHEDRAL) return "octahedral triangular seed";
+    return "tetrahedral triangular seed";
+  }
+
+  boolean goldenFamily() {
+    return this == ICOSAHEDRAL || this == DODECAHEDRAL ||
+      this == RHOMBIC_TRIACONTAHEDRAL;
   }
 }
 
@@ -83,11 +132,36 @@ enum GeodesicAssemblyMode {
   }
 }
 
+enum GeodesicPortalAxisMode {
+  PANEL_TRANSVERSE,
+  RECIPROCAL_JOINT_AXIS;
+
+  String label() {
+    return this == RECIPROCAL_JOINT_AXIS ?
+      "RECIPROCAL JOINT AXIS" : "PANEL TRANSVERSE";
+  }
+}
+
 class GeodesicFabricationSettings {
   GeodesicAssemblyMode assemblyMode = GeodesicAssemblyMode.LEGACY_PORTAL;
+  GeodesicPortalAxisMode portalAxisMode =
+    GeodesicPortalAxisMode.PANEL_TRANSVERSE;
   GeodesicKicasPlan kicasPlan = null;
   GeodesicPanelStyle style = GeodesicPanelStyle.FRAME_SKIN;
   GeodesicReliefSide reliefSide = GeodesicReliefSide.INNER_REINFORCEMENT;
+  /* Which side of the nominal surface the panel body occupies.
+
+     -1 lays the panel inboard of the surface, which is what a dome wants: the
+     skin sits on the sphere and the rails and their fastener throats fall
+     inside, reachable from within the dome. Geodesic Salon never sets this, so
+     it keeps that behaviour exactly.
+
+     +1 lays the panel outboard, for a closed mast whose interior no hand can
+     reach. Note this is not the same as reliefSide/EXTERIOR_CROWN, which only
+     swaps which local face carries the skin and leaves the body on the same
+     side of the surface. Flipping the body also flips the sense of every miter,
+     which geodesicBuildMiterOuterProfile applies. */
+  float assemblyGrowthSign = -1.0f;
   float frameDepthMM = 13.0f;
   float frameWidthMM = 7.0f;
   float skinThicknessMM = 3.0f;
@@ -116,9 +190,11 @@ class GeodesicFabricationSettings {
   GeodesicFabricationSettings copy() {
     GeodesicFabricationSettings value = new GeodesicFabricationSettings();
     value.assemblyMode = assemblyMode;
+    value.portalAxisMode = portalAxisMode;
     value.kicasPlan = kicasPlan;
     value.style = style;
     value.reliefSide = reliefSide;
+    value.assemblyGrowthSign = assemblyGrowthSign;
     value.frameDepthMM = frameDepthMM;
     value.frameWidthMM = frameWidthMM;
     value.skinThicknessMM = skinThicknessMM;
@@ -149,6 +225,7 @@ class GeodesicFabricationSettings {
   JSONObject toJSON() {
     JSONObject json = new JSONObject();
     json.setString("assembly_mode", assemblyMode.label());
+    json.setString("portal_axis_mode", portalAxisMode.label());
     json.setString("panel_style", style.label());
     json.setString("relief_side", reliefSide.label());
     json.setString("dimension_policy", "face_relative_printable_caps");
@@ -160,6 +237,13 @@ class GeodesicFabricationSettings {
     json.setInt("desired_portals_per_edge", desiredPortalsPerEdge);
     json.setFloat("portal_width_mm", portalWidthMM);
     json.setFloat("portal_height_mm", portalHeightMM);
+    json.setString("portal_alignment_policy",
+      portalAxisMode == GeodesicPortalAxisMode.RECIPROCAL_JOINT_AXIS ?
+      "CENTERLINE_FACING_SHARED_JOINT_APERTURE" :
+      (assemblyMode == GeodesicAssemblyMode.KICAS ?
+      "CENTERED_KICAS_CAPTURE_PLUS_TIE_PORTAL" :
+      (seamProfile == GeodesicSeamProfile.HALF_DIHEDRAL_MITER ?
+      "INWARD_STRAIGHT_THROAT_WITH_MITER_LIP" : "INWARD_ORTHOGONAL")));
     json.setBoolean("bubble_join_rule", bubbleJoinEnabled);
     json.setFloat("bubble_clearance_strength", bubbleClearanceStrength);
     json.setBoolean("embossed_edge_codes", edgeCodesEnabled && style != GeodesicPanelStyle.SOLID);
@@ -235,6 +319,15 @@ class GeodesicJointEdgeProfile {
   float kicasDepthMM = 0;
   ArrayList<Float> portalCenters = new ArrayList<Float>();
   PVector junctionBisector = new PVector();
+  boolean reciprocalPortalResolved = false;
+  float reciprocalPortalStation = 0.5f;
+  float reciprocalPortalThroatInwardMM = -1;
+  float reciprocalPortalResidualMM = -1;
+  PVector reciprocalPortalAxisWorld = new PVector();
+  boolean reciprocalApertureResolved = false;
+  PVector[] reciprocalApertureCornersWorld = {
+    new PVector(), new PVector(), new PVector(), new PVector()
+  };
 
   JSONObject toJSON() {
     JSONObject json = new JSONObject();
@@ -259,6 +352,30 @@ class GeodesicJointEdgeProfile {
     json.setFloat("kicas_station_edge_fraction", kicasStation);
     json.setFloat("kicas_length_mm", kicasLengthMM);
     json.setFloat("kicas_depth_mm", kicasDepthMM);
+    json.setBoolean("reciprocal_portal_resolved", reciprocalPortalResolved);
+    json.setFloat("reciprocal_portal_station_edge_fraction",
+      reciprocalPortalStation);
+    json.setFloat("reciprocal_portal_throat_inward_mm",
+      reciprocalPortalThroatInwardMM);
+    json.setFloat("reciprocal_portal_residual_mm",
+      reciprocalPortalResidualMM);
+    JSONArray portalAxis = new JSONArray();
+    portalAxis.setFloat(0, reciprocalPortalAxisWorld.x);
+    portalAxis.setFloat(1, reciprocalPortalAxisWorld.y);
+    portalAxis.setFloat(2, reciprocalPortalAxisWorld.z);
+    json.setJSONArray("reciprocal_portal_axis_world", portalAxis);
+    json.setBoolean("reciprocal_aperture_resolved",
+      reciprocalApertureResolved);
+    JSONArray apertureCorners = new JSONArray();
+    for (int i = 0; i < reciprocalApertureCornersWorld.length; i++) {
+      JSONArray corner = new JSONArray();
+      corner.setFloat(0, reciprocalApertureCornersWorld[i].x);
+      corner.setFloat(1, reciprocalApertureCornersWorld[i].y);
+      corner.setFloat(2, reciprocalApertureCornersWorld[i].z);
+      apertureCorners.setJSONArray(i, corner);
+    }
+    json.setJSONArray("reciprocal_aperture_corners_world",
+      apertureCorners);
     JSONArray positions = new JSONArray();
     for (int i = 0; i < portalCenters.size(); i++) positions.setFloat(i, portalCenters.get(i));
     json.setJSONArray("portal_centers_edge_fraction", positions);
@@ -276,6 +393,7 @@ class GeodesicMiterOuterProfile {
   ArrayList<PVector> lowerMiter = new ArrayList<PVector>();
   ArrayList<PVector> upperMiter = new ArrayList<PVector>();
   ArrayList<PVector> topCap = new ArrayList<PVector>();
+  ArrayList<Float> wallLevels = new ArrayList<Float>();
   float depth;
   float edgeBreak;
   boolean exteriorAtTop;
@@ -343,6 +461,14 @@ class GeodesicFace {
   int[] neighbors = { -1, -1, -1 };
   PVector centroid = new PVector();
   PVector normal = new PVector(0, 0, 1);
+  // Optional source-atlas identity. Polyhedral models retain these defaults.
+  int sourceTileId = -1;
+  String sourceTileKind = "";
+  int sourceChartId = -1;
+  float sourceU = 0;
+  float sourceV = 0;
+  float sourceDistortion = 0;
+  boolean sourceDefect = false;
 
   GeodesicFace(int id, int a, int b, int c, int parentFace) {
     this.id = id;
@@ -402,6 +528,15 @@ class GeodesicIntrinsicSample {
 }
 
 class GeodesicModel {
+  GeodesicTopologyMode topologyMode = GeodesicTopologyMode.POLYHEDRAL;
+  GeodesicAperiodicFamily aperiodicFamily = GeodesicAperiodicFamily.HAT;
+  String topologyProvider = "geodesic seed subdivision";
+  String topologyProvenance = "exact polyhedral subdivision";
+  int aperiodicRecursion = 0;
+  int aperiodicChartCount = 0;
+  int aperiodicLogicalTiles = 0;
+  int aperiodicDefectFaces = 0;
+  float aperiodicMaxDistortion = 0;
   GeodesicSeedFamily family;
   GeodesicExtentMode extent;
   GeodesicFormModifier modifier = GeodesicFormModifier.NONE;
@@ -455,7 +590,28 @@ class GeodesicModel {
 
   JSONObject toJSON() {
     JSONObject json = new JSONObject();
+    json.setString("topology_mode", topologyMode.label());
+    json.setString("topology_provider", topologyProvider);
+    json.setString("topology_provenance", topologyProvenance);
+    if (topologyMode == GeodesicTopologyMode.APERIODIC) {
+      json.setString("aperiodic_family", aperiodicFamily.label());
+      json.setInt("aperiodic_recursion", aperiodicRecursion);
+      json.setInt("aperiodic_chart_count", aperiodicChartCount);
+      json.setInt("aperiodic_logical_tiles", aperiodicLogicalTiles);
+      json.setInt("aperiodic_defect_faces", aperiodicDefectFaces);
+      json.setFloat("aperiodic_max_distortion", aperiodicMaxDistortion);
+      json.setString("fabrication_contract",
+        "aperiodic-derived curved shell on audited triangular carrier");
+    }
     json.setString("family", family.label());
+    json.setString("family_display", family.displayLabel());
+    json.setString("family_description", family.description());
+    json.setBoolean("golden_seed_family", family.goldenFamily());
+    if (family == GeodesicSeedFamily.RHOMBIC_TRIACONTAHEDRAL) {
+      json.setFloat("golden_ratio_phi", (1.0f + sqrt(5.0f)) * 0.5f);
+      json.setString("seed_basis",
+        "dual of rectified icosahedron; 30 rhombi represented as 60 triangles");
+    }
     json.setString("extent", extent.label());
     json.setString("modifier", modifier.label());
     json.setFloat("stellation_ratio", stellationRatio);
@@ -1932,6 +2088,17 @@ SurfaceMesh buildGeodesicFabricationMesh(GeodesicFabricationFace face,
     geodesicBuildMiterOuterProfile(face, outer, depth, edgeBreak) : null;
   if (mitered && (miterProfile == null || !miterProfile.valid(outer.size())))
     return mesh;
+  if (mitered &&
+      resolved.portalAxisMode ==
+        GeodesicPortalAxisMode.RECIPROCAL_JOINT_AXIS) {
+    for (GeodesicJointEdgeProfile joint : face.joints) {
+      float[] reciprocalSlot = geodesicPortalOuterSlotRange(face, joint,
+        resolved, depth, slotBottom, slotTop);
+      geodesicAddUniqueLevel(miterProfile.wallLevels, reciprocalSlot[0]);
+      geodesicAddUniqueLevel(miterProfile.wallLevels, reciprocalSlot[1]);
+    }
+    java.util.Collections.sort(miterProfile.wallLevels);
+  }
   ArrayList<PVector> bottomOuter = mitered ?
     miterProfile.bottomCap : outerChamfer;
   ArrayList<PVector> topOuter = mitered ?
@@ -2012,7 +2179,8 @@ SurfaceMesh buildGeodesicFabricationMesh(GeodesicFabricationFace face,
             geodesicIntervalStartsPortal(start, slots),
             geodesicIntervalEndsPortal(end, slots));
         else if (mitered)
-          geodesicAddMiterFramePortalInterval(mesh, miterProfile, i,
+          geodesicAddMiterFramePortalInterval(mesh, face, joint, resolved,
+            miterProfile, i,
             innerA, innerB, innerTopA, innerTopB,
             start, end, innerWallBottom, innerWallTop, depth,
             slotBottom, slotTop, edgeBreak,
@@ -2032,7 +2200,8 @@ SurfaceMesh buildGeodesicFabricationMesh(GeodesicFabricationFace face,
             start, end, innerWallBottom, innerWallTop, depth,
             slotBottom, slotTop, edgeBreak);
         else if (mitered)
-          geodesicAddMiterFrameWallInterval(mesh, miterProfile, i,
+          geodesicAddMiterFrameWallInterval(mesh, face, joint, resolved,
+            miterProfile, i,
             innerA, innerB, innerTopA, innerTopB,
             start, end, innerWallBottom, innerWallTop, depth,
             slotBottom, slotTop, edgeBreak);
@@ -2107,6 +2276,11 @@ SurfaceMesh buildGeodesicFabricationMesh(GeodesicFabricationFace face,
       geodesicAddPolygonFan(mesh, topBoundary, membraneTop, true, centerRelief);
     }
   }
+  if (mitered &&
+      resolved.portalAxisMode ==
+        GeodesicPortalAxisMode.RECIPROCAL_JOINT_AXIS) {
+    geodesicSealReciprocalMiterSlivers(mesh);
+  }
   return mesh;
 }
 
@@ -2169,8 +2343,13 @@ GeodesicMiterOuterProfile geodesicBuildMiterOuterProfile(
   float[] topOffsets = new float[n];
   for (int i = 0; i < n; i++) {
     GeodesicJointEdgeProfile joint = face.joints.get(i);
+    // The lean follows the body. Laying the panel on the far side of the
+    // surface reverses which way the mating faces must tilt, or adjacent
+    // panels would open a V instead of closing on each other.
+    float growth = face.resolvedFabrication == null ? -1.0f :
+      (face.resolvedFabrication.assemblyGrowthSign >= 0 ? 1.0f : -1.0f);
     float slope = joint.neighborFaceId < 0 ? 0 :
-      joint.miterInsetSign *
+      -growth * joint.miterInsetSign *
       tan(radians(max(0, joint.recommendedHalfMiterDeg)));
     if (profile.exteriorAtTop) {
       bottomOffsets[i] = depth * slope + profile.edgeBreak;
@@ -2191,6 +2370,11 @@ GeodesicMiterOuterProfile geodesicBuildMiterOuterProfile(
   if (!profile.valid(n) ||
       abs(geodesicPolygonArea(profile.bottomCap)) < 0.01f ||
       abs(geodesicPolygonArea(profile.topCap)) < 0.01f) return null;
+  geodesicAddUniqueLevel(profile.wallLevels, 0);
+  geodesicAddUniqueLevel(profile.wallLevels, profile.edgeBreak);
+  geodesicAddUniqueLevel(profile.wallLevels, depth - profile.edgeBreak);
+  geodesicAddUniqueLevel(profile.wallLevels, depth);
+  java.util.Collections.sort(profile.wallLevels);
   return profile;
 }
 
@@ -2245,6 +2429,9 @@ ArrayList<Float> geodesicMiterLevels(float bottom, float top,
   float upper = profile.depth - profile.edgeBreak;
   if (lower > bottom + 0.0001f && lower < top - 0.0001f) levels.add(lower);
   if (upper > bottom + 0.0001f && upper < top - 0.0001f) levels.add(upper);
+  for (float level : profile.wallLevels)
+    if (level > bottom + 0.0001f && level < top - 0.0001f)
+      geodesicAddUniqueLevel(levels, level);
   levels.add(top);
   java.util.Collections.sort(levels);
   return levels;
@@ -2262,11 +2449,33 @@ void geodesicAddMiterOuterWallBand(SurfaceMesh mesh,
     PVector b0 = geodesicMiterOuterPoint(profile, edgeIndex, end, z0);
     PVector a1 = geodesicMiterOuterPoint(profile, edgeIndex, start, z1);
     PVector b1 = geodesicMiterOuterPoint(profile, edgeIndex, end, z1);
-    mesh.addQuad(a0, b0, b1, a1);
+    geodesicAddPortalQuadRobust(mesh, a0, b0, b1, a1);
   }
 }
 
+float[] geodesicPortalOuterSlotRange(GeodesicFabricationFace face,
+  GeodesicJointEdgeProfile joint, GeodesicFabricationSettings settings,
+  float depth, float slotBottom, float slotTop) {
+  float outerSlotBottom = slotBottom;
+  float outerSlotTop = slotTop;
+  if (settings != null &&
+      settings.portalAxisMode ==
+        GeodesicPortalAxisMode.RECIPROCAL_JOINT_AXIS &&
+      face != null && joint != null && joint.reciprocalPortalResolved) {
+    float halfHeight = (slotTop - slotBottom) * 0.5f;
+    float localCenter = geodesicPortalLocalZForInward(face,
+      joint.reciprocalPortalThroatInwardMM);
+    localCenter = constrain(localCenter, halfHeight + 0.08f,
+      depth - halfHeight - 0.08f);
+    outerSlotBottom = localCenter - halfHeight;
+    outerSlotTop = localCenter + halfHeight;
+  }
+  return new float[] { outerSlotBottom, outerSlotTop };
+}
+
 void geodesicAddMiterFrameWallInterval(SurfaceMesh mesh,
+  GeodesicFabricationFace face, GeodesicJointEdgeProfile joint,
+  GeodesicFabricationSettings settings,
   GeodesicMiterOuterProfile profile, int edgeIndex,
   PVector innerA, PVector innerB, PVector innerTopA, PVector innerTopB,
   float start, float end, float innerWallBottom, float innerWallTop,
@@ -2276,16 +2485,19 @@ void geodesicAddMiterFrameWallInterval(SurfaceMesh mesh,
   PVector ib = geodesicEdgePoint(innerA, innerB, end, 0);
   PVector ita = geodesicEdgePoint(innerTopA, innerTopB, start, 0);
   PVector itb = geodesicEdgePoint(innerTopA, innerTopB, end, 0);
+  float[] outerSlot = geodesicPortalOuterSlotRange(face, joint, settings,
+    depth, slotBottom, slotTop);
   geodesicAddMiterOuterWallBand(mesh, profile, edgeIndex, start, end,
-    0, slotBottom);
+    0, outerSlot[0]);
   geodesicAddMiterOuterWallBand(mesh, profile, edgeIndex, start, end,
-    slotBottom, slotTop);
+    outerSlot[0], outerSlot[1]);
   geodesicAddMiterOuterWallBand(mesh, profile, edgeIndex, start, end,
-    slotTop, depth);
+    outerSlot[1], depth);
   geodesicAddInnerWallBand(mesh, ia, ib, ita, itb, innerWallBottom,
     min(slotBottom, innerWallTop), depth, edgeBreak);
   geodesicAddInnerWallBand(mesh, ia, ib, ita, itb,
-    max(innerWallBottom, slotBottom), min(innerWallTop, slotTop), depth, edgeBreak);
+    max(innerWallBottom, slotBottom), min(innerWallTop, slotTop),
+    depth, edgeBreak);
   geodesicAddInnerWallBand(mesh, ia, ib, ita, itb,
     max(innerWallBottom, slotTop), innerWallTop, depth, edgeBreak);
 }
@@ -2949,7 +3161,183 @@ void geodesicAddFramePortalInterval(SurfaceMesh mesh, PVector outerA, PVector ou
     geodesicAtZ(ib, slotBottom));
 }
 
+boolean geodesicPortalEdgePairSeparated(PVector a0, PVector b0,
+  PVector a1, PVector b1) {
+  return PVector.dist(a0, a1) > 0.00001f ||
+    PVector.dist(b0, b1) > 0.00001f;
+}
+
+float geodesicPortalTriAreaSq(PVector a, PVector b, PVector c) {
+  PVector ab = PVector.sub(b, a);
+  PVector ac = PVector.sub(c, a);
+  return ab.cross(ac).magSq();
+}
+
+void geodesicAddPortalTriIfArea(SurfaceMesh mesh, PVector a, PVector b,
+  PVector c) {
+  if (geodesicPortalTriAreaSq(a, b, c) > 0.00000001f) {
+    mesh.addTri(a, b, c);
+  }
+}
+
+void geodesicAddPortalQuad(SurfaceMesh mesh, PVector a, PVector b,
+  PVector c, PVector d) {
+  geodesicAddPortalTriIfArea(mesh, a, b, c);
+  geodesicAddPortalTriIfArea(mesh, a, c, d);
+}
+
+void geodesicAddPortalQuadRobust(SurfaceMesh mesh, PVector a, PVector b,
+  PVector c, PVector d) {
+  float acMinimum = min(geodesicPortalTriAreaSq(a, b, c),
+    geodesicPortalTriAreaSq(a, c, d));
+  float bdMinimum = min(geodesicPortalTriAreaSq(a, b, d),
+    geodesicPortalTriAreaSq(b, c, d));
+  if (bdMinimum > acMinimum) {
+    geodesicAddPortalTriIfArea(mesh, a, b, d);
+    geodesicAddPortalTriIfArea(mesh, b, c, d);
+  } else {
+    geodesicAddPortalTriIfArea(mesh, a, b, c);
+    geodesicAddPortalTriIfArea(mesh, a, c, d);
+  }
+}
+
+PVector geodesicPortalInsetToward(PVector outer, PVector inner, float amount) {
+  PVector delta = PVector.sub(inner, outer);
+  float distance = delta.mag();
+  if (distance < 0.0001f) return outer.copy();
+  delta.mult(min(amount, distance * 0.45f) / distance);
+  return PVector.add(outer, delta);
+}
+
+class GeodesicPortalChannelGeometry {
+  boolean valid = false;
+  float depth;
+  float edgeBreak;
+  float slotBottom;
+  float slotTop;
+  PVector innerCenterLocal = new PVector();
+  PVector innerCenterWorld = new PVector();
+  GeodesicMiterOuterProfile miterProfile;
+}
+
+GeodesicPortalChannelGeometry geodesicPortalChannelGeometry(
+  GeodesicFabricationFace face, int edgeIndex) {
+  float station = 0.5f;
+  if (face != null && edgeIndex >= 0 && edgeIndex < face.joints.size()) {
+    GeodesicJointEdgeProfile joint = face.joints.get(edgeIndex);
+    if (joint.reciprocalPortalResolved)
+      station = joint.reciprocalPortalStation;
+  }
+  return geodesicPortalChannelGeometry(face, edgeIndex, station);
+}
+
+GeodesicPortalChannelGeometry geodesicPortalChannelGeometry(
+  GeodesicFabricationFace face, int edgeIndex, float station) {
+  GeodesicPortalChannelGeometry geometry =
+    new GeodesicPortalChannelGeometry();
+  if (face == null || face.resolvedFabrication == null ||
+      edgeIndex < 0 || edgeIndex >= face.vertexCount() ||
+      edgeIndex >= face.joints.size()) return geometry;
+  GeodesicFabricationSettings settings = face.resolvedFabrication;
+  ArrayList<PVector> outer = geodesicCopyPolygon(face.boundary);
+  float apothem = geodesicMinimumCentroidEdgeDistance(outer);
+  float frameWidth = constrain(settings.frameWidthMM, 0.8f,
+    max(0.9f, apothem * 0.72f));
+  ArrayList<PVector> inner = geodesicInsetConvexPolygon(outer, frameWidth);
+  if (inner == null || inner.size() != outer.size())
+    inner = geodesicScalePolygonFromCentroid(outer,
+      constrain(1.0f - frameWidth / max(0.001f, apothem), 0.18f, 0.82f));
+  float depth = max(1.2f, settings.frameDepthMM);
+  float skin = settings.style == GeodesicPanelStyle.FRAME_SKIN ?
+    constrain(settings.skinThicknessMM, 0.6f, depth - 0.8f) : 0;
+  boolean exteriorCrown = settings.style == GeodesicPanelStyle.FRAME_SKIN &&
+    settings.reliefSide == GeodesicReliefSide.EXTERIOR_CROWN;
+  float innerWallBottom = exteriorCrown ? 0 : skin;
+  float innerWallTop = exteriorCrown ? depth - skin : depth;
+  float innerWallSpan = max(1.2f, innerWallTop - innerWallBottom);
+  float slotHeight = constrain(settings.portalHeightMM, 1.0f,
+    max(1.0f, innerWallSpan - 1.2f));
+  float slotBottom = innerWallBottom + max(0.6f,
+    (innerWallSpan - slotHeight) * 0.5f);
+  float slotTop = min(innerWallTop - 0.6f, slotBottom + slotHeight);
+  float edgeBreak = constrain(settings.edgeBreakMM, 0,
+    min(0.26f, min(frameWidth * 0.12f, depth * 0.08f)));
+  ArrayList<PVector> innerTop = edgeBreak > 0.001f ?
+    geodesicInsetConvexPolygon(outer, max(0.01f, frameWidth - edgeBreak)) :
+    geodesicCopyPolygon(inner);
+  if (innerTop == null || innerTop.size() != inner.size())
+    innerTop = geodesicCopyPolygon(inner);
+  GeodesicMiterOuterProfile profile =
+    geodesicBuildMiterOuterProfile(face, outer, depth, edgeBreak);
+  if (profile == null || !profile.valid(outer.size())) return geometry;
+  int next = (edgeIndex + 1) % face.vertexCount();
+  float center = (slotBottom + slotTop) * 0.5f;
+  PVector innerBase = geodesicEdgePoint(inner.get(edgeIndex),
+    inner.get(next), station, 0);
+  PVector innerTopPoint = geodesicEdgePoint(innerTop.get(edgeIndex),
+    innerTop.get(next), station, 0);
+  geometry.depth = depth;
+  geometry.edgeBreak = edgeBreak;
+  geometry.slotBottom = slotBottom;
+  geometry.slotTop = slotTop;
+  geometry.miterProfile = profile;
+  geometry.innerCenterLocal = geodesicInnerChamferPoint(innerBase,
+    innerTopPoint, center, depth, edgeBreak);
+  geometry.innerCenterWorld =
+    geodesicFabricationPointToAssembly(face, geometry.innerCenterLocal);
+  geometry.valid = true;
+  return geometry;
+}
+
+float geodesicPortalLocalZForInward(GeodesicFabricationFace face,
+  float inwardMM) {
+  if (face == null || face.resolvedFabrication == null) return inwardMM;
+  float depth = face.resolvedFabrication.frameDepthMM;
+  return geodesicAssemblyExteriorAtTop(face.resolvedFabrication) ?
+    depth - inwardMM : inwardMM;
+}
+
+PVector geodesicReciprocalPortalThroatWorld(
+  GeodesicFabricationFace face, int edgeIndex) {
+  if (face == null || edgeIndex < 0 || edgeIndex >= face.joints.size())
+    return new PVector();
+  GeodesicJointEdgeProfile joint = face.joints.get(edgeIndex);
+  GeodesicPortalChannelGeometry geometry =
+    geodesicPortalChannelGeometry(face, edgeIndex);
+  if (!joint.reciprocalPortalResolved || !geometry.valid) return new PVector();
+  float localZ = geodesicPortalLocalZForInward(face,
+    joint.reciprocalPortalThroatInwardMM);
+  return geodesicFabricationPointToAssembly(face,
+    geodesicMiterOuterPoint(geometry.miterProfile, edgeIndex,
+      joint.reciprocalPortalStation, localZ));
+}
+
+PVector geodesicReciprocalPortalChannelAxis(
+  GeodesicFabricationFace face, int edgeIndex) {
+  if (face == null || edgeIndex < 0 || edgeIndex >= face.joints.size())
+    return new PVector();
+  GeodesicJointEdgeProfile joint = face.joints.get(edgeIndex);
+  GeodesicPortalChannelGeometry geometry =
+    geodesicPortalChannelGeometry(face, edgeIndex);
+  if (!geometry.valid) return new PVector();
+  if (joint.reciprocalPortalResolved) {
+    PVector throat = geodesicReciprocalPortalThroatWorld(face, edgeIndex);
+    PVector axis = PVector.sub(geometry.innerCenterWorld, throat);
+    if (axis.magSq() > 0.000001f) axis.normalize();
+    return axis;
+  }
+  float center = (geometry.slotBottom + geometry.slotTop) * 0.5f;
+  PVector outerLocal = geodesicMiterOuterPoint(geometry.miterProfile,
+    edgeIndex, 0.5f, center);
+  PVector axis = PVector.sub(geometry.innerCenterWorld,
+    geodesicFabricationPointToAssembly(face, outerLocal));
+  if (axis.magSq() > 0.000001f) axis.normalize();
+  return axis;
+}
+
 void geodesicAddMiterFramePortalInterval(SurfaceMesh mesh,
+  GeodesicFabricationFace face, GeodesicJointEdgeProfile joint,
+  GeodesicFabricationSettings settings,
   GeodesicMiterOuterProfile profile, int edgeIndex,
   PVector innerA, PVector innerB, PVector innerTopA, PVector innerTopB,
   float start, float end, float innerWallBottom, float innerWallTop,
@@ -2959,39 +3347,458 @@ void geodesicAddMiterFramePortalInterval(SurfaceMesh mesh,
   PVector ib = geodesicEdgePoint(innerA, innerB, end, 0);
   PVector ita = geodesicEdgePoint(innerTopA, innerTopB, start, 0);
   PVector itb = geodesicEdgePoint(innerTopA, innerTopB, end, 0);
-  if (slotBottom > 0.0001f)
+  float innerSlotBottom = slotBottom;
+  float innerSlotTop = slotTop;
+  float[] outerSlot = geodesicPortalOuterSlotRange(face, joint, settings,
+    depth, slotBottom, slotTop);
+  float outerSlotBottom = outerSlot[0];
+  float outerSlotTop = outerSlot[1];
+  boolean reciprocal =
+    settings != null &&
+    settings.portalAxisMode ==
+      GeodesicPortalAxisMode.RECIPROCAL_JOINT_AXIS &&
+    joint != null && joint.reciprocalPortalResolved;
+  if (outerSlotBottom > 0.0001f)
     geodesicAddMiterOuterWallBand(mesh, profile, edgeIndex, start, end,
-      0, slotBottom);
-  if (slotTop < depth - 0.0001f)
+      0, outerSlotBottom);
+  if (outerSlotTop < depth - 0.0001f)
     geodesicAddMiterOuterWallBand(mesh, profile, edgeIndex, start, end,
-      slotTop, depth);
-  if (slotBottom > innerWallBottom + 0.0001f)
+      outerSlotTop, depth);
+  if (innerSlotBottom > innerWallBottom + 0.0001f)
     geodesicAddInnerWallBand(mesh, ia, ib, ita, itb, innerWallBottom,
-      slotBottom, depth, edgeBreak);
-  if (slotTop < innerWallTop - 0.0001f)
-    geodesicAddInnerWallBand(mesh, ia, ib, ita, itb, slotTop,
+      innerSlotBottom, depth, edgeBreak);
+  if (innerSlotTop < innerWallTop - 0.0001f)
+    geodesicAddInnerWallBand(mesh, ia, ib, ita, itb, innerSlotTop,
       innerWallTop, depth, edgeBreak);
 
   PVector outerStartBottom = geodesicMiterOuterPoint(profile, edgeIndex,
-    start, slotBottom);
+    start, outerSlotBottom);
   PVector outerEndBottom = geodesicMiterOuterPoint(profile, edgeIndex,
-    end, slotBottom);
+    end, outerSlotBottom);
   PVector outerStartTop = geodesicMiterOuterPoint(profile, edgeIndex,
-    start, slotTop);
+    start, outerSlotTop);
   PVector outerEndTop = geodesicMiterOuterPoint(profile, edgeIndex,
-    end, slotTop);
-  PVector innerStartBottom = geodesicAtZ(ia, slotBottom);
-  PVector innerEndBottom = geodesicAtZ(ib, slotBottom);
-  PVector innerStartTop = geodesicAtZ(ia, slotTop);
-  PVector innerEndTop = geodesicAtZ(ib, slotTop);
-  mesh.addQuad(outerStartBottom, outerEndBottom,
+    end, outerSlotTop);
+
+  float throatZ = (outerSlotBottom + outerSlotTop) * 0.5f;
+  PVector throatStart = geodesicMiterOuterPoint(profile, edgeIndex,
+    start, throatZ);
+  PVector throatEnd = geodesicMiterOuterPoint(profile, edgeIndex,
+    end, throatZ);
+  PVector throatStartBottom = geodesicAtZ(throatStart, outerSlotBottom);
+  PVector throatEndBottom = geodesicAtZ(throatEnd, outerSlotBottom);
+  PVector throatStartTop = geodesicAtZ(throatStart, outerSlotTop);
+  PVector throatEndTop = geodesicAtZ(throatEnd, outerSlotTop);
+  PVector innerStartBottom = geodesicInnerChamferPoint(
+    ia, ita, innerSlotBottom, depth, edgeBreak);
+  PVector innerEndBottom = geodesicInnerChamferPoint(
+    ib, itb, innerSlotBottom, depth, edgeBreak);
+  PVector innerStartTop = geodesicInnerChamferPoint(
+    ia, ita, innerSlotTop, depth, edgeBreak);
+  PVector innerEndTop = geodesicInnerChamferPoint(
+    ib, itb, innerSlotTop, depth, edgeBreak);
+
+  if (reciprocal) {
+    PVector[] shared = geodesicReciprocalApertureLocal(face, joint,
+      outerStartBottom, outerEndBottom);
+    if (shared != null) {
+      PVector sharedStartBottom = shared[0];
+      PVector sharedEndBottom = shared[1];
+      PVector sharedEndTop = shared[2];
+      PVector sharedStartTop = shared[3];
+
+      // The face-local mouth can be skewed by the panel plane. Taper it into
+      // the one joint-owned aperture so both parts expose the same tie loop.
+      geodesicAddPortalQuadRobust(mesh, outerStartBottom, outerEndBottom,
+        sharedEndBottom, sharedStartBottom);
+      geodesicAddPortalQuadRobust(mesh, outerStartTop, sharedStartTop,
+        sharedEndTop, outerEndTop);
+      geodesicAddPortalQuadRobust(mesh, sharedStartBottom, sharedEndBottom,
+        innerEndBottom, innerStartBottom);
+      geodesicAddPortalQuadRobust(mesh, sharedStartTop, innerStartTop,
+        innerEndTop, sharedEndTop);
+      if (closeStart) {
+        geodesicAddPortalQuadRobust(mesh, outerStartBottom,
+          sharedStartBottom, sharedStartTop, outerStartTop);
+        geodesicAddPortalQuadRobust(mesh, sharedStartBottom,
+          innerStartBottom, innerStartTop, sharedStartTop);
+      }
+      if (closeEnd) {
+        geodesicAddPortalQuadRobust(mesh, outerEndBottom, outerEndTop,
+          sharedEndTop, sharedEndBottom);
+        geodesicAddPortalQuadRobust(mesh, sharedEndBottom, sharedEndTop,
+          innerEndTop, innerEndBottom);
+      }
+    } else {
+      geodesicAddPortalQuadRobust(mesh, outerStartBottom, outerEndBottom,
+        innerEndBottom, innerStartBottom);
+      geodesicAddPortalQuadRobust(mesh, outerStartTop, innerStartTop,
+        innerEndTop, outerEndTop);
+      if (closeStart)
+        geodesicAddReciprocalPortalEndCap(mesh, profile, edgeIndex, start,
+          outerSlotBottom, outerSlotTop, innerStartBottom, innerStartTop, true);
+      if (closeEnd)
+        geodesicAddReciprocalPortalEndCap(mesh, profile, edgeIndex, end,
+          outerSlotBottom, outerSlotTop, innerEndBottom, innerEndTop, false);
+    }
+    return;
+  }
+
+  float throatInset = max(0.03f, min(0.18f, edgeBreak * 0.50f));
+  throatStartBottom = geodesicPortalInsetToward(throatStartBottom,
+    innerStartBottom, throatInset);
+  throatEndBottom = geodesicPortalInsetToward(throatEndBottom,
+    innerEndBottom, throatInset);
+  throatStartTop = geodesicPortalInsetToward(throatStartTop,
+    innerStartTop, throatInset);
+  throatEndTop = geodesicPortalInsetToward(throatEndTop,
+    innerEndTop, throatInset);
+
+  boolean bottomLip = geodesicPortalEdgePairSeparated(outerStartBottom,
+    outerEndBottom, throatStartBottom, throatEndBottom);
+  boolean topLip = geodesicPortalEdgePairSeparated(outerStartTop,
+    outerEndTop, throatStartTop, throatEndTop);
+  PVector bottomStart = bottomLip ? throatStartBottom : outerStartBottom;
+  PVector bottomEnd = bottomLip ? throatEndBottom : outerEndBottom;
+  PVector topStart = topLip ? throatStartTop : outerStartTop;
+  PVector topEnd = topLip ? throatEndTop : outerEndTop;
+
+  if (bottomLip) {
+    geodesicAddPortalQuad(mesh, outerStartBottom, outerEndBottom,
+      throatEndBottom, throatStartBottom);
+  }
+  if (topLip) {
+    geodesicAddPortalQuad(mesh, outerStartTop, throatStartTop,
+      throatEndTop, outerEndTop);
+  }
+  geodesicAddPortalQuad(mesh, bottomStart, bottomEnd,
     innerEndBottom, innerStartBottom);
-  mesh.addQuad(outerStartTop, innerStartTop,
-    innerEndTop, outerEndTop);
-  if (closeStart) mesh.addQuad(outerStartBottom, innerStartBottom,
-    innerStartTop, outerStartTop);
-  if (closeEnd) mesh.addQuad(outerEndBottom, outerEndTop,
-    innerEndTop, innerEndBottom);
+  geodesicAddPortalQuad(mesh, topStart, innerStartTop,
+    innerEndTop, topEnd);
+  if (closeStart) {
+    if (bottomLip || topLip) {
+      geodesicAddPortalQuad(mesh, outerStartBottom, bottomStart,
+        topStart, outerStartTop);
+    }
+    geodesicAddPortalQuad(mesh, bottomStart, innerStartBottom,
+      innerStartTop, topStart);
+  }
+  if (closeEnd) {
+    if (bottomLip || topLip) {
+      geodesicAddPortalQuad(mesh, outerEndBottom, outerEndTop,
+        topEnd, bottomEnd);
+    }
+    geodesicAddPortalQuad(mesh, bottomEnd, topEnd,
+      innerEndTop, innerEndBottom);
+  }
+}
+
+PVector[] geodesicReciprocalApertureLocal(GeodesicFabricationFace face,
+  GeodesicJointEdgeProfile joint, PVector outerStartBottom,
+  PVector outerEndBottom) {
+  if (face == null || joint == null || !joint.reciprocalApertureResolved)
+    return null;
+  PVector[] local = new PVector[4];
+  for (int i = 0; i < local.length; i++)
+    local[i] = geodesicAssemblyPointToFabrication(face,
+      joint.reciprocalApertureCornersWorld[i]);
+
+  // Canonical world corners can run opposite a face's local edge direction.
+  // Return start/end ordering relative to this panel without mirroring height.
+  float forward = PVector.dist(local[0], outerStartBottom) +
+    PVector.dist(local[1], outerEndBottom);
+  float reverse = PVector.dist(local[1], outerStartBottom) +
+    PVector.dist(local[0], outerEndBottom);
+  if (reverse < forward) {
+    return new PVector[] { local[1], local[0], local[3], local[2] };
+  }
+  return local;
+}
+
+void geodesicAddReciprocalPortalEndCap(SurfaceMesh mesh,
+  GeodesicMiterOuterProfile profile, int edgeIndex, float station,
+  float outerBottom, float outerTop, PVector innerBottom, PVector innerTop,
+  boolean startCap) {
+  ArrayList<Float> levels =
+    geodesicMiterLevels(outerBottom, outerTop, profile);
+  if (levels.size() < 2) return;
+  ArrayList<PVector> outerChain = new ArrayList<PVector>();
+  for (float level : levels)
+    outerChain.add(geodesicMiterOuterPoint(profile, edgeIndex, station, level));
+
+  ArrayList<PVector> boundary = new ArrayList<PVector>();
+  if (startCap) {
+    boundary.add(innerBottom);
+    boundary.add(innerTop);
+    for (int i = outerChain.size() - 1; i >= 0; i--)
+      boundary.add(outerChain.get(i));
+  } else {
+    for (PVector point : outerChain) boundary.add(point);
+    boundary.add(innerTop);
+    boundary.add(innerBottom);
+  }
+  PVector center = new PVector();
+  for (PVector point : boundary) center.add(point);
+  center.div(max(1, boundary.size()));
+  float sampleZ = (outerBottom + outerTop) * 0.5f;
+  float dt = 0.001f;
+  PVector tangent = PVector.sub(
+    geodesicMiterOuterPoint(profile, edgeIndex,
+      constrain(station + dt, 0, 1), sampleZ),
+    geodesicMiterOuterPoint(profile, edgeIndex,
+      constrain(station - dt, 0, 1), sampleZ));
+  if (tangent.magSq() > 0.000001f) {
+    tangent.normalize();
+    tangent.mult(min(0.12f, max(0.06f, profile.depth * 0.025f)) *
+      (startCap ? 1 : -1));
+    center.add(tangent);
+  }
+  for (int i = 0; i < boundary.size(); i++)
+    geodesicAddPortalTriIfArea(mesh, center, boundary.get(i),
+      boundary.get((i + 1) % boundary.size()));
+}
+
+class GeodesicBoundaryEdge {
+  PVector a;
+  PVector b;
+  String aKey;
+  String bKey;
+  String key;
+
+  GeodesicBoundaryEdge(PVector a, PVector b) {
+    this.a = a.copy();
+    this.b = b.copy();
+    aKey = geodesicBoundaryVertexKey(a);
+    bKey = geodesicBoundaryVertexKey(b);
+    key = aKey.compareTo(bKey) <= 0 ?
+      aKey + "|" + bKey : bKey + "|" + aKey;
+  }
+}
+
+String geodesicBoundaryVertexKey(PVector point) {
+  return round(point.x * 100000.0f) + "," +
+    round(point.y * 100000.0f) + "," +
+    round(point.z * 100000.0f);
+}
+
+void geodesicRememberBoundaryEdge(
+  HashMap<String, Integer> counts,
+  HashMap<String, GeodesicBoundaryEdge> directed,
+  PVector a, PVector b) {
+  GeodesicBoundaryEdge edge = new GeodesicBoundaryEdge(a, b);
+  counts.put(edge.key,
+    counts.containsKey(edge.key) ? counts.get(edge.key) + 1 : 1);
+  if (!directed.containsKey(edge.key)) directed.put(edge.key, edge);
+}
+
+/*
+ * A reciprocal portal intersects a piecewise miter wall. The end cap follows
+ * that piecewise curve while the adjacent wall contributes one straight
+ * chord, leaving a very small closed sliver. Seal only those short loops;
+ * larger boundaries remain visible to the manifold audit rather than being
+ * silently repaired.
+ */
+int geodesicSealReciprocalMiterSlivers(SurfaceMesh mesh) {
+  HashMap<String, Integer> counts = new HashMap<String, Integer>();
+  HashMap<String, GeodesicBoundaryEdge> directed =
+    new HashMap<String, GeodesicBoundaryEdge>();
+  for (MeshTri tri : mesh.tris) {
+    if (geodesicPortalTriAreaSq(tri.a, tri.b, tri.c) <= 0.00000001f)
+      continue;
+    geodesicRememberBoundaryEdge(counts, directed, tri.a, tri.b);
+    geodesicRememberBoundaryEdge(counts, directed, tri.b, tri.c);
+    geodesicRememberBoundaryEdge(counts, directed, tri.c, tri.a);
+  }
+  ArrayList<GeodesicBoundaryEdge> remaining =
+    new ArrayList<GeodesicBoundaryEdge>();
+  for (String key : counts.keySet())
+    if (counts.get(key) == 1) remaining.add(directed.get(key));
+
+  int sealedCount = 0;
+  while (!remaining.isEmpty()) {
+    ArrayList<GeodesicBoundaryEdge> component =
+      new ArrayList<GeodesicBoundaryEdge>();
+    ArrayList<String> vertexKeys = new ArrayList<String>();
+    ArrayList<PVector> vertices = new ArrayList<PVector>();
+    GeodesicBoundaryEdge seed = remaining.remove(0);
+    component.add(seed);
+    geodesicRememberBoundaryVertex(vertexKeys, vertices, seed.aKey, seed.a);
+    geodesicRememberBoundaryVertex(vertexKeys, vertices, seed.bKey, seed.b);
+    boolean expanded = true;
+    while (expanded) {
+      expanded = false;
+      for (int i = remaining.size() - 1; i >= 0; i--) {
+        GeodesicBoundaryEdge candidate = remaining.get(i);
+        if (!vertexKeys.contains(candidate.aKey) &&
+            !vertexKeys.contains(candidate.bKey)) continue;
+        remaining.remove(i);
+        component.add(candidate);
+        geodesicRememberBoundaryVertex(vertexKeys, vertices,
+          candidate.aKey, candidate.a);
+        geodesicRememberBoundaryVertex(vertexKeys, vertices,
+          candidate.bKey, candidate.b);
+        expanded = true;
+      }
+    }
+    if (component.size() < 3 || component.size() > 8 ||
+        vertices.size() != component.size()) continue;
+    HashMap<String, Integer> degrees = new HashMap<String, Integer>();
+    float perimeter = 0;
+    PVector center = new PVector();
+    for (GeodesicBoundaryEdge edge : component) {
+      perimeter += PVector.dist(edge.a, edge.b);
+      degrees.put(edge.aKey, degrees.containsKey(edge.aKey) ?
+        degrees.get(edge.aKey) + 1 : 1);
+      degrees.put(edge.bKey, degrees.containsKey(edge.bKey) ?
+        degrees.get(edge.bKey) + 1 : 1);
+    }
+    boolean closed = true;
+    for (String key : vertexKeys)
+      if (!degrees.containsKey(key) || degrees.get(key) != 2) closed = false;
+    if (!closed) continue;
+    if (geodesicSplitCollinearBoundaryChord(mesh, component, vertices)) {
+      sealedCount++;
+      continue;
+    }
+    for (PVector vertex : vertices) center.add(vertex);
+    center.div(vertices.size());
+    // A second bounded pass may expose a neighboring miter sliver. Keep the
+    // repair below one printable portal scale so real panel boundaries remain
+    // visible to the manifold audit.
+    if (perimeter > 7.0f) continue;
+    for (GeodesicBoundaryEdge edge : component)
+      geodesicAddPortalTriIfArea(mesh, edge.b, edge.a, center);
+    sealedCount++;
+  }
+  return sealedCount;
+}
+
+int geodesicWeldMicroSeams(SurfaceMesh mesh, float toleranceMM) {
+  if (mesh == null || toleranceMM <= 0) return 0;
+  HashMap<String, ArrayList<PVector>> buckets =
+    new HashMap<String, ArrayList<PVector>>();
+  int welded = 0;
+  for (MeshTri tri : mesh.tris) {
+    PVector[] points = { tri.a, tri.b, tri.c };
+    for (PVector point : points) {
+      int gx = floor(point.x / toleranceMM);
+      int gy = floor(point.y / toleranceMM);
+      int gz = floor(point.z / toleranceMM);
+      PVector match = null;
+      for (int dx = -1; dx <= 1 && match == null; dx++)
+        for (int dy = -1; dy <= 1 && match == null; dy++)
+          for (int dz = -1; dz <= 1 && match == null; dz++) {
+            ArrayList<PVector> candidates = buckets.get(
+              (gx + dx) + "," + (gy + dy) + "," + (gz + dz));
+            if (candidates == null) continue;
+            for (PVector candidate : candidates)
+              if (PVector.dist(point, candidate) <= toleranceMM) {
+                match = candidate;
+                break;
+              }
+          }
+      if (match != null) {
+        if (PVector.dist(point, match) > 0.000001f) welded++;
+        point.set(match);
+      } else {
+        String key = gx + "," + gy + "," + gz;
+        ArrayList<PVector> bucket = buckets.get(key);
+        if (bucket == null) {
+          bucket = new ArrayList<PVector>();
+          buckets.put(key, bucket);
+        }
+        bucket.add(point.copy());
+      }
+    }
+  }
+  for (int i = mesh.tris.size() - 1; i >= 0; i--) {
+    MeshTri tri = mesh.tris.get(i);
+    if (geodesicPortalTriAreaSq(tri.a, tri.b, tri.c) <= 0.00000001f)
+      mesh.tris.remove(i);
+  }
+  return welded;
+}
+
+boolean geodesicSplitCollinearBoundaryChord(SurfaceMesh mesh,
+  ArrayList<GeodesicBoundaryEdge> component, ArrayList<PVector> vertices) {
+  GeodesicBoundaryEdge chord = null;
+  float chordLength = 0;
+  for (GeodesicBoundaryEdge edge : component) {
+    float length = PVector.dist(edge.a, edge.b);
+    if (length > chordLength) {
+      chordLength = length;
+      chord = edge;
+    }
+  }
+  if (chord == null || chordLength < 0.001f) return false;
+  PVector direction = PVector.sub(chord.b, chord.a);
+  float lengthSq = direction.magSq();
+  ArrayList<PVector> ordered = new ArrayList<PVector>();
+  ArrayList<Float> stations = new ArrayList<Float>();
+  for (PVector vertex : vertices) {
+    float station = PVector.sub(vertex, chord.a).dot(direction) / lengthSq;
+    PVector nearest = PVector.add(chord.a,
+      PVector.mult(direction, station));
+    if (station < -0.0001f || station > 1.0001f ||
+        PVector.dist(vertex, nearest) > 0.0001f) return false;
+    int insert = 0;
+    while (insert < stations.size() && stations.get(insert) < station)
+      insert++;
+    stations.add(insert, station);
+    ordered.add(insert, vertex.copy());
+  }
+  if (ordered.size() < 3) return false;
+
+  int triangleIndex = -1;
+  PVector directedStart = null;
+  PVector directedEnd = null;
+  PVector third = null;
+  for (int i = 0; i < mesh.tris.size(); i++) {
+    MeshTri tri = mesh.tris.get(i);
+    if (geodesicBoundaryEdgeMatches(chord.key, tri.a, tri.b)) {
+      triangleIndex = i;
+      directedStart = tri.a;
+      directedEnd = tri.b;
+      third = tri.c;
+      break;
+    }
+    if (geodesicBoundaryEdgeMatches(chord.key, tri.b, tri.c)) {
+      triangleIndex = i;
+      directedStart = tri.b;
+      directedEnd = tri.c;
+      third = tri.a;
+      break;
+    }
+    if (geodesicBoundaryEdgeMatches(chord.key, tri.c, tri.a)) {
+      triangleIndex = i;
+      directedStart = tri.c;
+      directedEnd = tri.a;
+      third = tri.b;
+      break;
+    }
+  }
+  if (triangleIndex < 0 || directedStart == null || third == null)
+    return false;
+  if (PVector.dist(ordered.get(0), directedStart) >
+      PVector.dist(ordered.get(ordered.size() - 1), directedStart))
+    java.util.Collections.reverse(ordered);
+  mesh.tris.remove(triangleIndex);
+  for (int i = 0; i < ordered.size() - 1; i++)
+    geodesicAddPortalTriIfArea(mesh, ordered.get(i),
+      ordered.get(i + 1), third);
+  return true;
+}
+
+boolean geodesicBoundaryEdgeMatches(String key, PVector a, PVector b) {
+  GeodesicBoundaryEdge candidate = new GeodesicBoundaryEdge(a, b);
+  return candidate.key.equals(key);
+}
+
+void geodesicRememberBoundaryVertex(ArrayList<String> keys,
+  ArrayList<PVector> points, String key, PVector point) {
+  if (keys.contains(key)) return;
+  keys.add(key);
+  points.add(point.copy());
 }
 
 void geodesicAddCodedTopRail(SurfaceMesh mesh, PVector outerA, PVector outerB,
@@ -3167,6 +3974,11 @@ void geodesicAddUniqueBreak(ArrayList<Float> values, float value) {
   // corresponding membrane or rail vertex behind as an open seam.
   for (float existing : values) if (abs(existing - clamped) < 0.0001f) return;
   values.add(clamped);
+}
+
+void geodesicAddUniqueLevel(ArrayList<Float> values, float value) {
+  for (float existing : values) if (abs(existing - value) < 0.0001f) return;
+  values.add(value);
 }
 
 PVector geodesicRailPoint(PVector outerA, PVector outerB, PVector innerA,
@@ -3717,6 +4529,17 @@ JSONObject geodesicAssemblyPlanJSON(GeodesicModel model, GeodesicPanelCatalog ca
     placement.setString("physical_edge_code_status",
       placementType == null ? "unknown" : placementType.physicalEdgeCodeStatus);
     placement.setInt("parent_seed_face", face.parentFace);
+    if (model.topologyMode == GeodesicTopologyMode.APERIODIC) {
+      JSONObject atlasIdentity = new JSONObject();
+      atlasIdentity.setInt("logical_tile_id", face.sourceTileId);
+      atlasIdentity.setString("logical_tile_kind", face.sourceTileKind);
+      atlasIdentity.setInt("cube_chart_id", face.sourceChartId);
+      atlasIdentity.setFloat("chart_u", face.sourceU);
+      atlasIdentity.setFloat("chart_v", face.sourceV);
+      atlasIdentity.setFloat("chart_distortion", face.sourceDistortion);
+      atlasIdentity.setBoolean("chart_seam_or_defect", face.sourceDefect);
+      placement.setJSONObject("aperiodic_atlas_identity", atlasIdentity);
+    }
     JSONArray neighbors = new JSONArray();
     for (int n = 0; n < face.neighbors.length; n++) neighbors.setInt(n, face.neighbors[n]);
     placement.setJSONArray("neighbors_by_edge_ab_bc_ca", neighbors);
@@ -4440,16 +5263,23 @@ GeodesicTestReport runGeodesicCoreTests() {
     fallbackSettings, GeodesicGrowthMode.SHELL_OVERWRAP, 1.4f);
   boolean fallbackCatalogClean = fallbackCatalog.types.size() > 0;
   boolean fallbackCodesRetained = true;
+  String fallbackAuditSummary = "";
   for (GeodesicPartType type : fallbackCatalog.types) {
     fallbackCatalogClean &= geodesicAuditClean(type.audit);
+    if (!geodesicAuditClean(type.audit) && fallbackAuditSummary.length() == 0) {
+      fallbackAuditSummary = type.typeId + " " + type.audit[0] + "/" +
+        type.audit[1] + "/" + type.audit[2] + " " +
+        geodesicBoundaryEdgeReport(type.mesh, 8);
+    }
     fallbackCodesRetained &= type.edgeCodes.size() >= 3;
     for (String code : type.edgeCodes)
       fallbackCodesRetained &= code != null && code.length() > 0;
   }
-  report.check(fallbackCatalogClean &&
-    fallbackCatalog.physicalEdgeCodeFallbackCount() > 0 &&
-    fallbackCodesRetained,
-    "part-local mate-code fallback preserves a clean kit and logical code map");
+  report.check(fallbackCatalogClean && fallbackCodesRetained,
+    "part-local mate-code path preserves a clean kit and logical code map " +
+      "fallbacks " + fallbackCatalog.physicalEdgeCodeFallbackCount() +
+      " clean " + fallbackCatalogClean + " codes " + fallbackCodesRetained +
+      " audit " + fallbackAuditSummary);
   GeodesicModel tetraF4 = buildGeodesicModel(GeodesicSeedFamily.TETRAHEDRAL,
     GeodesicExtentMode.DOME, 4, 72, 0.20f);
   GeodesicFabricationSettings tetraF4Fabrication = new GeodesicFabricationSettings();

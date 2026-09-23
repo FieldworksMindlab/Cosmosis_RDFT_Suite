@@ -343,6 +343,7 @@ boolean legacyCandidateSolid(float scalarValue) {
 }
 
 void generateSelectedSurfaceFoundryMesh() {
+  captureHolonomyWovenFieldForFoundry();
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE) generateDcrtePrimitiveSurfaceMesh();
   else if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) generateDcrteImportedSurfaceMesh();
   else generateSurfaceFoundryMesh();
@@ -632,6 +633,13 @@ void generateDcrtePrimitiveSurfaceMesh() {
   foundryMeshStale = true;
   foundryLastExport = "";
 
+  // Panel coordinates are normalized against their longest physical axis.
+  // Keeping the foundry scale synchronized makes the legacy cubic voxel mesh
+  // produce the requested width, height, and depth without axis distortion.
+  if (dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.PANEL) {
+    foundryScaleMM = dcrtePanelMaxDimensionMM();
+  }
+
   VolumeSpec spec = createDcrteVolumeSpec();
   UniformGridObserver observer = new UniformGridObserver();
   observer.initialize(spec);
@@ -683,7 +691,7 @@ void generateDcrtePrimitiveSurfaceMesh() {
         domainNanos += System.nanoTime() - domainTick;
 
         long fieldTick = System.nanoTime();
-        float scalarValue = dcrteSampleFoundryField(wx, wy, wz, scores);
+        float scalarValue = dcrteSamplePrimitiveFoundryField(domain, wx, wy, wz, scores);
         volume.scalar[idx] = scalarValue;
         if (!dcrteFinite(scalarValue)) {
           volume.nonFiniteScalarCount++;
@@ -747,6 +755,7 @@ void generateDcrtePrimitiveSurfaceMesh() {
 
 boolean foundryRaisedVeinsApplied() {
   return foundryRaisedVeins
+    && !dcrteMetaCrystalModeActive()
     && dcrtePipelineMode != DCRTEPipelineMode.DCRTE_PRIMITIVE
     && dcrtePipelineMode != DCRTEPipelineMode.DCRTE_IMPORTED_MESH;
 }
@@ -757,6 +766,7 @@ String dcrteRaisedVeinsPolicy() {
     return "disabled_for_partial_scheduler_state";
   }
   if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH) return "disabled_until_imported_sdf_clipping";
+  if (dcrteMetaCrystalModeActive()) return "disabled_for_explicit_strut_graph";
   if (dcrtePipelineMode != DCRTEPipelineMode.DCRTE_PRIMITIVE) return "legacy_behavior";
   return "disabled_until_domain_clipping";
 }

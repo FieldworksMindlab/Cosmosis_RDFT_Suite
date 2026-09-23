@@ -319,6 +319,29 @@ PVector geodesicFabricationPointToAssembly(GeodesicFabricationFace face,
     face.resolvedFabrication.frameDepthMM;
   float inward = geodesicAssemblyExteriorAtTop(face.resolvedFabrication) ?
     depth - local.z : local.z;
-  world.add(PVector.mult(face.axisZ, -inward));
+  // Negative growth lays the body inboard of the surface, which is the dome
+  // contract and the default everywhere in Geodesic Salon.
+  float growth = face.resolvedFabrication == null ? -1.0f :
+    (face.resolvedFabrication.assemblyGrowthSign >= 0 ? 1.0f : -1.0f);
+  world.add(PVector.mult(face.axisZ, growth * inward));
   return world;
+}
+
+PVector geodesicAssemblyPointToFabrication(GeodesicFabricationFace face,
+  PVector world) {
+  if (face == null || world == null) return new PVector();
+  float scale = face.resolvedFabrication == null ? 1.0f :
+    max(1.0f, face.resolvedFabrication.fabricationScale);
+  PVector origin = face.origin.copy().mult(scale);
+  PVector relative = PVector.sub(world, origin);
+  float localX = relative.dot(face.axisX);
+  float localY = relative.dot(face.axisY);
+  float growth = face.resolvedFabrication == null ? -1.0f :
+    (face.resolvedFabrication.assemblyGrowthSign >= 0 ? 1.0f : -1.0f);
+  float inward = relative.dot(face.axisZ) / growth;
+  float depth = face.resolvedFabrication == null ? 0 :
+    face.resolvedFabrication.frameDepthMM;
+  float localZ = geodesicAssemblyExteriorAtTop(face.resolvedFabrication) ?
+    depth - inward : inward;
+  return new PVector(localX, localY, localZ);
 }

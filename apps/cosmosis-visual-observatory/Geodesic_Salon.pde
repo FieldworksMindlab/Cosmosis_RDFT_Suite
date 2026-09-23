@@ -2,6 +2,13 @@
 
 GeodesicModel geodesicModel = null;
 GeodesicIntrinsicCoordinateSystem geodesicCoordinates = null;
+GeodesicTopologyMode geodesicTopologyMode = GeodesicTopologyMode.POLYHEDRAL;
+GeodesicAperiodicFamily geodesicAperiodicFamily =
+  GeodesicAperiodicFamily.HAT;
+GeodesicAperiodicOverlay geodesicAperiodicOverlay =
+  GeodesicAperiodicOverlay.TILE;
+int geodesicAperiodicRecursion = 2;
+float geodesicAperiodicPhase = 0.17f;
 GeodesicSeedFamily geodesicFamily = GeodesicSeedFamily.ICOSAHEDRAL;
 GeodesicExtentMode geodesicExtent = GeodesicExtentMode.DOME;
 GeodesicGrowthMode geodesicGrowth = GeodesicGrowthMode.SHELL_OVERWRAP;
@@ -35,12 +42,15 @@ int geodesicSelectedFace = 0;
 String geodesicStatus = "geometry not built";
 String geodesicLastExport = "";
 String geodesicTestStatus = "not run";
+String geodesicAperiodicTestStatus = "not run";
 int geodesicUniqueTypes = 0;
 int[] geodesicLastAudit = { 0, 0, 0 };
 GeodesicKitPreflight geodesicLastPreflight = null;
 final int GEODESIC_SIDE_W = 392;
-final int GEODESIC_CONTROLS_H = 680;
+final int GEODESIC_CONTROLS_H = 787;
 final int GEODESIC_VALUE_ROW_H = 43;
+// Number of readout lines in DOMAIN / FABRICATION; drives the adaptive step.
+final int GEODESIC_READOUT_LINES = 28;
 
 enum GeodesicFabricationControl {
   PANEL_DEPTH,
@@ -71,11 +81,17 @@ class GeodesicKitPreflight {
 }
 
 GeodesicFabricationSettings currentGeodesicFabricationSettings() {
+  return geodesicFabricationSettingsForModel(geodesicModel);
+}
+
+GeodesicFabricationSettings geodesicFabricationSettingsForModel(
+  GeodesicModel model) {
   GeodesicFabricationSettings settings = new GeodesicFabricationSettings();
-  settings.assemblyMode = geodesicAssemblyMode;
-  if (geodesicAssemblyMode == GeodesicAssemblyMode.KICAS &&
-      geodesicModel != null)
-    settings.kicasPlan = buildGeodesicKicasPlan(geodesicModel);
+  settings.assemblyMode = geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+    GeodesicAssemblyMode.KICAS : geodesicAssemblyMode;
+  if (settings.assemblyMode == GeodesicAssemblyMode.KICAS &&
+      model != null)
+    settings.kicasPlan = buildGeodesicKicasPlan(model);
   settings.style = geodesicPanelStyle;
   settings.reliefSide = geodesicReliefSide;
   settings.frameDepthMM = geodesicFrameDepthMM;
@@ -83,6 +99,11 @@ GeodesicFabricationSettings currentGeodesicFabricationSettings() {
   settings.frameWidthMM = geodesicFrameWidthMM;
   settings.skinThicknessMM = geodesicSkinThicknessMM;
   settings.fastenerPortals = geodesicFastenerPortals;
+  // Keep every physical fastener channel centered and panel-local. KICAS and
+  // legacy assembly retain their own labels and guides, but neither may skew
+  // the printable slot to chase a shared world-space throat.
+  settings.portalAxisMode = GeodesicPortalAxisMode.PANEL_TRANSVERSE;
+  settings.desiredPortalsPerEdge = 1;
   settings.portalWidthMM = geodesicPortalWidthMM;
   settings.portalHeightMM = geodesicPortalHeightMM;
   settings.edgeCodesEnabled = geodesicEdgeCodesEnabled;
@@ -98,6 +119,8 @@ void initializeGeodesicSalon() {
   geodesicTestStatus = report.summary();
   println("GEODESIC SALON CORE " + report.summary());
   for (String failure : report.failures) println("  FAIL " + failure);
+  boolean aperiodicPassed = runGeodesicAperiodicTests();
+  geodesicAperiodicTestStatus = aperiodicPassed ? "PASS 5/5" : "FAIL";
   rebuildGeodesicSalonModel("initialized");
 }
 
@@ -143,7 +166,7 @@ void runGeodesicFabricationMatrix(boolean minimalFeatures) {
           if (passed) ready++;
           else blocked++;
           println((passed ? "READY   " : "BLOCKED ") +
-            family.label() + " " + extent.label() + " F" + frequency + " " +
+            family.displayLabel() + " " + extent.label() + " F" + frequency + " " +
             modifier.label() + " | " +
             (geodesicLastPreflight == null ? "NO PREFLIGHT" :
               geodesicLastPreflight.status + " | " +
@@ -177,9 +200,18 @@ void runGeodesicFabricationMatrix(boolean minimalFeatures) {
 }
 
 void rebuildGeodesicSalonModel(String reason) {
-  geodesicModel = buildGeodesicModel(geodesicFamily, geodesicExtent,
-    geodesicFrequency, geodesicRadiusMM, geodesicCutRatio,
-    geodesicModifier, geodesicStellationRatio);
+  geodesicResolveActiveSizePreset();
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+    geodesicAssemblyMode = GeodesicAssemblyMode.KICAS;
+    geodesicModifier = GeodesicFormModifier.NONE;
+    geodesicModel = buildGeodesicAperiodicModel(geodesicAperiodicFamily,
+      geodesicExtent, geodesicAperiodicRecursion, geodesicRadiusMM,
+      geodesicCutRatio, geodesicAperiodicPhase);
+  } else {
+    geodesicModel = buildGeodesicModel(geodesicFamily, geodesicExtent,
+      geodesicFrequency, geodesicRadiusMM, geodesicCutRatio,
+      geodesicModifier, geodesicStellationRatio);
+  }
   geodesicCoordinates = new GeodesicIntrinsicCoordinateSystem(geodesicModel);
   geodesicSelectedFace = geodesicModel.faces.size() == 0 ? 0 :
     constrain(geodesicSelectedFace, 0, geodesicModel.faces.size() - 1);
@@ -187,6 +219,7 @@ void rebuildGeodesicSalonModel(String reason) {
   geodesicUniqueTypes = geodesicLastPreflight.catalog == null ?
     0 : geodesicLastPreflight.catalog.types.size();
   geodesicLastAudit = geodesicLastPreflight.shellAudit;
+  geodesicRefreshCustomSizeSolution();
   refreshGeodesicPaintPlan();
   if (geodesicLastPreflight.failedType != null) {
     geodesicSelectedFace = constrain(geodesicLastPreflight.failedType.representativeFaceId,
@@ -204,6 +237,12 @@ GeodesicKitPreflight preflightGeodesicSalonKit(String stamp) {
   if (geodesicModel == null || !geodesicModel.valid) {
     result.status = "DOMAIN BLOCKED";
     result.detail = geodesicModel == null ? "NO MODEL" : geodesicModel.validation;
+    return result;
+  }
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC &&
+      geodesicExtent == GeodesicExtentMode.SPHERE) {
+    result.status = "KIT BLOCKED / APERIODIC CLOSURE";
+    result.detail = "SPHERE IS PREVIEW ONLY; USE DOME UNTIL CHART-SEAM CLOSURE IS QUALIFIED";
     return result;
   }
 
@@ -380,10 +419,13 @@ void drawGeodesicSalonScene(int x, int y, int w, int h) {
   fill(112, 224, 210);
   textAlign(LEFT, TOP);
   textSize(10);
-  text("DOME ASSEMBLY FIELD", x + 14, y + 12);
+  text(geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+    "APERIODIC CURVED ATLAS" : "DOME ASSEMBLY FIELD", x + 14, y + 12);
   fill(96, 132, 142);
   textSize(8);
-  text("deterministic geodesic subdivision / face-local intrinsic coordinates", x + 14, y + 29);
+  text(geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+    geodesicAperiodicFamily.label() + " / six-chart mapping / audited triangular carrier" :
+    "deterministic geodesic subdivision / face-local intrinsic coordinates", x + 14, y + 29);
 
   if (geodesicModel == null || geodesicModel.faces.size() == 0) {
     fill(255, 100, 115);
@@ -406,15 +448,30 @@ void drawGeodesicSalonScene(int x, int y, int w, int h) {
   translate(0, 0, -centerZ);
   hint(ENABLE_DEPTH_TEST);
 
+  GeodesicOpeningCandidate shownOpening = geodesicSelectedOpening();
   noStroke();
   for (GeodesicFace face : geodesicModel.faces) {
     float arrival = geodesicFaceArrival(face);
     boolean active = arrival <= geodesicFront;
     boolean selected = face.id == geodesicSelectedFace;
-    if (geodesicPaintEnabled) {
+    boolean inOpening = shownOpening != null &&
+      shownOpening.faces.hasValue(face.id);
+    if (inOpening) {
+      // The faces the connector would take out. Committed reads solid, a
+      // highlighted candidate reads dimmer, so it is obvious which is which.
+      if (geodesicOpeningSelection.active &&
+          geodesicOpeningSelection.candidate == shownOpening)
+        fill(255, 96, 72, 232);
+      else fill(255, 150, 60, 150);
+    } else if (geodesicPaintEnabled) {
       int paint = geodesicPaintDisplayColor(face.id);
       fill(red(paint), green(paint), blue(paint), 214);
     } else if (selected) fill(255, 205, 66, 225);
+    else if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+      int atlasColor = geodesicAperiodicDisplayColor(face,
+        geodesicAperiodicOverlay);
+      fill(red(atlasColor), green(atlasColor), blue(atlasColor), 206);
+    }
     else if (active) {
       float phase = (face.parentFace * 0.173f + arrival * 0.77f) % 1.0f;
       if (phase < 0.34f) fill(27, 214, 190, 132);
@@ -429,6 +486,21 @@ void drawGeodesicSalonScene(int x, int y, int w, int h) {
     endShape();
   }
 
+  if (shownOpening != null && shownOpening.ringWorld.size() >= 3) {
+    stroke(255, 214, 92, 245);
+    strokeWeight(1.7f / scaleFactor + 0.16f);
+    noFill();
+    beginShape();
+    for (PVector p : shownOpening.ringWorld) vertex(p.x, p.y, p.z);
+    endShape(CLOSE);
+    // Outward normal, so the direction a tunnel would leave on is visible.
+    PVector tip = PVector.add(shownOpening.centroid,
+      PVector.mult(shownOpening.normal, geodesicModel.radius * 0.42f));
+    stroke(255, 214, 92, 190);
+    line(shownOpening.centroid.x, shownOpening.centroid.y,
+      shownOpening.centroid.z, tip.x, tip.y, tip.z);
+  }
+
   stroke(70, 222, 211, 190);
   strokeWeight(0.48f / scaleFactor + 0.12f);
   beginShape(LINES);
@@ -438,6 +510,29 @@ void drawGeodesicSalonScene(int x, int y, int w, int h) {
     vertex(a.x, a.y, a.z); vertex(b.x, b.y, b.z);
   }
   endShape();
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+    stroke(238, 241, 225, 220);
+    strokeWeight(1.05f / scaleFactor + 0.16f);
+    beginShape(LINES);
+    for (GeodesicEdge edge : geodesicModel.edges)
+      if (geodesicAperiodicSourceBoundary(geodesicModel, edge) &&
+          !geodesicAperiodicChartBoundary(geodesicModel, edge)) {
+        PVector a = geodesicModel.vertices.get(edge.a).position;
+        PVector b = geodesicModel.vertices.get(edge.b).position;
+        vertex(a.x, a.y, a.z); vertex(b.x, b.y, b.z);
+      }
+    endShape();
+    stroke(255, 82, 106, 248);
+    strokeWeight(1.75f / scaleFactor + 0.20f);
+    beginShape(LINES);
+    for (GeodesicEdge edge : geodesicModel.edges)
+      if (geodesicAperiodicChartBoundary(geodesicModel, edge)) {
+        PVector a = geodesicModel.vertices.get(edge.a).position;
+        PVector b = geodesicModel.vertices.get(edge.b).position;
+        vertex(a.x, a.y, a.z); vertex(b.x, b.y, b.z);
+      }
+    endShape();
+  }
   stroke(255, 190, 50, 235);
   strokeWeight(1.25f / scaleFactor + 0.18f);
   beginShape(LINES);
@@ -458,7 +553,10 @@ void drawGeodesicSalonScene(int x, int y, int w, int h) {
   textSize(9);
   text("front " + nf(geodesicFront, 1, 3) + "  |  selected face " +
     (geodesicModel.faces.size() == 0 ? "-" : geodesicSelectedFace) + "  |  " +
-    geodesicGrowth.label() +
+    (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      geodesicAperiodicFamily.shortLabel() + " R" +
+      geodesicAperiodicRecursion + " / " + geodesicAperiodicOverlay.label() :
+      geodesicGrowth.label()) +
     (geodesicPaintEnabled ? "  |  PAINT " +
       geodesicSelectedPaintLabel() : ""), x + 14, y + h - 48);
   boolean preflightReady = geodesicLastPreflight != null && geodesicLastPreflight.ready;
@@ -554,6 +652,13 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
     geodesicGuideSvgEnabled ? color(35, 114, 94) : color(55, 58, 66));
   yy += 30;
   drawButton(bx, yy, bw, 22,
+    "TOPOLOGY " + geodesicTopologyMode.label(),
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      color(112, 50, 76) : color(42, 72, 82));
+  yy += 30;
+  drawButton(bx, yy, bw, 22,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      "ASSEMBLY KICAS REQUIRED" :
     geodesicAssemblyMode == GeodesicAssemblyMode.KICAS ?
       "ASSEMBLY KICAS LOCK + CENTER TIE" :
       "ASSEMBLY LEGACY PORTAL KIT",
@@ -581,27 +686,48 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
       color(112, 75, 35) : color(38, 105, 87));
   drawButton(bx + half + gap, yy, half, 22, reliefLabel, reliefColor);
   yy += 30;
-  drawButton(bx, yy, half, 22, "FAMILY <", color(42, 72, 82));
-  drawButton(bx + half + gap, yy, half, 22, "FAMILY >", color(42, 72, 82));
-  geodesicControlValue(bx, yy + 24, bw, "seed family", geodesicFamily.label());
+  drawButton(bx, yy, half, 22,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "ATLAS <" : "FAMILY <",
+    color(42, 72, 82));
+  drawButton(bx + half + gap, yy, half, 22,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "ATLAS >" : "FAMILY >",
+    color(42, 72, 82));
+  geodesicControlValue(bx, yy + 24, bw,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "aperiodic source" : "seed family",
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      geodesicAperiodicFamily.label() : geodesicFamily.displayLabel());
   yy += GEODESIC_VALUE_ROW_H;
-  boolean modifierAvailable = geodesicFamilySupportsStellation(geodesicFamily);
+  boolean modifierAvailable = geodesicTopologyMode == GeodesicTopologyMode.POLYHEDRAL &&
+    geodesicFamilySupportsStellation(geodesicFamily);
   drawButton(bx, yy, bw, 22,
-    modifierAvailable ?
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      "VIEW " + geodesicAperiodicOverlay.label() : modifierAvailable ?
       (geodesicModifier == GeodesicFormModifier.FACE_STELLATION ?
         "STELLATION ON" : "STELLATION OFF") :
       "STELLATION N/A FOR FAMILY",
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? color(38, 105, 87) :
     !modifierAvailable ? color(55, 58, 66) :
     (geodesicModifier == GeodesicFormModifier.FACE_STELLATION ?
       color(112, 75, 35) : color(42, 72, 82)));
   geodesicControlValue(bx, yy + 24, bw,
-    modifierAvailable ? "face stellation height" : "family basis",
-    modifierAvailable ? nf(geodesicStellationRatio * 100.0f, 1, 0) + "% radius" :
-      "triangulated polygon seed");
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "atlas diagnostic" :
+      (modifierAvailable ? "face stellation height" : "family basis"),
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      "tile / chart / distortion / defect" :
+      (modifierAvailable ? nf(geodesicStellationRatio * 100.0f, 1, 0) + "% radius" :
+      "triangulated polygon seed"));
   yy += GEODESIC_VALUE_ROW_H;
-  drawButton(bx, yy, half, 22, "FREQ -", color(42, 72, 82));
-  drawButton(bx + half + gap, yy, half, 22, "FREQ +", color(42, 72, 82));
-  geodesicControlValue(bx, yy + 24, bw, "frequency", str(geodesicFrequency));
+  drawButton(bx, yy, half, 22,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "RECURSE -" : "FREQ -",
+    color(42, 72, 82));
+  drawButton(bx + half + gap, yy, half, 22,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "RECURSE +" : "FREQ +",
+    color(42, 72, 82));
+  geodesicControlValue(bx, yy + 24, bw,
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? "recursion / carrier" : "frequency",
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      geodesicAperiodicRecursion + " / F" + constrain(geodesicAperiodicRecursion + 2, 3, 7) :
+      str(geodesicFrequency));
   yy += GEODESIC_VALUE_ROW_H;
   drawButton(bx, yy, half, 22, "FORM", geodesicExtent == GeodesicExtentMode.DOME ? color(38, 105, 87) : color(42, 72, 82));
   drawButton(bx + half + gap, yy, half, 22, "GROWTH", geodesicGrowth == GeodesicGrowthMode.CENTER_TO_EDGE ? color(112, 75, 35) : color(42, 72, 82));
@@ -610,6 +736,17 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
   drawButton(bx, yy, half, 22, "CAP DEEPER", color(42, 72, 82));
   drawButton(bx + half + gap, yy, half, 22, "CAP SHALLOWER", color(42, 72, 82));
   geodesicControlValue(bx, yy + 24, bw, "cut plane ratio", nf(geodesicCutRatio, 1, 2));
+  yy += GEODESIC_VALUE_ROW_H;
+  int sizeQuarter = (bw - gap * 3) / 4;
+  GeodesicSizePreset[] sizePresets = GeodesicSizePreset.values();
+  for (int i = 0; i < sizePresets.length; i++) {
+    GeodesicSizePreset preset = sizePresets[i];
+    drawButton(bx + (sizeQuarter + gap) * i, yy, sizeQuarter, 22,
+      preset.label, geodesicSizePreset == preset ?
+      color(112, 75, 35) : color(42, 72, 82));
+  }
+  geodesicControlValue(bx, yy + 24, bw, "assembled size preset",
+    geodesicSizePresetReadout());
   yy += GEODESIC_VALUE_ROW_H;
   drawButton(bx, yy, half, 22, "RADIUS -", color(42, 72, 82));
   drawButton(bx + half + gap, yy, half, 22, "RADIUS +", color(42, 72, 82));
@@ -657,13 +794,37 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
     color(42, 72, 82));
   drawButton(bx + (quarter + gap) * 3, yy, quarter, 22, "PHASE +",
     color(42, 72, 82));
+  yy += 30;
+  GeodesicOpeningCandidate opening = geodesicSelectedOpening();
+  drawButton(bx, yy, quarter, 22, "OPENING <", color(42, 72, 82));
+  drawButton(bx + quarter + gap, yy, quarter, 22, "OPENING >", color(42, 72, 82));
+  drawButton(bx + (quarter + gap) * 2, yy, quarter, 22, "SCAN", color(42, 72, 82));
+  drawButton(bx + (quarter + gap) * 3, yy, quarter, 22, "BUILD OPENING",
+    geodesicOpeningSelection.active ? color(38, 105, 87) : color(88, 66, 40));
 
   int statsY = y + controlsH + 14;
   int statsH = h - controlsH - 14;
   drawReadoutPanel(x, statsY, w, statsH, "DOMAIN / FABRICATION");
   int sy = statsY + 32;
-  int metricStep = 10;
+  geodesicReadoutClipBottom = statsY + statsH - 4;
+  // Fit the readout to the panel rather than running off the bottom of it.
+  // Keep GEODESIC_READOUT_LINES in step with the lines drawn below.
+  int metricStep = constrain((statsH - 40) / GEODESIC_READOUT_LINES, 8, 10);
   geodesicMetricLine(x + 16, sy, w - 32, "domain qualification", geodesicModel != null && geodesicModel.valid ? "VALID" : "BLOCKED"); sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "topology provider",
+    geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      geodesicAperiodicFamily.label() + " / CURVED ATLAS" :
+      "POLYHEDRAL / " + geodesicFamily.displayLabel()); sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "atlas / carrier",
+    geodesicModel == null ? "-" :
+      (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+        geodesicModel.aperiodicLogicalTiles + " TILES / " +
+        geodesicModel.aperiodicChartCount + " CHARTS / " +
+        geodesicModel.faces.size() + " PANELS" : "N/A")); sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "defects / distortion",
+    geodesicModel == null || geodesicTopologyMode != GeodesicTopologyMode.APERIODIC ?
+      "N/A" : geodesicModel.aperiodicDefectFaces + " SEAM FACES / " +
+      nf(geodesicModel.aperiodicMaxDistortion, 1, 3)); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "kit preflight",
     geodesicLastPreflight == null ? "NOT CHECKED" : geodesicLastPreflight.status); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "preflight detail",
@@ -686,12 +847,29 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
       geodesicPaintScheme.label() + " C" +
       currentGeodesicPaintPlan().effectiveColorCount : "OFF"));
   sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "connector opening",
+    opening == null ? geodesicOpeningStatus :
+    (geodesicOpeningIndex + 1) + "/" + geodesicOpeningCandidates.size() + " " +
+    opening.label + " -> " +
+    (opening.matchesTrussSection() ? opening.matchingSection() :
+      "NO SECTION MATCH")); sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "opening fit",
+    opening == null ? (geodesicOpeningSelection.active ? "COMMITTED" : "-") :
+    nf(opening.planarityMM, 1, 2) + " mm flat / " + opening.distinctEdgeLengths +
+    " len / " + nf(opening.minCornerDeg, 1, 0) + " deg / val " +
+    opening.minRemainingValence + " / x" + opening.repeats +
+    (geodesicOpeningSelection.active ? " / COMMITTED" : "")); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "plate kit",
     geodesicLastPlateKitResult == null ?
       "ON DEMAND / 256x256" : geodesicLastPlateKitResult.status);
   sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "size preset",
+    geodesicSizePresetReadout()); sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "largest part / P1S",
+    geodesicLargestPartReadout()); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "assembly mode",
-    geodesicAssemblyMode.label()); sy += metricStep;
+    currentGeodesicFabricationSettings().assemblyMode.label() +
+    (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ? " REQUIRED" : "")); sy += metricStep;
   GeodesicFabricationSettings displayFabrication =
     geodesicLastPreflight != null && geodesicLastPreflight.fabrication != null ?
     geodesicLastPreflight.fabrication : currentGeodesicFabricationSettings();
@@ -716,7 +894,8 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
     geodesicModel == null ? "-" : geodesicSlicerScaleDimensions(geodesicModel,
       geodesicResolvedFabricationScale(), 100)); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "shell audit", geodesicLastAudit[0] + "/" + geodesicLastAudit[1] + "/" + geodesicLastAudit[2]); sy += metricStep;
-  geodesicMetricLine(x + 16, sy, w - 32, "core tests", geodesicTestStatus); sy += metricStep;
+  geodesicMetricLine(x + 16, sy, w - 32, "core / atlas tests",
+    geodesicTestStatus + " / " + geodesicAperiodicTestStatus); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "fingerprint", geodesicModel == null ? "-" : geodesicModel.fingerprint);
 }
 
@@ -775,6 +954,8 @@ String geodesicFabricationControlValue() {
   if (geodesicFabricationControl == GeodesicFabricationControl.EDGE_CHAMFER)
     return geodesicPanelStyle == GeodesicPanelStyle.SOLID ? "N/A IN SOLID" :
       nf(geodesicEdgeBreakMM, 1, 2) + " mm";
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC)
+    return "N/A IN APERIODIC ATLAS";
   if (!geodesicFamilySupportsStellation(geodesicFamily)) return "N/A FOR FAMILY";
   return nf(geodesicStellationRatio * 100.0f, 1, 0) + "% radius";
 }
@@ -851,7 +1032,13 @@ void geodesicControlValue(int x, int y, int w, String label, String value) {
   text(value, x + w, y);
 }
 
+/* Bottom edge the readout may draw to. Lines past it are dropped rather than
+   spilling out of the panel and off the window, which is what happened when the
+   connector-opening lines were added to an already-full readout. */
+float geodesicReadoutClipBottom = Float.MAX_VALUE;
+
 void geodesicMetricLine(int x, int y, int w, String label, String value) {
+  if (y + 9 > geodesicReadoutClipBottom) return;
   fill(105, 143, 153);
   textAlign(LEFT, TOP);
   textSize(9);
@@ -890,6 +1077,22 @@ boolean handleGeodesicSalonMouse(int pageX, int pageY, int pageW, int pageH) {
   }
   yy += 30;
   if (over(bx, yy, bw, 22)) {
+    geodesicTopologyMode = geodesicTopologyMode == GeodesicTopologyMode.POLYHEDRAL ?
+      GeodesicTopologyMode.APERIODIC : GeodesicTopologyMode.POLYHEDRAL;
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+      geodesicAssemblyMode = GeodesicAssemblyMode.KICAS;
+      geodesicExtent = GeodesicExtentMode.DOME;
+      geodesicModifier = GeodesicFormModifier.NONE;
+    }
+    rebuildGeodesicSalonModel("topology provider changed");
+    return true;
+  }
+  yy += 30;
+  if (over(bx, yy, bw, 22)) {
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+      geodesicStatus = "APERIODIC FABRICATION REQUIRES ORDERED KICAS ASSEMBLY";
+      return true;
+    }
     geodesicAssemblyMode =
       geodesicAssemblyMode == GeodesicAssemblyMode.KICAS ?
       GeodesicAssemblyMode.LEGACY_PORTAL : GeodesicAssemblyMode.KICAS;
@@ -930,10 +1133,27 @@ boolean handleGeodesicSalonMouse(int pageX, int pageY, int pageW, int pageH) {
     return true;
   }
   yy += 30;
-  if (over(bx, yy, half, 22)) { cycleGeodesicFamily(-1); return true; }
-  if (over(bx + half + gap, yy, half, 22)) { cycleGeodesicFamily(1); return true; }
+  if (over(bx, yy, half, 22)) {
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC)
+      cycleGeodesicAperiodicFamily(-1);
+    else cycleGeodesicFamily(-1);
+    return true;
+  }
+  if (over(bx + half + gap, yy, half, 22)) {
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC)
+      cycleGeodesicAperiodicFamily(1);
+    else cycleGeodesicFamily(1);
+    return true;
+  }
   yy += GEODESIC_VALUE_ROW_H;
   if (over(bx, yy, bw, 22)) {
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+      GeodesicAperiodicOverlay[] overlays = GeodesicAperiodicOverlay.values();
+      geodesicAperiodicOverlay = overlays[(geodesicAperiodicOverlay.ordinal() + 1) %
+        overlays.length];
+      geodesicStatus = "ATLAS VIEW / " + geodesicAperiodicOverlay.label();
+      return true;
+    }
     if (!geodesicFamilySupportsStellation(geodesicFamily)) {
       geodesicModifier = GeodesicFormModifier.NONE;
       geodesicStatus = "STELLATION REQUIRES TETRA / OCTA / ICOSA";
@@ -945,8 +1165,21 @@ boolean handleGeodesicSalonMouse(int pageX, int pageY, int pageW, int pageH) {
     return true;
   }
   yy += GEODESIC_VALUE_ROW_H;
-  if (over(bx, yy, half, 22)) { geodesicFrequency = max(1, geodesicFrequency - 1); rebuildGeodesicSalonModel("frequency changed"); return true; }
-  if (over(bx + half + gap, yy, half, 22)) { geodesicFrequency = min(12, geodesicFrequency + 1); rebuildGeodesicSalonModel("frequency changed"); return true; }
+  if (over(bx, yy, half, 22)) {
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC)
+      geodesicAperiodicRecursion = max(1, geodesicAperiodicRecursion - 1);
+    else geodesicFrequency = max(1, geodesicFrequency - 1);
+    rebuildGeodesicSalonModel(geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      "aperiodic recursion changed" : "frequency changed"); return true;
+  }
+  if (over(bx + half + gap, yy, half, 22)) {
+    if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC)
+      geodesicAperiodicRecursion = min(geodesicAperiodicFamily.maxRecursion(),
+        geodesicAperiodicRecursion + 1);
+    else geodesicFrequency = min(12, geodesicFrequency + 1);
+    rebuildGeodesicSalonModel(geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+      "aperiodic recursion changed" : "frequency changed"); return true;
+  }
   yy += GEODESIC_VALUE_ROW_H;
   if (over(bx, yy, half, 22)) { geodesicExtent = geodesicExtent == GeodesicExtentMode.DOME ? GeodesicExtentMode.SPHERE : GeodesicExtentMode.DOME; rebuildGeodesicSalonModel("form changed"); return true; }
   if (over(bx + half + gap, yy, half, 22)) { geodesicGrowth = geodesicGrowth == GeodesicGrowthMode.SHELL_OVERWRAP ? GeodesicGrowthMode.CENTER_TO_EDGE : GeodesicGrowthMode.SHELL_OVERWRAP; rebuildGeodesicSalonModel("growth changed"); return true; }
@@ -954,8 +1187,17 @@ boolean handleGeodesicSalonMouse(int pageX, int pageY, int pageW, int pageH) {
   if (over(bx, yy, half, 22)) { geodesicCutRatio = max(-0.30f, geodesicCutRatio - 0.05f); rebuildGeodesicSalonModel("cap changed"); return true; }
   if (over(bx + half + gap, yy, half, 22)) { geodesicCutRatio = min(0.82f, geodesicCutRatio + 0.05f); rebuildGeodesicSalonModel("cap changed"); return true; }
   yy += GEODESIC_VALUE_ROW_H;
-  if (over(bx, yy, half, 22)) { geodesicRadiusMM = max(24, geodesicRadiusMM - 4); rebuildGeodesicSalonModel("radius changed"); return true; }
-  if (over(bx + half + gap, yy, half, 22)) { geodesicRadiusMM = min(240, geodesicRadiusMM + 4); rebuildGeodesicSalonModel("radius changed"); return true; }
+  int sizeQuarter = (bw - gap * 3) / 4;
+  GeodesicSizePreset[] sizePresets = GeodesicSizePreset.values();
+  for (int i = 0; i < sizePresets.length; i++) {
+    if (over(bx + (sizeQuarter + gap) * i, yy, sizeQuarter, 22)) {
+      applyGeodesicSizePreset(sizePresets[i]);
+      return true;
+    }
+  }
+  yy += GEODESIC_VALUE_ROW_H;
+  if (over(bx, yy, half, 22)) { geodesicSizePreset = GeodesicSizePreset.CUSTOM; geodesicRadiusMM = max(24, geodesicRadiusMM - 4); rebuildGeodesicSalonModel("radius changed"); return true; }
+  if (over(bx + half + gap, yy, half, 22)) { geodesicSizePreset = GeodesicSizePreset.CUSTOM; geodesicRadiusMM = min(4000, geodesicRadiusMM + 4); rebuildGeodesicSalonModel("radius changed"); return true; }
   yy += GEODESIC_VALUE_ROW_H;
   if (over(bx, yy, half, 22)) { cycleGeodesicFabricationControl(-1); return true; }
   if (over(bx + half + gap, yy, half, 22)) { cycleGeodesicFabricationControl(1); return true; }
@@ -1021,6 +1263,15 @@ boolean handleGeodesicSalonMouse(int pageX, int pageY, int pageW, int pageH) {
   if (over(bx + (quarter + gap) * 3, yy, quarter, 22)) {
     adjustGeodesicPaintPhase(1); return true;
   }
+  yy += 30;
+  if (over(bx, yy, quarter, 22)) { geodesicCycleOpening(-1); return true; }
+  if (over(bx + quarter + gap, yy, quarter, 22)) { geodesicCycleOpening(1); return true; }
+  if (over(bx + (quarter + gap) * 2, yy, quarter, 22)) {
+    geodesicScanOpenings(); return true;
+  }
+  if (over(bx + (quarter + gap) * 3, yy, quarter, 22)) {
+    geodesicCommitOpening(); return true;
+  }
   return false;
 }
 
@@ -1031,6 +1282,16 @@ void cycleGeodesicFamily(int direction) {
   if (!geodesicFamilySupportsStellation(geodesicFamily))
     geodesicModifier = GeodesicFormModifier.NONE;
   rebuildGeodesicSalonModel("family changed");
+}
+
+void cycleGeodesicAperiodicFamily(int direction) {
+  GeodesicAperiodicFamily[] values = GeodesicAperiodicFamily.values();
+  int index = (geodesicAperiodicFamily.ordinal() + direction + values.length) %
+    values.length;
+  geodesicAperiodicFamily = values[index];
+  geodesicAperiodicRecursion = min(geodesicAperiodicRecursion,
+    geodesicAperiodicFamily.maxRecursion());
+  rebuildGeodesicSalonModel("aperiodic source changed");
 }
 
 void cycleGeodesicFabricationControl(int direction) {
@@ -1098,6 +1359,11 @@ void selectGeodesicFace(int direction) {
 }
 
 void exportGeodesicSalonKit() {
+  if (!geodesicPresetExportReady()) {
+    geodesicStatus = "EXPORT BLOCKED / SIZE PRESET NOT PRINTABLE";
+    println(geodesicStatus + " / " + geodesicSizePresetNotice);
+    return;
+  }
   GeodesicKitPreflight preflight = preflightGeodesicSalonKit("EXPORT");
   geodesicLastPreflight = preflight;
   geodesicLastAudit = preflight.shellAudit;
@@ -1126,8 +1392,11 @@ void exportGeodesicSalonKit() {
   String stamp = geodesicSalonTimestamp();
   String modifierSuffix = geodesicModifier == GeodesicFormModifier.FACE_STELLATION ?
     "_stellated" : "";
-  String folderName = stamp + "_" + geodesicFamily.label().toLowerCase().replace(" ", "_") +
-    "_f" + geodesicFrequency + modifierSuffix;
+  String folderName = geodesicTopologyMode == GeodesicTopologyMode.APERIODIC ?
+    stamp + "_aperiodic_" + geodesicAperiodicFamily.shortLabel().toLowerCase() +
+      "_r" + geodesicAperiodicRecursion :
+    stamp + "_" + geodesicFamily.label().toLowerCase().replace(" ", "_") +
+      "_f" + geodesicFrequency + modifierSuffix;
   File runFolder = new File(sketchPath("exports/geodesic_salon/" + folderName));
   File combinedFolder = new File(runFolder, "combined");
   File partsFolder = new File(runFolder, "parts");
@@ -1172,6 +1441,9 @@ void exportGeodesicSalonKit() {
     assembly.setJSONObject("kicas_ordered_assembly",
       fabrication.kicasPlan.toJSON());
   saveJSONObject(assembly, new File(runFolder, "assembly_plan.json").getAbsolutePath());
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC)
+    saveJSONObject(geodesicAperiodicAtlasJSON(geodesicModel),
+      new File(runFolder, "aperiodic_atlas.json").getAbsolutePath());
   writeGeodesicAssemblyGuide(new File(runFolder, "ASSEMBLY.txt"), catalog,
     fabrication);
   GeodesicGuideExportResult guideResult = exportGeodesicAssemblyGuides(runFolder, catalog, stamp);
@@ -1190,6 +1462,16 @@ void exportGeodesicSalonKit() {
   manifest.setString("schema", "fieldworks.geodesic_salon.kit.v1");
   manifest.setString("generated_at", stamp);
   manifest.setJSONObject("model", geodesicModel.toJSON());
+  if (geodesicSizeSolution != null)
+    manifest.setJSONObject("size_preset", geodesicSizeSolution.toJSON());
+  manifest.setString("topology_mode", geodesicTopologyMode.label());
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+    manifest.setString("aperiodic_atlas", "aperiodic_atlas.json");
+    manifest.setString("aperiodic_overlay_at_export",
+      geodesicAperiodicOverlay.label());
+    manifest.setString("fabrication_contract",
+      "aperiodic-derived curved shell on audited triangular KICAS carrier");
+  }
   manifest.setString("growth_mode", geodesicGrowth.label());
   manifest.setFloat("shell_thickness_mm", geodesicThicknessMM);
   manifest.setFloat("center_relief_mm", geodesicReliefMM);
@@ -1258,6 +1540,13 @@ void writeGeodesicAssemblyGuide(File file, GeodesicPanelCatalog catalog,
   }
   writer.println();
   writer.println("ASSEMBLY");
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+    writer.println("APERIODIC SOURCE ATLAS: " + geodesicAperiodicFamily.label() +
+      " recursion " + geodesicAperiodicRecursion + ".");
+    writer.println("The logical Hat/Penrose domains are mapped through six explicit curved-surface charts.");
+    writer.println("aperiodic_atlas.json records every carrier face, source tile, chart, distortion, and seam defect.");
+    writer.println("GS-005 is the visual atlas/defect reference. Red seam lines are chart boundaries, not missing parts.");
+  }
   writer.println("Use assembly_plan.json. Each placement lists face_id, reusable type_id,");
   writer.println("neighbors and logical edge_mate_codes in AB/BC/CA order, model-space vertices, centroid, and outward normal.");
   if (fabrication.assemblyMode == GeodesicAssemblyMode.KICAS) {
@@ -1324,6 +1613,13 @@ JSONObject geodesicSalonFieldStateJSON() {
   json.setFloat("deep_detail", deepDetail);
   json.setFloat("time_scale", timeScale);
   json.setInt("seed", seed);
+  json.setString("geodesic_topology_mode", geodesicTopologyMode.label());
+  if (geodesicTopologyMode == GeodesicTopologyMode.APERIODIC) {
+    json.setString("aperiodic_family", geodesicAperiodicFamily.label());
+    json.setInt("aperiodic_recursion", geodesicAperiodicRecursion);
+    json.setFloat("aperiodic_phase", geodesicAperiodicPhase);
+    json.setString("aperiodic_overlay", geodesicAperiodicOverlay.label());
+  }
   json.setString("geodesic_relief_side", geodesicPanelStyle == GeodesicPanelStyle.FRAME_SKIN ?
     geodesicReliefSide.label() : "N/A");
   MaterialProfile material = activeMaterial();

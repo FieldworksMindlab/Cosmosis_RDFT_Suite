@@ -37,6 +37,21 @@ class DCRTEConfig {
   boolean foundryRaisedVeinsValue;
   float foundryVeinRadiusMMValue;
   float foundryVeinLiftMMValue;
+  String foundryHolonomyWovenModeValue = "off";
+  float foundryHolonomyWovenAlphaSpanValue;
+  float foundryHolonomyWovenDepthSpanValue;
+  float foundryHolonomyWovenBoundaryCouplingValue;
+  float foundryHolonomyWovenAmplitudeValue;
+  String foundryHolonomyFieldSchemaValue = "";
+  String foundryHolonomyFieldArtifactIdValue = "";
+  int foundryHolonomyFieldColumnsValue;
+  int foundryHolonomyFieldRowsValue;
+  String foundryMetaCrystalFamilyValue = "";
+  String foundryMetaCrystalPresetValue = "";
+  float foundryMetaCrystalThetaValue;
+  float foundryMetaCrystalStrutRadiusValue;
+  String foundryMetaCrystalLoadAxisValue = "";
+  String foundryMetaCrystalCouplingValue = "";
 
   boolean shaperEnabledValue;
   boolean shaperUseSenderValue;
@@ -66,6 +81,14 @@ class DCRTEConfig {
   float primitiveBoxHalfZValue;
   float primitiveCylinderRadiusValue;
   float primitiveCylinderHalfHeightValue;
+  String panelLayoutModeValue = "continuous_field";
+  float panelWidthMMValue;
+  float panelHeightMMValue;
+  float panelDepthMMValue;
+  int panelColumnsValue;
+  int panelRowsValue;
+  float panelOverlapValue;
+  float panelSmoothBlendRatioValue;
   int observerResolutionValue;
   float observerMinXValue;
   float observerMinYValue;
@@ -157,6 +180,25 @@ class DCRTEConfig {
     dcrteCanonical(out, "foundry_raised_veins", foundryRaisedVeinsValue);
     dcrteCanonical(out, "foundry_vein_radius_mm", foundryVeinRadiusMMValue);
     dcrteCanonical(out, "foundry_vein_lift_mm", foundryVeinLiftMMValue);
+    if (foundryGeometryIndexValue == DCRTE_META_CRYSTAL_GEOMETRY_INDEX) {
+      dcrteCanonical(out, "foundry_meta_crystal_family", foundryMetaCrystalFamilyValue);
+      dcrteCanonical(out, "foundry_meta_crystal_preset", foundryMetaCrystalPresetValue);
+      dcrteCanonical(out, "foundry_meta_crystal_theta", foundryMetaCrystalThetaValue);
+      dcrteCanonical(out, "foundry_meta_crystal_strut_radius", foundryMetaCrystalStrutRadiusValue);
+      dcrteCanonical(out, "foundry_meta_crystal_load_axis", foundryMetaCrystalLoadAxisValue);
+      dcrteCanonical(out, "foundry_meta_crystal_coupling", foundryMetaCrystalCouplingValue);
+    }
+    if (!foundryHolonomyWovenModeValue.equals("off")) {
+      dcrteCanonical(out, "foundry_holonomy_woven_mode", foundryHolonomyWovenModeValue);
+      dcrteCanonical(out, "foundry_holonomy_woven_alpha_span", foundryHolonomyWovenAlphaSpanValue);
+      dcrteCanonical(out, "foundry_holonomy_woven_depth_span", foundryHolonomyWovenDepthSpanValue);
+      dcrteCanonical(out, "foundry_holonomy_woven_boundary_coupling", foundryHolonomyWovenBoundaryCouplingValue);
+      dcrteCanonical(out, "foundry_holonomy_woven_amplitude", foundryHolonomyWovenAmplitudeValue);
+      dcrteCanonical(out, "foundry_holonomy_field_schema", foundryHolonomyFieldSchemaValue);
+      dcrteCanonical(out, "foundry_holonomy_field_artifact_id", foundryHolonomyFieldArtifactIdValue);
+      dcrteCanonical(out, "foundry_holonomy_field_columns", foundryHolonomyFieldColumnsValue);
+      dcrteCanonical(out, "foundry_holonomy_field_rows", foundryHolonomyFieldRowsValue);
+    }
     dcrteCanonical(out, "shaper_enabled", shaperEnabledValue);
     dcrteCanonical(out, "shaper_use_sender", shaperUseSenderValue);
     dcrteCanonical(out, "shaper_mix", shaperMixValue);
@@ -184,6 +226,16 @@ class DCRTEConfig {
       dcrteCanonical(out, "primitive_box_half_z", primitiveBoxHalfZValue);
       dcrteCanonical(out, "primitive_cylinder_radius", primitiveCylinderRadiusValue);
       dcrteCanonical(out, "primitive_cylinder_half_height", primitiveCylinderHalfHeightValue);
+      if (primitiveDomainTypeValue.equals("panel")) {
+        dcrteCanonical(out, "panel_layout_mode", panelLayoutModeValue);
+        dcrteCanonical(out, "panel_width_mm", panelWidthMMValue);
+        dcrteCanonical(out, "panel_height_mm", panelHeightMMValue);
+        dcrteCanonical(out, "panel_depth_mm", panelDepthMMValue);
+        dcrteCanonical(out, "panel_columns", panelColumnsValue);
+        dcrteCanonical(out, "panel_rows", panelRowsValue);
+        dcrteCanonical(out, "panel_overlap", panelOverlapValue);
+        dcrteCanonical(out, "panel_smooth_blend_ratio", panelSmoothBlendRatioValue);
+      }
       dcrteCanonical(out, "observer_resolution", observerResolutionValue);
       dcrteCanonical(out, "observer_min_x", observerMinXValue);
       dcrteCanonical(out, "observer_min_y", observerMinYValue);
@@ -296,6 +348,27 @@ class DCRTEConfig {
     foundry.setBoolean("raised_veins", foundryRaisedVeinsValue);
     foundry.setFloat("vein_radius_mm", foundryVeinRadiusMMValue);
     foundry.setFloat("vein_lift_mm", foundryVeinLiftMMValue);
+    foundry.setString("holonomy_woven_mode", foundryHolonomyWovenModeValue);
+    foundry.setFloat("holonomy_woven_alpha_span", foundryHolonomyWovenAlphaSpanValue);
+    foundry.setFloat("holonomy_woven_depth_span", foundryHolonomyWovenDepthSpanValue);
+    foundry.setFloat("holonomy_woven_boundary_coupling", foundryHolonomyWovenBoundaryCouplingValue);
+    foundry.setFloat("holonomy_woven_amplitude", foundryHolonomyWovenAmplitudeValue);
+    foundry.setString("holonomy_field_schema", foundryHolonomyFieldSchemaValue);
+    foundry.setString("holonomy_field_artifact_id", foundryHolonomyFieldArtifactIdValue);
+    foundry.setInt("holonomy_field_columns", foundryHolonomyFieldColumnsValue);
+    foundry.setInt("holonomy_field_rows", foundryHolonomyFieldRowsValue);
+    if (foundryGeometryIndexValue == DCRTE_META_CRYSTAL_GEOMETRY_INDEX) {
+      JSONObject metaCrystal = new JSONObject();
+      metaCrystal.setString("family", foundryMetaCrystalFamilyValue);
+      metaCrystal.setString("grain_recipe", foundryMetaCrystalPresetValue);
+      metaCrystal.setFloat("twinning_angle_deg", foundryMetaCrystalThetaValue);
+      metaCrystal.setFloat("normalized_strut_radius", foundryMetaCrystalStrutRadiusValue);
+      metaCrystal.setString("load_axis", foundryMetaCrystalLoadAxisValue);
+      metaCrystal.setString("coupling", foundryMetaCrystalCouplingValue);
+      metaCrystal.setString("source", DCRTE_META_CRYSTAL_SOURCE);
+      metaCrystal.setBoolean("mechanical_result_validated", false);
+      foundry.setJSONObject("meta_crystal", metaCrystal);
+    }
     root.setJSONObject("surface_foundry", foundry);
 
     JSONObject shaper = new JSONObject();
@@ -322,7 +395,13 @@ class DCRTEConfig {
 
     if (pipelineMode.equals("DCRTE_PRIMITIVE")) {
       ObservationDomain domain;
-      if (primitiveDomainTypeValue.equals("box")) {
+      if (primitiveDomainTypeValue.equals("panel")) {
+        domain = panelLayoutModeValue.equals(DCRTEPanelLayoutMode.SPHEROID_CELLS.id())
+          ? new SmoothSpheroidCellArrayDomain(panelWidthMMValue, panelHeightMMValue,
+            panelDepthMMValue, panelColumnsValue, panelRowsValue, panelOverlapValue,
+            panelSmoothBlendRatioValue)
+          : new ContinuousPanelDomain(panelWidthMMValue, panelHeightMMValue, panelDepthMMValue);
+      } else if (primitiveDomainTypeValue.equals("box")) {
         domain = new BoxDomain(primitiveCenterXValue, primitiveCenterYValue, primitiveCenterZValue,
           primitiveBoxHalfXValue, primitiveBoxHalfYValue, primitiveBoxHalfZValue);
       } else if (primitiveDomainTypeValue.equals("cylinder")) {
@@ -414,6 +493,10 @@ DCRTEConfig captureDcrteConfig() {
     config.schemaVersion = "0.7-m4";
     config.dcrteMilestone = 4;
   }
+  if (dcrtePipelineMode == DCRTEPipelineMode.DCRTE_PRIMITIVE
+      && dcrtePrimitiveDomainType == DCRTEPrimitiveDomainType.PANEL) {
+    config.schemaVersion = "0.8-panel";
+  }
   config.fieldEngineId = dcrteGenerationFieldEngineId();
   config.fieldEngineVersion = dcrteGenerationFieldEngineVersion();
   config.seedValue = seed;
@@ -439,6 +522,23 @@ DCRTEConfig captureDcrteConfig() {
   config.foundryRaisedVeinsValue = foundryRaisedVeins;
   config.foundryVeinRadiusMMValue = foundryVeinRadiusMM;
   config.foundryVeinLiftMMValue = foundryVeinLiftMM;
+  config.foundryHolonomyWovenModeValue = holonomyWovenMode.id();
+  config.foundryHolonomyWovenAlphaSpanValue = holonomyWovenAlphaSpan;
+  config.foundryHolonomyWovenDepthSpanValue = holonomyWovenDepthSpan;
+  config.foundryHolonomyWovenBoundaryCouplingValue = holonomyWovenBoundaryCoupling;
+  config.foundryHolonomyWovenAmplitudeValue = holonomyWovenAmplitude;
+  HolonomyFieldArtifact holonomyConfigArtifact = holonomyWovenFoundryField;
+  if (holonomyConfigArtifact == null) holonomyConfigArtifact = holonomyWovenDisplayField();
+  config.foundryHolonomyFieldSchemaValue = HOLONOMY_FIELD_SCHEMA;
+  config.foundryHolonomyFieldArtifactIdValue = holonomyConfigArtifact == null ? "unbuilt" : holonomyConfigArtifact.artifactId;
+  config.foundryHolonomyFieldColumnsValue = holonomyConfigArtifact == null ? 0 : holonomyConfigArtifact.cols;
+  config.foundryHolonomyFieldRowsValue = holonomyConfigArtifact == null ? 0 : holonomyConfigArtifact.rows;
+  config.foundryMetaCrystalFamilyValue = dcrteMetaCrystalFamilyLabel();
+  config.foundryMetaCrystalPresetValue = dcrteMetaCrystalPresetLabel();
+  config.foundryMetaCrystalThetaValue = dcrteMetaCrystalEffectiveThetaDeg();
+  config.foundryMetaCrystalStrutRadiusValue = dcrteMetaCrystalStrutRadius;
+  config.foundryMetaCrystalLoadAxisValue = dcrteMetaCrystalLoadAxisLabel();
+  config.foundryMetaCrystalCouplingValue = dcrteMetaCrystalRdftCoupled ? "RDFT_EXPLORATORY" : "PAPER_REPLICA";
   config.shaperEnabledValue = shaperEnabled;
   config.shaperUseSenderValue = shaperUseSender;
   config.shaperMixValue = shaperMix;
@@ -466,6 +566,14 @@ DCRTEConfig captureDcrteConfig() {
   config.primitiveBoxHalfZValue = dcrteBoxHalfZ;
   config.primitiveCylinderRadiusValue = dcrteCylinderRadius;
   config.primitiveCylinderHalfHeightValue = dcrteCylinderHalfHeight;
+  config.panelLayoutModeValue = dcrtePanelLayoutMode.id();
+  config.panelWidthMMValue = dcrtePanelWidthMM;
+  config.panelHeightMMValue = dcrtePanelHeightMM;
+  config.panelDepthMMValue = dcrtePanelDepthMM;
+  config.panelColumnsValue = dcrtePanelColumns;
+  config.panelRowsValue = dcrtePanelRows;
+  config.panelOverlapValue = dcrtePanelOverlap;
+  config.panelSmoothBlendRatioValue = dcrtePanelSmoothBlendRatio;
   config.observerResolutionValue = dcrtePipelineMode == DCRTEPipelineMode.DCRTE_IMPORTED_MESH
     ? dcrteImportedResolution : dcrtePrimitiveResolution;
   config.observerMinXValue = dcrteObserverBounds.minX;

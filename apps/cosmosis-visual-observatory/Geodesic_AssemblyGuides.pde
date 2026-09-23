@@ -8,6 +8,9 @@
 
 final int GEODESIC_GUIDE_PNG_W = 4960;
 final int GEODESIC_GUIDE_PNG_H = 3508;
+// Raster density implied by the A2 landscape sheet, reused so a page of any
+// proportion rasterises at the same dots per millimetre.
+final float GEODESIC_GUIDE_PX_PER_MM = GEODESIC_GUIDE_PNG_W / 594.0f;
 // The principal working copy is deliberately 50% larger than the first guide
 // revision. Secondary annotations also move up one size tier for print use.
 final float GEODESIC_GUIDE_BODY_MM = 5.10f;
@@ -20,7 +23,8 @@ final float GEODESIC_GUIDE_BOTTOM_MICRO_MM = 4.28f;
 enum GeodesicGuideStyle {
   OVERVIEW,
   ASSEMBLY_MAP,
-  KICAS_SEQUENCE
+  KICAS_SEQUENCE,
+  APERIODIC_ATLAS
 }
 
 class GeodesicGuideStage {
@@ -99,6 +103,8 @@ class GeodesicGuideExportResult {
   String mapSvg = "";
   String kicasPng = "";
   String kicasSvg = "";
+  String aperiodicPng = "";
+  String aperiodicSvg = "";
   String validationFile = "guides/guide_validation.json";
   GeodesicGuideValidation validation;
 
@@ -113,6 +119,8 @@ class GeodesicGuideExportResult {
     json.setString("assembly_map_svg", mapSvg);
     json.setString("kicas_sequence_png", kicasPng);
     json.setString("kicas_sequence_svg", kicasSvg);
+    json.setString("aperiodic_atlas_png", aperiodicPng);
+    json.setString("aperiodic_atlas_svg", aperiodicSvg);
     json.setString("validation", validationFile);
     return json;
   }
@@ -144,12 +152,22 @@ class GeodesicGuideRasterCanvas extends GeodesicGuideCanvas {
   PFont bold;
 
   GeodesicGuideRasterCanvas(String filename) {
+    this(filename, 594, 420);
+  }
+
+  /* Page proportion is a parameter so portrait sheets can share this canvas.
+     The landscape defaults above reproduce the original raster exactly. */
+  GeodesicGuideRasterCanvas(String filename, float pageWidthMM, float pageHeightMM) {
     this.filename = filename;
-    sx = GEODESIC_GUIDE_PNG_W / pageW;
-    sy = GEODESIC_GUIDE_PNG_H / pageH;
-    pg = createGraphics(GEODESIC_GUIDE_PNG_W, GEODESIC_GUIDE_PNG_H, JAVA2D);
+    pageW = pageWidthMM;
+    pageH = pageHeightMM;
+    int pixelW = round(pageW * GEODESIC_GUIDE_PX_PER_MM);
+    int pixelH = round(pageH * GEODESIC_GUIDE_PX_PER_MM);
+    sx = pixelW / pageW;
+    sy = pixelH / pageH;
+    pg = createGraphics(pixelW, pixelH, JAVA2D);
     pg.pixelDensity = 1;
-    pg.setSize(GEODESIC_GUIDE_PNG_W, GEODESIC_GUIDE_PNG_H);
+    pg.setSize(pixelW, pixelH);
     pg.noSmooth();
     regular = createFont("Helvetica", 28, true);
     bold = createFont("Helvetica Bold", 28, true);
@@ -233,15 +251,34 @@ class GeodesicGuideSvgCanvas extends GeodesicGuideCanvas {
   PrintWriter out;
   String filename;
 
+  String documentTitle = "Geodesic Salon illustrated assembly guide";
+  String documentDescription =
+    "Geometric panel placement and adjacency reference. Physical joint hardware is not included.";
+
   GeodesicGuideSvgCanvas(String filename) { this.filename = filename; }
+
+  /* Page proportion and document strings are parameters so portrait truss
+     sheets can share this canvas. The defaults reproduce the dome guide. */
+  GeodesicGuideSvgCanvas(String filename, float pageWidthMM, float pageHeightMM,
+    String title, String description) {
+    this.filename = filename;
+    pageW = pageWidthMM;
+    pageH = pageHeightMM;
+    documentTitle = title;
+    documentDescription = description;
+  }
 
   void begin() {
     out = createWriter(filename);
     out.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
-    out.println("<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 594 420\" width=\"594mm\" height=\"420mm\" role=\"img\" aria-label=\"Geodesic Salon assembly guide\">");
-    out.println("<title>Geodesic Salon illustrated assembly guide</title>");
-    out.println("<desc>Geometric panel placement and adjacency reference. Physical joint hardware is not included.</desc>");
-    out.println("<rect width=\"594\" height=\"420\" fill=\"#ffffff\"/>");
+    out.println("<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" viewBox=\"0 0 " +
+      svgNum(pageW) + " " + svgNum(pageH) + "\" width=\"" + svgNum(pageW) +
+      "mm\" height=\"" + svgNum(pageH) + "mm\" role=\"img\" aria-label=\"" +
+      safeXml(documentTitle) + "\">");
+    out.println("<title>" + safeXml(documentTitle) + "</title>");
+    out.println("<desc>" + safeXml(documentDescription) + "</desc>");
+    out.println("<rect width=\"" + svgNum(pageW) + "\" height=\"" +
+      svgNum(pageH) + "\" fill=\"#ffffff\"/>");
   }
 
   void end() {
@@ -480,6 +517,12 @@ GeodesicGuideExportResult exportGeodesicAssemblyGuides(File runFolder, GeodesicP
         new File(runFolder, result.kicasPng).getAbsolutePath()),
         data, GeodesicGuideStyle.KICAS_SEQUENCE);
     }
+    if (data.model.topologyMode == GeodesicTopologyMode.APERIODIC) {
+      result.aperiodicPng = "guides/GS-005_aperiodic_atlas.png";
+      renderGeodesicGuide(new GeodesicGuideRasterCanvas(
+        new File(runFolder, result.aperiodicPng).getAbsolutePath()),
+        data, GeodesicGuideStyle.APERIODIC_ATLAS);
+    }
     if (geodesicGuideSvgEnabled) {
       result.overviewSvg = "guides/GS-001_assembly_overview.svg";
       result.mapSvg = "guides/GS-002_digital_assembly_map.svg";
@@ -491,13 +534,22 @@ GeodesicGuideExportResult exportGeodesicAssemblyGuides(File runFolder, GeodesicP
           new File(runFolder, result.kicasSvg).getAbsolutePath()),
           data, GeodesicGuideStyle.KICAS_SEQUENCE);
       }
+      if (data.model.topologyMode == GeodesicTopologyMode.APERIODIC) {
+        result.aperiodicSvg = "guides/GS-005_aperiodic_atlas.svg";
+        renderGeodesicGuide(new GeodesicGuideSvgCanvas(
+          new File(runFolder, result.aperiodicSvg).getAbsolutePath()),
+          data, GeodesicGuideStyle.APERIODIC_ATLAS);
+      }
     }
     result.success = new File(runFolder, result.overviewPng).exists() &&
       new File(runFolder, result.mapPng).exists() &&
       (data.fabrication.assemblyMode != GeodesicAssemblyMode.KICAS ||
-      new File(runFolder, result.kicasPng).exists());
+      new File(runFolder, result.kicasPng).exists()) &&
+      (data.model.topologyMode != GeodesicTopologyMode.APERIODIC ||
+      new File(runFolder, result.aperiodicPng).exists());
     int guideCount = data.fabrication.assemblyMode ==
       GeodesicAssemblyMode.KICAS ? 3 : 2;
+    if (data.model.topologyMode == GeodesicTopologyMode.APERIODIC) guideCount++;
     result.status = result.success ? guideCount + " PNG" +
       (geodesicGuideSvgEnabled ? " + " + guideCount + " SVG" :
       " / SVG OFF") : "guide files missing";
@@ -520,7 +572,9 @@ void renderGeodesicGuide(GeodesicGuideCanvas canvas, GeodesicGuideData data, Geo
     drawGeodesicGuideOverview(canvas, data);
   else if (style == GeodesicGuideStyle.ASSEMBLY_MAP)
     drawGeodesicGuideAssemblyMap(canvas, data);
-  else drawGeodesicGuideKicasSequence(canvas, data);
+  else if (style == GeodesicGuideStyle.KICAS_SEQUENCE)
+    drawGeodesicGuideKicasSequence(canvas, data);
+  else drawGeodesicGuideAperiodicAtlas(canvas, data);
   canvas.end();
 }
 
@@ -538,7 +592,7 @@ void drawGeodesicGuideOverview(GeodesicGuideCanvas canvas, GeodesicGuideData dat
   boolean kicas = guideKicas(data);
   canvas.beginGroup("header");
   canvas.textLine("GEODESIC SALON - ASSEMBLY OVERVIEW", 11, 11, 9.0f, true, LEFT);
-  canvas.textLine(data.model.extent.label() + " / " + data.model.family.label() +
+  canvas.textLine(data.model.extent.label() + " / " + data.model.family.displayLabel() +
     " / F" + data.model.frequency + "  |  " + data.model.faces.size() +
     (kicas ? " ORDERED PARTS  |  " : " PANEL PLACEMENTS  |  ") +
     data.catalog.types.size() + (kicas ? " BASE GEOMETRIES" :
