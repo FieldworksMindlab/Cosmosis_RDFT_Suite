@@ -1,15 +1,41 @@
 # Cosmosis RDFT Suite
 
-Cosmosis RDFT Suite is an experimental creative-code research environment for exploring Recursive Differential Field Theory through interactive audio, visual, geometric, and data-driven instruments. It brings together Processing sketches, SuperCollider synthesis systems, environmental data bridges, Hopf/topology visualization tools, material-profile adapters, and Surface Foundry workflows for printable topology and drafting artifacts.
+**Explore a field. Play it as sound. Turn its geometry into something you can build.**
 
-The goal of this repository is preservation and invitation: a durable public archive that others can run, study, fork, and extend.
+Cosmosis RDFT Suite is a collection of experimental instruments for moving between sound, interactive geometry, data, and physical form. Explore recursive fields, follow a recorded run through a Hopf projection, or generate a geodesic dome kit with printable parts and an assembly plan.
 
-## Project Map
+The shared research language is Recursive Differential Field Theory (RDFT). The tools bring that exploration into Processing, SuperCollider, and Python, with source you can run, study, fork, and extend.
 
-- `apps/cosmosis-navigator` - the mature Cosmosis performance/research instrument, combining the developed Chladni/RDFT synth interface, field dynamics, synthesis control, environmental bridges, quantum/holonomy panels, and SuperCollider routing.
-- `apps/cosmosis-visual-observatory` - a visual-only RDFT laboratory with field atlases, topology lab, material targets, Surface Foundry, call-sheet generation, relief/STL workflows, and DCRTE primitive observation domains.
-- `apps/holo-drive-rdft-eg-synth` - the Mac migration of the HOLO Drive RDFT/EG synth, including Floquet shaping, solar/ocean/galaxy bridges, CTC channel behavior, and SuperCollider integration.
-- `apps/rdft-hopf-visualization-kit` - Python/PyGFX and TouchDesigner tools for Hopf, PCA, Berry, winding, and manifold portrait views from RDFT CSV runs.
+## Explore the Programs
+
+### [Cosmosis Visual Observatory](apps/cosmosis-visual-observatory/) — from live fields to physical forms
+
+An interactive visual laboratory spanning field atlases, phase, topology, and fabrication. Start here to explore geometry without an audio setup, then follow a field from the screen into a mesh or a kit of parts.
+
+- **Holonomy Loom** lets you explore a woven field atlas and capture it for Surface Foundry, preserving the same field through mesh generation.
+- **Surface Foundry** turns field geometry into STL meshes, reliefs, and drafting sheets, with primitive and imported-mesh workflows.
+- **Geodesic Salon** builds domes and spheres, then exports reusable panel types, quantities, and illustrated assembly guides. Legacy zip-tie assemblies use straight shared passages, with up to three portals per edge where the part size allows.
+- **Truss Yard** builds modular towers and tunnels from triangle frames, with reusable printable parts and assembly plans.
+
+[Open the Observatory →](apps/cosmosis-visual-observatory/README.md) · [Explore the fabrication architecture →](docs/architecture/overview.md)
+
+### [Cosmosis Navigator](apps/cosmosis-navigator/) — play the field
+
+A performance and research instrument connecting interactive field dynamics to SuperCollider synthesis. Shape the field with Chladni/RDFT controls, explore holonomy and topology panels, and bring solar, ocean, or galaxy data into a session through environmental bridges. Record a run, then inspect its trajectories with the Hopf Visualization Kit.
+
+[Launch Navigator →](apps/cosmosis-navigator/README.md)
+
+### [HOLO Drive RDFT EG Synth](apps/holo-drive-rdft-eg-synth/) — explore coupled sound and geometry
+
+An experimental Processing/SuperCollider synth with Floquet shaping, CTC channel controls, and surface/topology overlays. This Mac migration preserves the HOLO Drive instrument and its environmental bridges for hands-on exploration of how changing field controls affects the synthesis system.
+
+[Launch HOLO Drive →](apps/holo-drive-rdft-eg-synth/README.md)
+
+### [RDFT Hopf Visualization Kit](apps/rdft-hopf-visualization-kit/) — step inside a recorded run
+
+Turn RDFT CSV recordings into interactive 3D trajectories. Orbit a Hopf projection, switch to PCA or winding-space views, and color the path by velocity, holonomy, or curvature. Generate Berry and dimensional portrait dashboards, export spinning GIFs, or bring the data into TouchDesigner.
+
+[Open the viewer →](apps/rdft-hopf-visualization-kit/README.md)
 
 ## Quick Starts
 
