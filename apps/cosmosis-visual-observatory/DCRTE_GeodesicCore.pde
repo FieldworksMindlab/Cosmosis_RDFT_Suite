@@ -134,9 +134,11 @@ enum GeodesicAssemblyMode {
 
 enum GeodesicPortalAxisMode {
   PANEL_TRANSVERSE,
+  ASSEMBLED_STRAIGHT,
   RECIPROCAL_JOINT_AXIS;
 
   String label() {
+    if (this == ASSEMBLED_STRAIGHT) return "ASSEMBLED STRAIGHT TUNNEL";
     return this == RECIPROCAL_JOINT_AXIS ?
       "RECIPROCAL JOINT AXIS" : "PANEL TRANSVERSE";
   }
@@ -238,6 +240,8 @@ class GeodesicFabricationSettings {
     json.setFloat("portal_width_mm", portalWidthMM);
     json.setFloat("portal_height_mm", portalHeightMM);
     json.setString("portal_alignment_policy",
+      portalAxisMode == GeodesicPortalAxisMode.ASSEMBLED_STRAIGHT ?
+      "SHARED_PRISM_WITH_ROUNDED_ENTRY" :
       portalAxisMode == GeodesicPortalAxisMode.RECIPROCAL_JOINT_AXIS ?
       "CENTERLINE_FACING_SHARED_JOINT_APERTURE" :
       (assemblyMode == GeodesicAssemblyMode.KICAS ?
@@ -320,6 +324,7 @@ class GeodesicJointEdgeProfile {
   ArrayList<Float> portalCenters = new ArrayList<Float>();
   PVector junctionBisector = new PVector();
   boolean reciprocalPortalResolved = false;
+  GeodesicStraightPortal straightPortal = null;
   float reciprocalPortalStation = 0.5f;
   float reciprocalPortalThroatInwardMM = -1;
   float reciprocalPortalResidualMM = -1;
@@ -353,6 +358,24 @@ class GeodesicJointEdgeProfile {
     json.setFloat("kicas_length_mm", kicasLengthMM);
     json.setFloat("kicas_depth_mm", kicasDepthMM);
     json.setBoolean("reciprocal_portal_resolved", reciprocalPortalResolved);
+    if (straightPortal != null) {
+      json.setString("passage_geometry", "ASSEMBLED_STRAIGHT_PRISM");
+      json.setFloat("passage_width_mm", straightPortal.width);
+      json.setFloat("passage_height_mm", straightPortal.height);
+      json.setFloat("entrance_relief_mm", straightPortal.entryRelief);
+      json.setFloat("passage_bisector_height_mm", straightPortal.centerHeight);
+      JSONArray passages = new JSONArray();
+      for (float station : portalCenters) {
+        JSONObject passage = new JSONObject();
+        passage.setFloat("station_edge_fraction", station);
+        PVector center = geodesicStraightPortalCenterWorld(this, station);
+        JSONArray xyz = new JSONArray();
+        xyz.setFloat(0, center.x); xyz.setFloat(1, center.y); xyz.setFloat(2, center.z);
+        passage.setJSONArray("center_world_mm", xyz);
+        passages.append(passage);
+      }
+      json.setJSONArray("straight_passages", passages);
+    }
     json.setFloat("reciprocal_portal_station_edge_fraction",
       reciprocalPortalStation);
     json.setFloat("reciprocal_portal_throat_inward_mm",
@@ -1616,6 +1639,14 @@ PVector geodesicRadialInset(PVector point, float distance) {
 
 GeodesicFabricationFace geodesicFabricationFace(GeodesicModel model, GeodesicFace face,
   GeodesicFabricationSettings settings) {
+  GeodesicFabricationFace result = geodesicFabricationFaceRaw(model, face, settings);
+  if (geodesicUsesStraightPortals(settings))
+    geodesicResolveStraightPortals(model, face, result, settings);
+  return result;
+}
+
+GeodesicFabricationFace geodesicFabricationFaceRaw(GeodesicModel model, GeodesicFace face,
+  GeodesicFabricationSettings settings) {
   GeodesicFabricationFace result = new GeodesicFabricationFace();
   result.faceId = face.id;
   result.parentFace = face.parentFace;
@@ -2003,6 +2034,12 @@ void geodesicSchedulePortals(GeodesicJointEdgeProfile profile, GeodesicFabricati
     return;
   }
 
+  if (settings.desiredPortalsPerEdge >= 3) {
+    geodesicScheduleBalancedPortals(profile, profile.edgeLengthMM * 0.5f -
+      profile.cornerClearanceMM, min(3, settings.desiredPortalsPerEdge), 0.35f);
+    return;
+  }
+
   float maxClearance = max(0.8f, (profile.edgeLengthMM - profile.portalWidthMM) * 0.5f);
   float clearance = min(profile.cornerClearanceMM, maxClearance);
   float available = profile.edgeLengthMM - 2.0f * clearance;
@@ -2108,6 +2145,7 @@ SurfaceMesh buildGeodesicFabricationMesh(GeodesicFabricationFace face,
   ArrayList<PVector> subdividedInnerBase = new ArrayList<PVector>();
   ArrayList<PVector> subdividedInnerTop = new ArrayList<PVector>();
   for (int i = 0; i < n; i++) {
+    int railTriangleStart = mesh.tris.size();
     PVector outerA = outer.get(i);
     PVector outerB = outer.get((i + 1) % n);
     PVector innerA = inner.get(i);
@@ -2245,6 +2283,10 @@ SurfaceMesh buildGeodesicFabricationMesh(GeodesicFabricationFace face,
         geodesicAddCodedBottomRail(mesh, bottomOuterA, bottomOuterB,
           innerA, innerB, breaks, joint.mateCode, 0);
     }
+    if (joint.straightPortal != null && joint.straightPortal.fits)
+      geodesicTransformStraightRail(mesh, railTriangleStart, face, i,
+        miterProfile, innerA, innerB, innerTopA, innerTopB,
+        innerWallBottom, innerWallTop, slotBottom, slotTop, depth, edgeBreak);
   }
   if (skin > 0) {
     // Exterior crown is a fabrication treatment, so its apex remains present
@@ -3302,6 +3344,8 @@ PVector geodesicReciprocalPortalThroatWorld(
   if (face == null || edgeIndex < 0 || edgeIndex >= face.joints.size())
     return new PVector();
   GeodesicJointEdgeProfile joint = face.joints.get(edgeIndex);
+  if (joint.straightPortal != null)
+    return geodesicStraightPortalCenterWorld(joint, joint.reciprocalPortalStation);
   GeodesicPortalChannelGeometry geometry =
     geodesicPortalChannelGeometry(face, edgeIndex);
   if (!joint.reciprocalPortalResolved || !geometry.valid) return new PVector();
@@ -3397,6 +3441,13 @@ void geodesicAddMiterFramePortalInterval(SurfaceMesh mesh,
     ia, ita, innerSlotTop, depth, edgeBreak);
   PVector innerEndTop = geodesicInnerChamferPoint(
     ib, itb, innerSlotTop, depth, edgeBreak);
+
+  if (joint != null && joint.straightPortal != null && joint.straightPortal.fits) {
+    geodesicAddStraightTunnelShell(mesh, outerStartBottom, outerEndBottom,
+      outerStartTop, outerEndTop, innerStartBottom, innerEndBottom,
+      innerStartTop, innerEndTop, closeStart, closeEnd);
+    return;
+  }
 
   if (reciprocal) {
     PVector[] shared = geodesicReciprocalApertureLocal(face, joint,
@@ -4368,10 +4419,13 @@ String geodesicFabricatedPanelSignature(GeodesicFabricationFace face,
       joint.portalCenters.size() + "w" + round(joint.portalWidthMM * 100.0f) +
       "c" + round(joint.cornerClearanceMM * 100.0f) + "m" + joint.mateCode +
       "k" + joint.kicasRole;
+    if (joint.straightPortal != null)
+      edgeTerms[i] += geodesicStraightPortalSignature(face, joint);
   }
   String edgeSignature = geodesicCanonicalCyclicSignature(edgeTerms);
   return "n" + face.vertexCount() + "_" + edgeSignature + "_" + resolved.style.name() +
     "_rs" + resolved.reliefSide.name() +
+    "_pa" + resolved.portalAxisMode.name() +
     "_sp" + resolved.seamProfile.name() +
     "_fd" + round(resolved.frameDepthMM * 100.0f) +
     "_fw" + round(resolved.frameWidthMM * 100.0f) +

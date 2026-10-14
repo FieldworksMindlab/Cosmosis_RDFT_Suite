@@ -78,6 +78,7 @@ class GeodesicKitPreflight {
   int failedFaceId = -1;
   GeodesicGuideData guideData = null;
   GeodesicSeamAudit seamAudit = null;
+  GeodesicPassageAudit passageAudit = null;
 }
 
 GeodesicFabricationSettings currentGeodesicFabricationSettings() {
@@ -99,11 +100,11 @@ GeodesicFabricationSettings geodesicFabricationSettingsForModel(
   settings.frameWidthMM = geodesicFrameWidthMM;
   settings.skinThicknessMM = geodesicSkinThicknessMM;
   settings.fastenerPortals = geodesicFastenerPortals;
-  // Keep every physical fastener channel centered and panel-local. KICAS and
-  // legacy assembly retain their own labels and guides, but neither may skew
-  // the printable slot to chase a shared world-space throat.
-  settings.portalAxisMode = GeodesicPortalAxisMode.PANEL_TRANSVERSE;
-  settings.desiredPortalsPerEdge = 1;
+  // Legacy ties follow one assembly-space prism across both mitered rails.
+  settings.portalAxisMode = settings.assemblyMode == GeodesicAssemblyMode.LEGACY_PORTAL &&
+    geodesicSeamProfile == GeodesicSeamProfile.HALF_DIHEDRAL_MITER ?
+    GeodesicPortalAxisMode.ASSEMBLED_STRAIGHT : GeodesicPortalAxisMode.PANEL_TRANSVERSE;
+  settings.desiredPortalsPerEdge = settings.assemblyMode == GeodesicAssemblyMode.LEGACY_PORTAL ? 3 : 1;
   settings.portalWidthMM = geodesicPortalWidthMM;
   settings.portalHeightMM = geodesicPortalHeightMM;
   settings.edgeCodesEnabled = geodesicEdgeCodesEnabled;
@@ -337,6 +338,16 @@ GeodesicKitPreflight preflightGeodesicSalonKit(String stamp) {
         nonmanifold + "  DEGENERATE " + degenerate;
       return result;
     }
+  }
+
+  result.passageAudit = geodesicAuditStraightPassages(geodesicModel,
+    fabrication, geodesicGrowth, geodesicReliefMM);
+  if (!result.passageAudit.valid) {
+    result.failedFaceId = result.passageAudit.failedFace;
+    result.status = "KIT BLOCKED / ZIP-TIE PASSAGE";
+    result.detail = result.passageAudit.status + " / FACES " +
+      result.passageAudit.failedFace + "/" + result.passageAudit.failedNeighbor;
+    return result;
   }
 
   if (fabrication.assemblyMode == GeodesicAssemblyMode.KICAS) {
@@ -880,7 +891,11 @@ void drawGeodesicSalonControls(int x, int y, int w, int h) {
   geodesicMetricLine(x + 16, sy, w - 32, "portals / mate IDs",
     (geodesicAssemblyMode == GeodesicAssemblyMode.KICAS ?
       "1 CENTER/EDGE / P###" :
-      (geodesicFastenerPortals ? "ON" : "OFF") + " / " +
+      (geodesicFastenerPortals ?
+        (geodesicLastPreflight != null && geodesicLastPreflight.passageAudit != null &&
+         (!geodesicLastPreflight.passageAudit.valid || geodesicLastPreflight.passageAudit.checked > 0) ?
+          (geodesicLastPreflight.passageAudit.valid ? "PASS " : "BLOCKED ") +
+            geodesicLastPreflight.passageAudit.passagesChecked : "ON") : "OFF") + " / " +
       geodesicMateCodeFabricationStatus())); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "seam profile", geodesicSelectedSeamProfile()); sy += metricStep;
   geodesicMetricLine(x + 16, sy, w - 32, "assembled seam audit",
@@ -1491,6 +1506,8 @@ void exportGeodesicSalonKit() {
   if (preflight.seamAudit != null)
     manifest.setJSONObject("assembled_seam_audit",
       preflight.seamAudit.toJSON());
+  if (preflight.passageAudit != null)
+    manifest.setJSONObject("zip_tie_passage_audit", preflight.passageAudit.toJSON());
   manifest.setString("assembly_mode", fabrication.assemblyMode.label());
   manifest.setBoolean("center_reinforcement_portal_each_edge",
     fabrication.assemblyMode == GeodesicAssemblyMode.KICAS);
@@ -1562,6 +1579,14 @@ void writeGeodesicAssemblyGuide(File file, GeodesicPanelCatalog catalog,
   writer.println(fabrication.assemblyMode == GeodesicAssemblyMode.KICAS ?
     "One integral center tie portal is included on every edge. Ties remain user-supplied." :
     "Integral rail portals are included when enabled. No separate connectors or fasteners are generated.");
+  if (geodesicUsesStraightPortals(fabrication)) {
+    writer.println("Each shared seam has up to three balanced straight zip-tie passages with rounded cavity entrances.");
+    writer.println("Three portals per edge are requested; short edges reduce to two or one without shrinking the strap opening.");
+    writer.println("Thread the strap through the aligned pair; the locking head stays outside the passage.");
+    writer.println("Reference small strap: 2.5 mm wide x 1.1 mm thick, with 0.4 mm total fit clearance.");
+    writer.println("The manifest's zip_tie_passage_audit checks the full swept volume through both rails at 100% scale.");
+    writer.println("Print a mating pair first: extrusion, bridging and shrinkage can reduce actual clearance.");
+  }
   writer.println("Relief side: " + (geodesicPanelStyle == GeodesicPanelStyle.FRAME_SKIN ?
     geodesicReliefSide.label() : "N/A FOR " + geodesicPanelStyle.label()) + ".");
   writer.println("Mate-code face: " + (geodesicPanelStyle == GeodesicPanelStyle.SOLID ?

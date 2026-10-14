@@ -142,8 +142,10 @@ face-normal angle is divided symmetrically between the two panels. The outer
 rail transitions from the face boundary to the calculated lateral inset over
 the resolved frame depth; corner vertices are intersections of the adjacent
 edge-offset lines rather than independent endpoint approximations. Portal
-tunnels sample this same sloped profile, so their floors, ceilings, and end
-walls remain closed inside the mitered rail.
+tunnels in LEGACY PORTAL now share one straight assembly-space passage across
+both rails, while the surrounding struts retain this sloped profile. Rounded
+cavity entrances and a continuous swept-volume clearance gate are described in
+[Shared straight zip-tie passages](zip_tie_passages.md).
 
 The resolver retains a small printable inner-rail reserve. If a requested depth
 would make the half-miter wider than the rail, depth is reduced before portal

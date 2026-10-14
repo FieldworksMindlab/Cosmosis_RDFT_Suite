@@ -3006,18 +3006,21 @@ TrussYardTestReport runTrussYardTests() {
   GeodesicFabricationSettings salonPortals =
     currentGeodesicFabricationSettings();
   report.check(salonPortals.portalAxisMode ==
-      GeodesicPortalAxisMode.PANEL_TRANSVERSE &&
-    salonPortals.desiredPortalsPerEdge == 1,
-    "Salon panels use one centered straight-through portal in every assembly mode");
+      (salonPortals.assemblyMode == GeodesicAssemblyMode.LEGACY_PORTAL &&
+        salonPortals.seamProfile == GeodesicSeamProfile.HALF_DIHEDRAL_MITER ?
+        GeodesicPortalAxisMode.ASSEMBLED_STRAIGHT : GeodesicPortalAxisMode.PANEL_TRANSVERSE) &&
+    salonPortals.desiredPortalsPerEdge == (salonPortals.assemblyMode == GeodesicAssemblyMode.LEGACY_PORTAL ? 3 : 1),
+    "Salon legacy ties use an assembled straight passage; KICAS keeps its centered portal");
   GeodesicJointEdgeProfile salonLegacyProbe =
     new GeodesicJointEdgeProfile();
   salonLegacyProbe.edgeLengthMM = 60;
   GeodesicFabricationSettings salonLegacySettings = salonPortals.copy();
   salonLegacySettings.assemblyMode = GeodesicAssemblyMode.LEGACY_PORTAL;
+  salonLegacySettings.desiredPortalsPerEdge = 3;
   geodesicSchedulePortals(salonLegacyProbe, salonLegacySettings);
-  report.check(salonLegacyProbe.portalCenters.size() == 1 &&
-    abs(salonLegacyProbe.portalCenters.get(0) - 0.5f) < 0.0001f,
-    "Salon legacy assembly schedules one centered panel-local portal");
+  report.check(salonLegacyProbe.portalCenters.size() == 3 &&
+    abs(salonLegacyProbe.portalCenters.get(1) - 0.5f) < 0.0001f,
+    "Salon legacy assembly requests three balanced shared portals");
   GeodesicJointEdgeProfile salonKicasProbe =
     new GeodesicJointEdgeProfile();
   salonKicasProbe.edgeLengthMM = 60;
